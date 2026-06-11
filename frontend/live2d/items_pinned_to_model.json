@@ -1,0 +1,245 @@
+{
+    "FileMetadata": {
+        "LastSavedVTubeStudioVersion": "1.32.67",
+        "LastSavedPlatform": "Steam",
+        "LastSavedDateUTC": "Sunday, 09 November 2025, 07:41:58",
+        "LastSavedDateLocalTime": "Sunday, 09 November 2025, 15:41:58",
+        "LastSavedDateUnixMillisecondTimestamp": "1762674118012"
+    },
+    "SceneName": "",
+    "SceneGroupName": "",
+    "SceneModel": "",
+    "SceneID": "",
+    "Items": [
+        {
+            "VNetJustBorrowedFrom": 0,
+            "VNetJustBorrowedFromItemID": -1,
+            "ItemName": "【兔兔纸制】超可爱梦境小羊",
+            "ItemObjectInScene": {
+                "instanceID": -90912
+            },
+            "ItemFileName": "【兔兔纸制】超可爱梦境小羊",
+            "ItemInstanceUUID": "7e8f53467e5743b3b2fd91b0813d3bd5",
+            "Selected": true,
+            "TrackingModel": true,
+            "IsAnimated": false,
+            "IsVideo": false,
+            "IsModel": true,
+            "IsWeb": false,
+            "IsCensored": false,
+            "IsFlipped": false,
+            "IsLocked": true,
+            "Smoothing": 0.0,
+            "Order": 2,
+            "FPS": 0.0,
+            "IsPinned": true,
+            "PinnedTo": "ArtMesh159",
+            "PinnedModel_Live2D": "吸血鬼",
+            "PinnedModel_VTS": "吸血鬼",
+            "PinnedModel_InternalID": "43ee95fb948449e6b26c5d76ac123131",
+            "PinnedVertexIDs": "47 50 44 48 53 45",
+            "PinnedVertexPositions": [
+                {
+                    "x": -0.07035255432128906,
+                    "y": 0.7564946413040161,
+                    "z": 0.0
+                },
+                {
+                    "x": -0.07039613276720047,
+                    "y": 0.7417480945587158,
+                    "z": 0.0
+                },
+                {
+                    "x": -0.06959149986505509,
+                    "y": 0.771059513092041,
+                    "z": 0.0
+                },
+                {
+                    "x": -0.0831661969423294,
+                    "y": 0.7495195865631104,
+                    "z": 0.0
+                },
+                {
+                    "x": -0.07050035893917084,
+                    "y": 0.7268820405006409,
+                    "z": 0.0
+                },
+                {
+                    "x": -0.0831243246793747,
+                    "y": 0.7642797231674194,
+                    "z": 0.0
+                }
+            ],
+            "PinnedVertexCenterOffset": {
+                "x": 0.018601536750793458,
+                "y": -0.0011413097381591797,
+                "z": 0.0
+            },
+            "Size": 0.03307759761810303,
+            "ModelScaleMultiplier": 0.005741930566728115,
+            "Rotation": 0.11423605680465698,
+            "Position": {
+                "x": -0.05686759203672409,
+                "y": 0.7333859801292419,
+                "z": 0.0
+            },
+            "Group": "",
+            "Scene": "",
+            "AssetType": 6,
+            "FromWorkshop": false,
+            "FromHotkey": false,
+            "FromAPI": false,
+            "FadeTime": 0.5,
+            "Plugin": "",
+            "WebItemURL": "",
+            "WebItemUseCustomCSS": false,
+            "WebItemCustomCSS": "body {\n    background-color: rgba(0, 0, 0, 0);\n    margin: 0px auto;\n    overflow: hidden;\n}",
+            "WebItemZoomPercent": 100,
+            "WebItemAlphaMultiplier": 1.0,
+            "WebItemCropLeftRightTopBottom": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "w": 0.0
+            },
+            "WebItemSizeInUnityUnits": {
+                "x": 0.6000000238418579,
+                "y": 0.30000001192092898
+            },
+            "WebItemSizeInPixels": {
+                "x": 1024,
+                "y": 576
+            },
+            "WebItemMuted": false,
+            "WebItemAllowLocalURLs": false,
+            "WebItemAllowTransparentBackground": true,
+            "WebItemInteractable": true,
+            "WebItemScrollSensitivity": 0.4000000059604645,
+            "WithinModelPin_On": false,
+            "WithinModelPin_BackOn": false,
+            "WithinModelPin_Layer": -1,
+            "WithinModelPin_ArtMeshID": "<<<LAYER_SPECIAL_TOP>>>",
+            "WithinModelPin_ArtMeshIDBackLayers": "<<<LAYER_SPECIAL_BOTTOM>>>",
+            "WithinModelPin_DoNotPinToLayersAboveItem": true,
+            "WithinModelPin_SpecificPinLayer_On": false,
+            "WithinModelPin_SpecificPinLayer": "",
+            "WithinModelPin_ShowFrontBack": false,
+            "WithinModelPin_SplitLive2DItemAt": "ArtMesh8"
+        },
+        {
+            "VNetJustBorrowedFrom": 0,
+            "VNetJustBorrowedFromItemID": -1,
+            "ItemName": "【兔兔纸制】超可爱梦境小羊",
+            "ItemObjectInScene": {
+                "instanceID": -183534
+            },
+            "ItemFileName": "【兔兔纸制】超可爱梦境小羊",
+            "ItemInstanceUUID": "12825e80841e4070a22a898c213a0579",
+            "Selected": true,
+            "TrackingModel": true,
+            "IsAnimated": false,
+            "IsVideo": false,
+            "IsModel": true,
+            "IsWeb": false,
+            "IsCensored": false,
+            "IsFlipped": false,
+            "IsLocked": true,
+            "Smoothing": 0.0,
+            "Order": 1,
+            "FPS": 0.0,
+            "IsPinned": true,
+            "PinnedTo": "ArtMesh115",
+            "PinnedModel_Live2D": "吸血鬼",
+            "PinnedModel_VTS": "吸血鬼",
+            "PinnedModel_InternalID": "43ee95fb948449e6b26c5d76ac123131",
+            "PinnedVertexIDs": "28 30 26 24 32 29",
+            "PinnedVertexPositions": [
+                {
+                    "x": -0.01683211699128151,
+                    "y": 0.7539970874786377,
+                    "z": 0.0
+                },
+                {
+                    "x": -0.01441560685634613,
+                    "y": 0.7455343008041382,
+                    "z": 0.0
+                },
+                {
+                    "x": -0.01929052360355854,
+                    "y": 0.7624976634979248,
+                    "z": 0.0
+                },
+                {
+                    "x": -0.02118651196360588,
+                    "y": 0.7718582153320313,
+                    "z": 0.0
+                },
+                {
+                    "x": -0.007486134301871061,
+                    "y": 0.7343488931655884,
+                    "z": 0.0
+                },
+                {
+                    "x": -0.0066853784956038,
+                    "y": 0.7521783113479614,
+                    "z": 0.0
+                }
+            ],
+            "PinnedVertexCenterOffset": {
+                "x": -0.05219142884016037,
+                "y": -0.017983555793762208,
+                "z": 0.0
+            },
+            "Size": 0.029808783903717996,
+            "ModelScaleMultiplier": 0.005741930566728115,
+            "Rotation": 351.6614990234375,
+            "Position": {
+                "x": -0.07679356634616852,
+                "y": 0.7093848586082459,
+                "z": 0.0
+            },
+            "Group": "",
+            "Scene": "小羊",
+            "AssetType": 6,
+            "FromWorkshop": false,
+            "FromHotkey": true,
+            "FromAPI": false,
+            "FadeTime": 0.5,
+            "Plugin": "",
+            "WebItemURL": "",
+            "WebItemUseCustomCSS": false,
+            "WebItemCustomCSS": "body {\n    background-color: rgba(0, 0, 0, 0);\n    margin: 0px auto;\n    overflow: hidden;\n}",
+            "WebItemZoomPercent": 100,
+            "WebItemAlphaMultiplier": 1.0,
+            "WebItemCropLeftRightTopBottom": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "w": 0.0
+            },
+            "WebItemSizeInUnityUnits": {
+                "x": 0.6000000238418579,
+                "y": 0.30000001192092898
+            },
+            "WebItemSizeInPixels": {
+                "x": 1024,
+                "y": 576
+            },
+            "WebItemMuted": false,
+            "WebItemAllowLocalURLs": false,
+            "WebItemAllowTransparentBackground": true,
+            "WebItemInteractable": true,
+            "WebItemScrollSensitivity": 0.4000000059604645,
+            "WithinModelPin_On": false,
+            "WithinModelPin_BackOn": false,
+            "WithinModelPin_Layer": -1,
+            "WithinModelPin_ArtMeshID": "<<<LAYER_SPECIAL_TOP>>>",
+            "WithinModelPin_ArtMeshIDBackLayers": "<<<LAYER_SPECIAL_BOTTOM>>>",
+            "WithinModelPin_DoNotPinToLayersAboveItem": true,
+            "WithinModelPin_SpecificPinLayer_On": false,
+            "WithinModelPin_SpecificPinLayer": "",
+            "WithinModelPin_ShowFrontBack": false,
+            "WithinModelPin_SplitLive2DItemAt": "ArtMesh8"
+        }
+    ]
+}

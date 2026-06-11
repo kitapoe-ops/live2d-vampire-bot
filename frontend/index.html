@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🦇 Vampire Live2D × DeepSeek</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Cubism Web SDK (CDN, no API key exposure) -->
+  <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/index.min.js"></script>
+</head>
+<body>
+  <!-- 設定面板：DeepSeek API Key -->
+  <div id="settings-panel" class="panel">
+    <h2>🦇 Vampire Live2D</h2>
+    <p class="subtitle">DeepSeek 雲端驅動 · 100% Client-side</p>
+    
+    <label for="api-key">DeepSeek API Key</label>
+    <input type="password" id="api-key" placeholder="sk-..." autocomplete="off" />
+    <small>🔒 Key 100% 儲存喺你 browser localStorage，唔會上傳到任何 server</small>
+    
+    <label for="character-name">角色 Personality</label>
+    <select id="character-name">
+      <option value="vampire_default">吸血鬼 (神秘高冷型)</option>
+      <option value="vampire_cute">吸血鬼 (嬌憨撒嬌型)</option>
+      <option value="vampire_sadistic">吸血鬼 (毒舌嘲諷型)</option>
+    </select>
+    
+    <button id="save-settings">💾 Save & Enter</button>
+  </div>
+
+  <!-- 主畫面：Live2D + Chat -->
+  <div id="main-screen" class="hidden">
+    <!-- Live2D canvas -->
+    <div id="live2d-container">
+      <canvas id="live2d-canvas"></canvas>
+    </div>
+
+    <!-- Chat panel -->
+    <div id="chat-panel">
+      <div id="chat-messages"></div>
+      <div id="chat-input-area">
+        <input type="text" id="chat-input" placeholder="講嘢... (Enter to send)" />
+        <button id="send-btn">Send</button>
+        <button id="reset-btn" title="重設 API key">⚙️</button>
+      </div>
+      <div id="status-bar">
+        <span id="status">Ready</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/param_registry.js"></script>
+  <script src="js/system_prompts.js"></script>
+  <script src="js/deepseek_client.js"></script>
+  <script src="js/param_mapper.js"></script>
+  <script src="js/live2d_loader.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

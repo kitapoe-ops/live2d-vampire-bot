@@ -1,0 +1,67 @@
+# =============================================================================
+# live2d-fork .gitignore
+# =============================================================================
+# Excludes heavy/proprietary model assets. Source code, configs, and scripts
+# are committed. To use the widget, the user must supply their own Live2D
+# model files at backend/static/live2d/<your-model>/.
+
+# ── Model assets (licensed; not redistributable) ───────────────────────────
+# Live2D .moc3, textures (.png), physics + display info, VTube Studio exports.
+# Expressions (.exp3.json) and small JSON metadata ARE included — they document
+# the emotion/param mapping and are useful for downstream consumers.
+*.moc3
+*.moc
+*.cdi3
+*.physics3.json
+*.vtube.json
+*.zip
+vampire/
+vampire_vts/
+backend/static/live2d/
+frontend/live2d/    # mirror copies of model — not for redistribution
+frontend/live2d/**/*.moc3
+frontend/live2d/**/*.png
+frontend/live2d/**/*.physics3.json
+frontend/live2d/**/texture_*
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+*.egg-info/
+
+# ── Node / front-end ───────────────────────────────────────────────────────
+node_modules/
+.npm
+.yarn
+dist/
+build/
+*.log
+
+# ── IDE / OS ───────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Local env / secrets ────────────────────────────────────────────────────
+.env
+.env.local
+*.local
+
+# ── Runtime / test artifacts ────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+*.tmp
+*.bak
+*.backup
+scripts/result.txt
+scripts/vampire_param_ids.txt
+scripts/zip_*.txt
+scripts/vampire/

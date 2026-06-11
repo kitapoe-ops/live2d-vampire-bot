@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <title>吸血鬼 Live2D Viewer — BAZOOKA</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #e8e8e8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+      height: 100vh;
+    }
+    #canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      backdrop-filter: blur(10px);
+      pointer-events: none;
+      z-index: 10;
+    }
+    .hud-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: #f0a0c0;
+      margin-bottom: 6px;
+    }
+    .hud-row { margin: 2px 0; opacity: 0.85; }
+    .hud-row span { color: #a0d0ff; font-family: monospace; }
+    .controls {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+    .btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s;
+    }
+    .btn:hover { background: rgba(255, 255, 255, 0.2); }
+    .btn:active { transform: scale(0.96); }
+    .error {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(180, 30, 30, 0.95);
+      color: #fff;
+      padding: 20px 30px;
+      border-radius: 8px;
+      font-size: 14px;
+      max-width: 500px;
+      display: none;
+      z-index: 100;
+    }
+  </style>
+  <script src="https://cubism.live2d.com/cubism-sdk/live2dcubismcore.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.2/dist/pixi.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+</head>
+<body>
+  <div class="hud">
+    <div class="hud-title">🧛 吸血鬼 Live2D Viewer</div>
+    <div class="hud-row">Model: <span id="hud-model">vampire</span></div>
+    <div class="hud-row">Backend: <span id="hud-backend">vampire.kitahim.uk</span></div>
+    <div class="hud-row">FPS: <span id="hud-fps">--</span></div>
+    <div class="hud-row">Status: <span id="hud-status">loading</span></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="emote('happy')">😊 Happy</button>
+    <button class="btn" onclick="emote('sad')">😢 Sad</button>
+    <button class="btn" onclick="emote('angry')">😠 Angry</button>
+    <button class="btn" onclick="emote('surprised')">😮 Surprised</button>
+    <button class="btn" onclick="emote('thinking')">🤔 Thinking</button>
+    <button class="btn" onclick="emote('neutral')">😐 Neutral</button>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <div class="error" id="error"></div>
+
+  <script>
+    let app, model;
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+    let targetEmotion = 'neutral';
+
+    function setStatus(s) { document.getElementById('hud-status').textContent = s; }
+    function showError(msg) {
+      const el = document.getElementById('error');
+      el.textContent = msg;
+      el.style.display = 'block';
+      setStatus('error');
+    }
+
+    async function init() {
+      try {
+        setStatus('initializing Pixi...');
+        app = new PIXI.Application({
+          canvas: document.getElementById('canvas'),
+          backgroundAlpha: 0,
+          resizeTo: window,
+          antialias: true,
+          resolution: window.devicePixelRatio || 1
+        });
+
+        setStatus('loading model...');
+        const modelUrl = '/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json';
+        model = await PIXI.live2d.Live2DModel.from(modelUrl, {
+          autoInteract: true,
+          autoUpdate: true
+        });
+
+        // Center model
+        model.x = app.screen.width / 2;
+        model.y = app.screen.height / 2;
+        const scale = Math.min(
+          app.screen.width / 1920,
+          app.screen.height / 1080
+        ) * 1.2;
+        model.scale.set(scale);
+
+        app.stage.addChild(model);
+        setStatus('ready');
+
+        // FPS counter
+        app.ticker.add(() => {
+          frameCount++;
+          const now = performance.now();
+          if (now - lastFpsTime >= 1000) {
+            document.getElementById('hud-fps').textContent = frameCount;
+            frameCount = 0;
+            lastFpsTime = now;
+          }
+        });
+
+        // Optional: try WebSocket 60 FPS push
+        tryConnectWebSocket();
+
+      } catch (e) {
+        console.error(e);
+        showError('Failed to load model: ' + e.message + '\n\nModel path: /static/live2d/vampire/吸血鬼.model3.json');
+      }
+    }
+
+    async function tryConnectWebSocket() {
+      try {
+        const ticketRes = await fetch('/api/v1/auth/ticket');
+        if (!ticketRes.ok) return;
+        const { ticket } = await ticketRes.json();
+        const ws = new WebSocket(
+          (location.protocol === 'https:' ? 'wss://' : 'ws://') +
+          location.host +
+          '/api/v1/live2d/control?token=' + encodeURIComponent(ticket) + '&model=vampire'
+        );
+        ws.onmessage = (e) => {
+          const data = JSON.parse(e.data);
+          if (data.type === 'frame' && data.params) {
+            // Live2D internal parameter binding
+            // (Most params in our spec are mock — would need model-specific param IDs)
+          }
+        };
+        ws.onerror = () => {};
+        ws.onclose = () => {};
+      } catch (_) {}
+    }
+
+    // Emote button → set target emotion
+    async function emote(name) {
+      targetEmotion = name;
+      setStatus('emote: ' + name);
+      // Try: trigger expression file if model has it
+      // For now, just update HUD; full emotion routing would use model.exp3.json mappings
+    }
+
+    // Cleanup on navigation
+    window.addEventListener('beforeunload', () => {
+      if (app) app.destroy(true, { children: true });
+    });
+
+    // Start
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>

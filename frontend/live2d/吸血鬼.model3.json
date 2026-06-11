@@ -1,0 +1,26 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "吸血鬼.moc3",
+		"Textures": [
+			"吸血鬼.2048/texture_00.png",
+			"吸血鬼.2048/texture_01.png",
+			"吸血鬼.2048/texture_02.png",
+			"吸血鬼.2048/texture_03.png"
+		],
+		"Physics": "吸血鬼.physics3.json",
+		"DisplayInfo": "吸血鬼.cdi3.json"
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		},
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": []
+		}
+	]
+}

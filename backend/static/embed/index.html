@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>吸血鬼 (Vampire) — AI 虛擬人 Demo · BAZOOKA</title>
+<meta name="description" content="網頁右下角的語音 AI 虛擬人助理 — 吸血鬼角色 + Live2D + 瀏覽器語音 + 本機 LLM" />
+<style>
+  :root { --ink:#1f3a5f; --teal:#5b54e8; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:"Noto Sans TC",system-ui,sans-serif; color:#243; background:#eef3f6; }
+  header { background:linear-gradient(120deg,#1f3a5f,#2f6d8f); color:#fff; padding:54px 24px 60px; text-align:center; }
+  header h1 { margin:0 0 10px; font-size:30px; letter-spacing:.5px; }
+  header p { margin:0 auto; max-width:560px; opacity:.9; line-height:1.7; }
+  .wrap { max-width:760px; margin:-32px auto 60px; padding:0 20px; }
+  .card { background:#fff; border-radius:16px; padding:24px 26px; box-shadow:0 10px 30px rgba(20,40,70,.08); margin-bottom:18px; }
+  .card h2 { color:var(--ink); margin:0 0 14px; font-size:19px; }
+  .steps { list-style:none; padding:0; margin:0; counter-reset:s; }
+  .steps li { position:relative; padding:10px 0 10px 44px; line-height:1.6; border-bottom:1px dashed #e3e9ee; }
+  .steps li:last-child { border-bottom:0; }
+  .steps li::before { counter-increment:s; content:counter(s); position:absolute; left:0; top:8px;
+    width:28px; height:28px; border-radius:50%; background:var(--teal); color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .pill { display:inline-block; background:#eef2f6; border-radius:999px; padding:3px 10px; font-size:13px; color:#456; margin:2px 3px; }
+  .note { font-size:13px; color:#6a7b8b; line-height:1.7; }
+  kbd { background:#f1f4f7; border:1px solid #dde3e9; border-radius:5px; padding:1px 7px; font-size:13px; }
+  a { color:#2f6d8f; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>🧛 吸血鬼 (Vampire) — AI 虛擬人 Demo</h1>
+    <p>網頁右下角會出現一位語音 AI 助理 —— 你可以「跟她說話」，她會聽懂、回答、開口說話並對嘴。<br/>大腦可經由設置 DeepSeek API Key 啟用，對話內容與表情同步完全在瀏覽器端執行，API 金鑰保存在本機不外漏。</p>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <h2>怎麼玩（請用 Chrome 開啟）</h2>
+      <ol class="steps">
+        <li>看右下角那位吸血鬼 —— 點她一下，她會打招呼、開口說話。</li>
+        <li>點 <b>🎤 說話</b> → 准許麥克風 → 直接問她；不方便開麥也可以<b>直接打字</b>，例如「<b>怎麼安裝</b>」「<b>怎麼換成你的角色</b>」。</li>
+        <li>想讓她更聰明、能自然閒聊：點 <b>🧠</b> 輸入您的 <b>DeepSeek API Key</b> 啟用「AI 大腦」（金鑰保存在您的瀏覽器中，不外漏）。</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>部署資訊</h2>
+      <p class="note">本 demo 部署於 <b>BAZOOKA</b> 個人 PC，透過 Cloudflare Tunnel 公開於 <code>vampire.kitahim.uk</code>。模型：<b>吸血鬼</b> (11.47 MB · Cubism 5.x)，已優化至 2048×2048 textures 以符合 15MB Web 預算。</p>
+      <p>
+        <span class="pill">Cloudflare Tunnel</span>
+        <span class="pill">FastAPI + WebSocket 60FPS</span>
+        <span class="pill">Live2D Cubism 5.x</span>
+        <span class="pill">2048×2048 textures</span>
+        <span class="pill">一行 &lt;script&gt; 嵌入</span>
+      </p>
+    </div>
+
+    <div class="card" style="border-left:4px solid #2f6d8f; background:#eef6fb;">
+      <p class="note" style="margin:0;">💡 一行嵌入範例：<br/><br/>
+        <code>&lt;script src="https://vampire.kitahim.uk/static/embed/embed.js"&gt;&lt;/script&gt;</code>
+      </p>
+    </div>
+  </div>
+
+  <!-- ★ 一行嵌入吸血鬼虛擬人 ★ -->
+  <script src="embed.js?v=20260611v13" data-widget="widget.html"></script>
+</body>
+</html>

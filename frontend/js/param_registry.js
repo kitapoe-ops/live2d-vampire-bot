@@ -1,0 +1,228 @@
+/**
+ * Param Registry — 吸血鬼 Live2D Model 嘅 174 個實時驅動參數
+ * Source: 從 .physics3.json + .vtube.json 動態提取 (2026-06-11)
+ * 
+ * Categories:
+ *   1. 面部捕捉與嘴型基底 (21)
+ *   2. 果凍眼、高光與瞳孔物理 (20)
+ *   3. 身體骨骼與呼吸控制 (14)
+ *   4. 頭髮擺動物理 (38)
+ *   5. 衣物、胸部與下身物理 (17)
+ *   6. 肢體、翅膀、飾品與挂件物理 (45)
+ *   7. 表情切換、熱鍵與特殊開關 (19)
+ *   Total: 174
+ */
+
+const PARAM_REGISTRY = {
+  // === 1. 面部捕捉與嘴型基底 (21) ===
+  "PARAM_ANGLE_X": { category: "face", range: [-1, 1], desc: "臉部左右轉動" },
+  "PARAM_ANGLE_Y": { category: "face", range: [-1, 1], desc: "臉部上下轉動" },
+  "PARAM_ANGLE_Z": { category: "face", range: [-1, 1], desc: "臉部左右傾斜" },
+  "PARAM_BROW_L_Y": { category: "face", range: [-1, 1], desc: "左眉上下位移" },
+  "PARAM_BROW_R_Y": { category: "face", range: [-1, 1], desc: "右眉上下位移" },
+  "PARAM_BROW_L_FORM": { category: "face", range: [-1, 1], desc: "左眉形變" },
+  "PARAM_BROW_R_FORM": { category: "face", range: [-1, 1], desc: "右眉形變" },
+  "PARAM_MOUTH_FORM": { category: "face", range: [-1, 1], desc: "嘴型嘴角微笑" },
+  "PARAM_MOUTH_OPEN_Y": { category: "face", range: [0, 1], desc: "張嘴度" },
+  "PARAMMOUSEFUNNEL": { category: "face", range: [0, 1], desc: "漏斗嘴/O型嘴" },
+  "PARAM_MOUSE_SHRUG": { category: "face", range: [-1, 1], desc: "撇嘴/歪嘴" },
+  "PARAM_JAW_OPEN": { category: "face", range: [0, 1], desc: "下巴張開度" },
+  "PARAM_CHEEK_PUFF": { category: "face", range: [0, 1], desc: "鼓腮幫子" },
+  "PARAMMOUSE_X": { category: "face", range: [-1, 1], desc: "嘴巴整體左右位移" },
+  "PARAMMOUSE_PRESS_LIP_OPEN": { category: "face", range: [0, 1], desc: "抿嘴狀態下嘴唇張開" },
+  "PARAMMOUSE_PUNKER": { category: "face", range: [0, 1], desc: "嘟嘴" },
+  "PARAM_EYE_L_OPEN": { category: "face", range: [0, 1], desc: "左眼開閉" },
+  "PARAM_EYE_R_OPEN": { category: "face", range: [0, 1], desc: "右眼開閉" },
+  "PARAM_EYE_L_SMILE": { category: "face", range: [0, 1], desc: "左眼微笑瞇眼" },
+  "PARAM_EYE_R_SMILE": { category: "face", range: [0, 1], desc: "右眼微笑瞇眼" },
+  "PARAM_EYE_BALL_X": { category: "face", range: [-1, 1], desc: "眼珠 X 軸位置" },
+  "PARAM_EYE_BALL_Y": { category: "face", range: [-1, 1], desc: "眼珠 Y 軸位置" },
+
+  // === 2. 果凍眼、高光與瞳孔物理 (20) ===
+  "PARAM_PUPIL_X": { category: "eye_detail", range: [-1, 1], desc: "瞳孔物理微動 X" },
+  "PARAM_PUPIL_Y": { category: "eye_detail", range: [-1, 1], desc: "瞳孔物理微動 Y" },
+  "PARAMW1L": { category: "eye_detail", range: [-1, 1], desc: "左眼果凍 1" },
+  "PARAMW2L": { category: "eye_detail", range: [-1, 1], desc: "左眼果凍 2" },
+  "PARAMNL": { category: "eye_detail", range: [-1, 1], desc: "左眼 N" },
+  "PARAMHIGHLIGHTXL": { category: "eye_detail", range: [-1, 1], desc: "左眼高光 X" },
+  "PARAMHIGHLIGHTYL": { category: "eye_detail", range: [-1, 1], desc: "左眼高光 Y" },
+  "PARAMHIGHLIGHTZ1L": { category: "eye_detail", range: [-1, 1], desc: "左眼高光 Z1" },
+  "PARAMHIGHLIGHTZ2L": { category: "eye_detail", range: [-1, 1], desc: "左眼高光 Z2" },
+  "PARAMYL": { category: "eye_detail", range: [-1, 1], desc: "左眼 Y" },
+  "PARAMXL": { category: "eye_detail", range: [-1, 1], desc: "左眼 X" },
+  "PARAMW1R": { category: "eye_detail", range: [-1, 1], desc: "右眼果凍 1" },
+  "PARAMW2R": { category: "eye_detail", range: [-1, 1], desc: "右眼果凍 2" },
+  "PARAMNR": { category: "eye_detail", range: [-1, 1], desc: "右眼 N" },
+  "PARAMHIGHLIGHTXR": { category: "eye_detail", range: [-1, 1], desc: "右眼高光 X" },
+  "PARAMHIGHLIGHTYR": { category: "eye_detail", range: [-1, 1], desc: "右眼高光 Y" },
+  "PARAMHIGHLIGHTZ1R": { category: "eye_detail", range: [-1, 1], desc: "右眼高光 Z1" },
+  "PARAMHIGHLIGHTZ2R": { category: "eye_detail", range: [-1, 1], desc: "右眼高光 Z2" },
+  "PARAMYR": { category: "eye_detail", range: [-1, 1], desc: "右眼 Y" },
+  "PARAMXR": { category: "eye_detail", range: [-1, 1], desc: "右眼 X" },
+
+  // === 3. 身體骨骼與呼吸控制 (14) ===
+  "PARAM_BODY_ANGLE_X": { category: "body", range: [-1, 1], desc: "身體 X 軸轉動" },
+  "PARAM_BODY_ANGLE_X2": { category: "body", range: [-1, 1], desc: "身體 X 二次物理" },
+  "PARAM_BODY_ANGLE_Y": { category: "body", range: [-1, 1], desc: "身體 Y 軸前後" },
+  "PARAM_BODY_ANGLE_Y2": { category: "body", range: [-1, 1], desc: "身體 Y 二次物理" },
+  "PARAM_BODY_ANGLE_Z": { category: "body", range: [-1, 1], desc: "身體 Z 軸左右" },
+  "PARAM_BODY_ANGLE_Z2": { category: "body", range: [-1, 1], desc: "身體 Z 二次物理" },
+  "PARAM_BODY_POSITION_X": { category: "body", range: [-1, 1], desc: "身體 X 位移" },
+  "PARAM_BODY_POSITION_X2": { category: "body", range: [-1, 1], desc: "身體 X 位移物理" },
+  "PARAM_BODY_POSITION_Y": { category: "body", range: [-1, 1], desc: "身體 Y 位移" },
+  "PARAM_BODY_POSITION_Y2": { category: "body", range: [-1, 1], desc: "身體 Y 位移物理" },
+  "PARAM_BODY_POSITION_Z": { category: "body", range: [-1, 1], desc: "身體 Z 前後" },
+  "PARAM_BODY_POSITION_Z2": { category: "body", range: [-1, 1], desc: "身體 Z 二次物理" },
+  "PARAM_BODY_LOWER_Z": { category: "body", range: [-1, 1], desc: "下半身 Z 轉動" },
+  "PARAM_BODY_LOWER_Z2": { category: "body", range: [-1, 1], desc: "下半身 Z 二次物理" },
+  "PARAM_BREATH": { category: "body", range: [0, 1], desc: "生理呼吸自動循環" },
+  "PARAM_shoulder": { category: "body", range: [-1, 1], desc: "肩膀上下物理" },
+
+  // === 4. 頭髮擺動物理 (38) ===
+  "PARAM_HAIR_FRONT": { category: "hair", range: [-1, 1], desc: "前髮 1" },
+  "PARAM_HAIR_FRONT_2": { category: "hair", range: [-1, 1], desc: "前髮 2" },
+  "PARAM_HAIR_FRONT_3": { category: "hair", range: [-1, 1], desc: "前髮 3" },
+  "PARAM_HAIR_FRONT_4": { category: "hair", range: [-1, 1], desc: "前髮 4" },
+  "PARAM_HAIR_FRONT_5": { category: "hair", range: [-1, 1], desc: "前髮 5" },
+  "PARAM_HAIR_FRONT_6": { category: "hair", range: [-1, 1], desc: "前髮 6" },
+  "PARAM_HAIR_FRONT_7": { category: "hair", range: [-1, 1], desc: "前髮 7" },
+  "PARAM_HAIR_FRONT_8": { category: "hair", range: [-1, 1], desc: "前髮 8" },
+  "PARAM_HAIR_FRONT_9": { category: "hair", range: [-1, 1], desc: "前髮 9" },
+  "PARAM_HAIR_FRONT_10": { category: "hair", range: [-1, 1], desc: "前髮 10" },
+  "PARAM_HAIR_FRONT_11": { category: "hair", range: [-1, 1], desc: "前髮 11" },
+  "PARAM_HAIR_FRONT_12": { category: "hair", range: [-1, 1], desc: "前髮 12" },
+  "PARAM_HAIR_SIDEL1": { category: "hair", range: [-1, 1], desc: "左側髮 1" },
+  "PARAM_HAIR_SIDEL2": { category: "hair", range: [-1, 1], desc: "左側髮 2" },
+  "PARAM_HAIR_SIDEL3": { category: "hair", range: [-1, 1], desc: "左側髮 3" },
+  "PARAM_HAIR_SIDEL4": { category: "hair", range: [-1, 1], desc: "左側髮 4" },
+  "PARAM_HAIR_SIDER1": { category: "hair", range: [-1, 1], desc: "右側髮 1" },
+  "PARAM_HAIR_SIDER2": { category: "hair", range: [-1, 1], desc: "右側髮 2" },
+  "PARAM_HAIR_SIDER3": { category: "hair", range: [-1, 1], desc: "右側髮 3" },
+  "PARAM_HAIR_SIDER4": { category: "hair", range: [-1, 1], desc: "右側髮 4" },
+  "PARAM_HAIR_BACK3_1": { category: "hair", range: [-1, 1], desc: "後髮鏈 1-1" },
+  "PARAM_HAIR_BACK3_2": { category: "hair", range: [-1, 1], desc: "後髮鏈 1-2" },
+  "PARAM_HAIR_BACK3_3": { category: "hair", range: [-1, 1], desc: "後髮鏈 1-3" },
+  "PARAM_HAIR_BACK3_4": { category: "hair", range: [-1, 1], desc: "後髮鏈 1-4" },
+  "PARAM_HAIR_BACK3_5": { category: "hair", range: [-1, 1], desc: "後髮鏈 1-5" },
+  "PARAM_HAIR_BACK3_6": { category: "hair", range: [-1, 1], desc: "後髮鏈 2-1" },
+  "PARAM_HAIR_BACK3_7": { category: "hair", range: [-1, 1], desc: "後髮鏈 2-2" },
+  "PARAM_HAIR_BACK3_8": { category: "hair", range: [-1, 1], desc: "後髮鏈 2-3" },
+  "PARAM_HAIR_BACK3_9": { category: "hair", range: [-1, 1], desc: "後髮鏈 2-4" },
+  "PARAM_HAIR_BACK3_10": { category: "hair", range: [-1, 1], desc: "後髮鏈 2-5" },
+  "PARAM_HAIR_BACKX1": { category: "hair", range: [-1, 1], desc: "後髮橫向 1" },
+  "PARAM_HAIR_BACKX2": { category: "hair", range: [-1, 1], desc: "後髮橫向 2" },
+  "PARAM_HAIR_BACKX3": { category: "hair", range: [-1, 1], desc: "後髮橫向 3" },
+  "PARAM_HAIR_BACKX4": { category: "hair", range: [-1, 1], desc: "後髮橫向 4" },
+  "PARAM_HAIR_BACKX5": { category: "hair", range: [-1, 1], desc: "後髮橫向 5" },
+  "PARAM_HAIR_BACKY1": { category: "hair", range: [-1, 1], desc: "後髮縱向 1" },
+  "PARAM_HAIR_BACKY2": { category: "hair", range: [-1, 1], desc: "後髮縱向 2" },
+  "PARAM_HAIR_BACKY3": { category: "hair", range: [-1, 1], desc: "後髮縱向 3" },
+
+  // === 5. 衣物、胸部與下身物理 (17) ===
+  "PARAMBREASTX_1": { category: "clothing", range: [-1, 1], desc: "胸部橫向 1" },
+  "PARAMBREASTX_2": { category: "clothing", range: [-1, 1], desc: "胸部橫向 2" },
+  "PARAMBREASTY": { category: "clothing", range: [-1, 1], desc: "胸部縱向 1" },
+  "PARAMBREASTY_2": { category: "clothing", range: [-1, 1], desc: "胸部縱向 2" },
+  "PARAM_10": { category: "clothing", range: [-1, 1], desc: "服飾擺動 10" },
+  "PARAM_11": { category: "clothing", range: [-1, 1], desc: "服飾擺動 11" },
+  "PARAM_12": { category: "clothing", range: [-1, 1], desc: "服飾擺動 12" },
+  "PARAM_13": { category: "clothing", range: [-1, 1], desc: "服飾擺動 13" },
+  "PARAM_16": { category: "clothing", range: [-1, 1], desc: "服飾擺動 16" },
+  "PARAMSKIRTX_1": { category: "clothing", range: [-1, 1], desc: "裙擺橫向 1" },
+  "PARAMSKIRTX_2": { category: "clothing", range: [-1, 1], desc: "裙擺橫向 2" },
+  "PARAMSKIRTX_3": { category: "clothing", range: [-1, 1], desc: "裙擺橫向 3" },
+  "PARAMSKIRTY_1": { category: "clothing", range: [-1, 1], desc: "裙擺縱向 1" },
+  "PARAMSKIRTY_2": { category: "clothing", range: [-1, 1], desc: "裙擺縱向 2" },
+  "PARAMSKIRTY_3": { category: "clothing", range: [-1, 1], desc: "裙擺縱向 3" },
+  "PARAMlegL1": { category: "clothing", range: [-1, 1], desc: "左腿物理 1" },
+  "PARAMlegL2": { category: "clothing", range: [-1, 1], desc: "左腿物理 2" },
+
+  // === 6. 肢體、翅膀、飾品與挂件 (45) ===
+  "PARAMHAND_1": { category: "limb", range: [-1, 1], desc: "左手 1" },
+  "PARAMHAND_2": { category: "limb", range: [-1, 1], desc: "左手 2" },
+  "PARAMHAND_3": { category: "limb", range: [-1, 1], desc: "左手 3" },
+  "PARAMHAND_4": { category: "limb", range: [-1, 1], desc: "左手 4" },
+  "PARAMHAND_5": { category: "limb", range: [-1, 1], desc: "右手 1" },
+  "PARAMHAND_6": { category: "limb", range: [-1, 1], desc: "右手 2" },
+  "PARAMHAND_7": { category: "limb", range: [-1, 1], desc: "右手 3" },
+  "PARAMHAND_8": { category: "limb", range: [-1, 1], desc: "右手 4" },
+  "PARAMsleeveL1": { category: "limb", range: [-1, 1], desc: "左袖 1" },
+  "PARAMsleeveL2": { category: "limb", range: [-1, 1], desc: "左袖 2" },
+  "PARAMsleeveL3": { category: "limb", range: [-1, 1], desc: "左袖 3" },
+  "PARAMsleeveR1": { category: "limb", range: [-1, 1], desc: "右袖 1" },
+  "PARAMsleeveR2": { category: "limb", range: [-1, 1], desc: "右袖 2" },
+  "PARAMsleeveR3": { category: "limb", range: [-1, 1], desc: "右袖 3" },
+  "Paramwings": { category: "limb", range: [0, 1], desc: "吸血鬼翅膀物理" },
+  "PARAM_RIBBONL1": { category: "limb", range: [-1, 1], desc: "左鞋蝴蝶結 1" },
+  "PARAM_RIBBONL2": { category: "limb", range: [-1, 1], desc: "左鞋蝴蝶結 2" },
+  "PARAM_RIBBONL3": { category: "limb", range: [-1, 1], desc: "左鞋蝴蝶結 3" },
+  "PARAM_RIBBONR1": { category: "limb", range: [-1, 1], desc: "右鞋蝴蝶結 1" },
+  "PARAM_RIBBONR2": { category: "limb", range: [-1, 1], desc: "右鞋蝴蝶結 2" },
+  "PARAM_RIBBONR3": { category: "limb", range: [-1, 1], desc: "右鞋蝴蝶結 3" },
+  "PARAMskirtribbonL1": { category: "limb", range: [-1, 1], desc: "腰蝴蝶結左 1" },
+  "PARAMskirtribbonL2": { category: "limb", range: [-1, 1], desc: "腰蝴蝶結左 2" },
+  "PARAMskirtribbonL3": { category: "limb", range: [-1, 1], desc: "腰蝴蝶結左 3" },
+  "PARAMskirtribbonL4": { category: "limb", range: [-1, 1], desc: "腰蝴蝶結左 4" },
+  "PARAMskirtribbonR1": { category: "limb", range: [-1, 1], desc: "腰蝴蝶結右 1" },
+  "PARAMskirtribbonR2": { category: "limb", range: [-1, 1], desc: "腰蝴蝶結右 2" },
+  "PARAMskirtribbonR3": { category: "limb", range: [-1, 1], desc: "腰蝴蝶結右 3" },
+  "PARAMskirtribbonR4": { category: "limb", range: [-1, 1], desc: "腰蝴蝶結右 4" },
+  "PARAMribbonheadL1": { category: "limb", range: [-1, 1], desc: "頭蝴蝶結左 1" },
+  "PARAMribbonheadL2": { category: "limb", range: [-1, 1], desc: "頭蝴蝶結左 2" },
+  "PARAMribbonheadL3": { category: "limb", range: [-1, 1], desc: "頭蝴蝶結左 3" },
+  "PARAMribbonheadL4": { category: "limb", range: [-1, 1], desc: "頭蝴蝶結左 4" },
+  "PARAMribbonheadR1": { category: "limb", range: [-1, 1], desc: "頭蝴蝶結右 1" },
+  "PARAMribbonheadR2": { category: "limb", range: [-1, 1], desc: "頭蝴蝶結右 2" },
+  "PARAMribbonheadR3": { category: "limb", range: [-1, 1], desc: "頭蝴蝶結右 3" },
+  "PARAMribbonheadR4": { category: "limb", range: [-1, 1], desc: "頭蝴蝶結右 4" },
+  "PARAMEARL1": { category: "limb", range: [-1, 1], desc: "左耳墜 1" },
+  "PARAMEARL2": { category: "limb", range: [-1, 1], desc: "左耳墜 2" },
+  "PARAMEARL3": { category: "limb", range: [-1, 1], desc: "左耳墜 3" },
+  "PARAMEARR1": { category: "limb", range: [-1, 1], desc: "右耳墜 1" },
+  "Paramheart1": { category: "limb", range: [-1, 1], desc: "胸前心形 1" },
+  "Paramheart2": { category: "limb", range: [-1, 1], desc: "胸前心形 2" },
+  "Paramheart3": { category: "limb", range: [-1, 1], desc: "胸前心形 3" },
+  "ParamtearsphL": { category: "limb", range: [0, 1], desc: "左眼淚物理" },
+  "ParamtearsphR": { category: "limb", range: [0, 1], desc: "右眼淚物理" },
+
+  // === 7. 表情切換、熱鍵與特殊開關 (19) ===
+  "PARAMWHITEEYE": { category: "expression", range: [0, 1], desc: "白眼/暈倒眼" },
+  "PARAMhearteye": { category: "expression", range: [0, 1], desc: "愛心眼" },
+  "PARAMstareye": { category: "expression", range: [0, 1], desc: "瞪眼/星星眼" },
+  "PARAMANGRY": { category: "expression", range: [0, 1], desc: "生氣特效" },
+  "PARAMSHY": { category: "expression", range: [0, 1], desc: "害羞臉紅" },
+  "PARAMTEARS": { category: "expression", range: [0, 1], desc: "靜態眼淚開關" },
+  "PARAMblood1": { category: "expression", range: [0, 1], desc: "身體胸前血跡" },
+  "PARAMBLOOD2": { category: "expression", range: [0, 1], desc: "臉部流血" },
+  "Paramclick": { category: "expression", range: [0, 1], desc: "寫字板點擊" },
+  "ParammouseX": { category: "expression", range: [-1, 1], desc: "寫字板 X" },
+  "ParammouseY": { category: "expression", range: [-1, 1], desc: "寫字板 Y" },
+  "PARAMhands_1": { category: "expression", range: [0, 1], desc: "手部姿勢 1" },
+  "PARAMhands_2": { category: "expression", range: [0, 1], desc: "手部姿勢 2" },
+  "PARAMhands_3": { category: "expression", range: [0, 1], desc: "手部姿勢 3" },
+  "PARAMhairpin_1": { category: "expression", range: [0, 1], desc: "特殊髮飾開關" },
+  "PARAM_mouse_pose": { category: "expression", range: [0, 1], desc: "滑鼠跟手道具" }
+};
+
+// === 表達式快捷映射 (LLM 用 string 觸發) ===
+const EXPRESSION_PRESETS = {
+  // 表情 → params dict
+  "neutral":   { "PARAM_EYE_L_OPEN": 1.0, "PARAM_EYE_R_OPEN": 1.0, "PARAM_MOUTH_FORM": 0, "PARAM_MOUTH_OPEN_Y": 0 },
+  "happy":     { "PARAM_EYE_L_SMILE": 0.7, "PARAM_EYE_R_SMILE": 0.7, "PARAM_MOUTH_FORM": 0.7, "PARAM_BROW_L_Y": 0.3, "PARAM_BROW_R_Y": 0.3 },
+  "sad":       { "PARAM_BROW_L_Y": -0.5, "PARAM_BROW_R_Y": -0.5, "PARAM_MOUTH_FORM": -0.6, "PARAM_ANGLE_Y": -0.3, "PARAMTEARS": 0.5 },
+  "angry":     { "PARAM_BROW_L_FORM": -0.7, "PARAM_BROW_R_FORM": -0.7, "PARAM_MOUTH_FORM": -0.5, "PARAMANGRY": 1.0 },
+  "shy":       { "PARAMSHY": 1.0, "PARAM_EYE_BALL_X": 0, "PARAM_EYE_BALL_Y": 0.3, "PARAM_MOUTH_FORM": 0.3 },
+  "hearteyes": { "PARAMhearteye": 1.0, "PARAM_EYE_L_OPEN": 0.5, "PARAM_EYE_R_OPEN": 0.5, "PARAM_MOUTH_FORM": 0.6 },
+  "stareyes":  { "PARAMstareye": 1.0, "PARAM_EYE_L_OPEN": 0.8, "PARAM_EYE_R_OPEN": 0.8, "PARAM_MOUTH_OPEN_Y": 0.3 },
+  "crying":    { "PARAMTEARS": 1.0, "ParamtearsphL": 1.0, "ParamtearsphR": 1.0, "PARAM_BROW_L_Y": -0.7, "PARAM_BROW_R_Y": -0.7, "PARAM_MOUTH_FORM": -0.5 },
+  "surprised": { "PARAM_EYE_L_OPEN": 1.0, "PARAM_EYE_R_OPEN": 1.0, "PARAM_MOUTH_OPEN_Y": 0.8, "PARAM_BROW_L_Y": 0.5, "PARAM_BROW_R_Y": 0.5 },
+  "blood":     { "PARAMblood1": 1.0, "PARAMBLOOD2": 1.0, "PARAM_MOUTH_FORM": 0.4, "PARAM_EYE_L_OPEN": 0.6, "PARAM_EYE_R_OPEN": 0.6 },
+  "wings":     { "Paramwings": 1.0, "PARAM_ANGLE_Y": 0.2, "PARAM_MOUTH_FORM": 0.5 }
+};
+
+// 計數驗證
+console.log(`[param_registry] Total: ${Object.keys(PARAM_REGISTRY).length} params, ${Object.keys(EXPRESSION_PRESETS).length} expression presets`);
+if (typeof window !== 'undefined') {
+  window.PARAM_REGISTRY = PARAM_REGISTRY;
+  window.EXPRESSION_PRESETS = EXPRESSION_PRESETS;
+}
