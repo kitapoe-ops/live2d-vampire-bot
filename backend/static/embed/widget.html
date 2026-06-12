@@ -107,6 +107,40 @@
   #debug-hud-toggle:hover, #debug-hud-clear:hover { background:rgba(255,255,255,.25); }
   #debug-hud.collapsed { height:auto; min-height:22px; }
   #debug-hud.collapsed #debug-hud-body { display:none; }
+
+  /* ===== Voice list popover (anchored to btn-voice) ===== */
+  #voice-list {
+    position:absolute; left:8px; right:8px; bottom:calc(100% + 8px);
+    background:var(--surface); color:var(--ink);
+    border-radius:14px; padding:6px;
+    box-shadow:0 10px 30px rgba(0,0,0,.22), inset 0 0 0 1px rgba(91,84,232,.18);
+    max-height:50vh; overflow-y:auto; z-index:99;
+    display:none;   /* toggled by .open */
+  }
+  #voice-list.open { display:block; }
+  #voice-list .vl-header {
+    font-size:12px; font-weight:600; color:#666; padding:6px 10px 4px;
+    border-bottom:1px solid #eef0f4; margin-bottom:4px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  #voice-list .vl-empty {
+    padding:14px 10px; text-align:center; font-size:12px; color:#888;
+  }
+  #voice-list .vl-item {
+    display:flex; flex-direction:column; gap:1px;
+    padding:8px 10px; border-radius:9px; cursor:pointer;
+    font-size:13.5px; line-height:1.3;
+  }
+  #voice-list .vl-item:hover { background:rgba(91,84,232,.08); }
+  #voice-list .vl-item.active { background:linear-gradient(135deg,var(--brand-2),var(--brand)); color:#fff; }
+  #voice-list .vl-item .vl-name { font-weight:600; }
+  #voice-list .vl-item .vl-id { font-size:11px; opacity:.65; font-family:ui-monospace,monospace; }
+  #voice-list .vl-item.active .vl-id { opacity:.85; }
+  #voice-list .vl-section {
+    font-size:11px; font-weight:700; color:var(--brand);
+    padding:10px 10px 4px; letter-spacing:.3px;
+    text-transform:uppercase;
+  }
 </style>
 </head>
 <body>
@@ -124,11 +158,13 @@
         <button class="ctrl" id="btn-llm"   aria-label="設置 DeepSeek API Key 啟用 AI 大腦" aria-pressed="false" title="設置 DeepSeek API Key"><span aria-hidden="true">🧠</span></button>
         <button class="ctrl" id="btn-emote" aria-label="切換表情 (1-7/0 隨機)" aria-pressed="false" title="表情輪播 (1-7/0 隨機)"><span aria-hidden="true">😊</span></button>
         <button class="ctrl" id="btn-mute"  aria-label="靜音" aria-pressed="false" title="靜音 / 取消靜音"><span aria-hidden="true">🔊</span></button>
-        <button class="ctrl" id="btn-voice" aria-label="切換語音" title="切換語音"><span aria-hidden="true">🗣️</span></button>
+        <button class="ctrl" id="btn-voice" aria-label="選擇語音" aria-haspopup="listbox" aria-expanded="false" title="選擇語音 (MiniMax 路線有 12 個語音 / 瀏覽器路線有系統內建語音)"><span aria-hidden="true">🗣️</span> <span id="btn-voice-label">語音</span></button>
         <button class="ctrl" id="btn-tts-mode" aria-label="切換 TTS 路線 (免費 Web Speech API / MiniMax 神經語音)" aria-pressed="false" title="TTS 路線：免費 (Web Speech API) / 切換至 MiniMax 神經語音"><span aria-hidden="true">🌐</span> 免費</button>
         <button class="ctrl" id="btn-close" aria-label="收起助理" title="收起助理"><span aria-hidden="true">✕</span></button>
       </div>
     </div>
+    <!-- Voice list popover (anchored above control bar, opens on btn-voice click) -->
+    <div id="voice-list" role="listbox" aria-label="語音選擇"></div>
   </div>
   <div id="direct-warn">請透過 <code>embed.js</code> 載入此元件。</div>
   <div id="debug-hud">
@@ -1274,19 +1310,30 @@
       try { localStorage.setItem(KEY, ttsMode); } catch (e) {}
       neuralDisabled = false;   // user manual toggle = fresh retry opportunity
       paint();
+      // Notify voice-list to re-paint its label (and re-render if open)
+      try { window.dispatchEvent(new CustomEvent('xiaob:ttsModeChange', { detail: { mode: ttsMode } })); } catch (e) {}
       // Brief bubble hint
       showBubble(ttsMode === 'neural' ? '已切換至 MiniMax 神經語音 (Cantonese HD)' : '已切換至免費 Web Speech API');
     });
   })();
-  // Voice selector — fetch /api/voices and cycle through, with localStorage persistence
+  // Voice selector — popover with route-aware voice list.
+  //   MiniMax route (neural): 12 server voices (Cantonese + Mandarin)
+  //   Browser route (free): browser built-in SpeechSynthesis voices (zh-*, en-*, etc.)
   (function() {
     const btn = document.getElementById('btn-voice');
-    const KEY = 'xiaob_voice_id';
-    let voices = [];
-    const saved = (function() { try { return localStorage.getItem(KEY); } catch (e) { return null; } })();
-    if (saved) NEURAL_VOICE = saved;
+    const btnLabel = document.getElementById('btn-voice-label');
+    const popover = document.getElementById('voice-list');
+    const KEY_NEURAL = 'xiaob_voice_id';
+    const KEY_BROWSER = 'xiaob_browser_voice_uri';
+    let serverVoices = [];   // /api/voices (cached)
+
+    // Restore saved choices on boot
+    try { const s = localStorage.getItem(KEY_NEURAL); if (s) NEURAL_VOICE = s; } catch (e) {}
+    let savedBrowserVoiceURI = null;
+    try { savedBrowserVoiceURI = localStorage.getItem(KEY_BROWSER); } catch (e) {}
+
     function shortLabel(id) {
-      if (!id) return '粵女';
+      if (!id) return '語音';
       if (id.startsWith('cantonese-female')) return '粵女';
       if (id.startsWith('cantonese-male'))   return '粵男';
       if (id.startsWith('cantonese-gentle')) return '粵柔';
@@ -1300,28 +1347,149 @@
       if (id.startsWith('mandarin-chengshu'))return '普熟';
       return id.split('-').pop().slice(0, 4);
     }
-    function updateLabel() { if (btn) btn.firstElementChild.nextSibling.textContent = ' ' + shortLabel(NEURAL_VOICE); }
-    if (btn) {
-      btn.innerHTML = '<span aria-hidden="true">🗣️</span> ' + shortLabel(NEURAL_VOICE);
-      btn.addEventListener('click', async (e) => {
-        if (!voices.length) {
+    function paintBtn() {
+      // Show short label of currently active voice (per route)
+      if (ttsMode === 'neural') {
+        btnLabel.textContent = shortLabel(NEURAL_VOICE);
+      } else {
+        // browser mode: show language tag of selected voice (e.g. 'zh-TW')
+        const v = ttVoice;
+        btnLabel.textContent = v ? (v.lang || '瀏覽器').slice(0, 5) : '瀏覽器';
+      }
+    }
+    // Initial label
+    paintBtn();
+
+    // Render list based on current TTS route
+    async function renderList() {
+      popover.innerHTML = '';
+      const isNeural = (ttsMode === 'neural');
+      // Header
+      const header = document.createElement('div');
+      header.className = 'vl-header';
+      header.innerHTML = '<span>' + (isNeural ? 'MiniMax 神經語音 (12 個)' : '瀏覽器內建語音') + '</span><span style="font-size:11px;opacity:.7;">' + (isNeural ? '💎 server' : '🌐 free') + '</span>';
+      popover.appendChild(header);
+
+      if (isNeural) {
+        // Fetch server voice list lazily
+        if (!serverVoices.length) {
           try {
             const base = TTS_ENDPOINT.replace(/\/api\/tts.*$/, '');
             const r = await fetch(base + '/api/voices');
             const j = await r.json();
-            voices = j.voices || [];
+            serverVoices = j.voices || [];
           } catch (err) { console.warn('voice list fetch failed', err); }
         }
-        if (!voices.length) { speak('語音目錄未就緒，請稍後重試。'); return; }
-        const curIdx = voices.findIndex(v => v.id === NEURAL_VOICE);
-        const next = voices[(curIdx + 1 + voices.length) % voices.length];
-        NEURAL_VOICE = next.id;
-        try { localStorage.setItem(KEY, NEURAL_VOICE); } catch (err) {}
-        updateLabel();
-        // Speak a sample so the user can hear the new voice
-        speak(next.name);
-      });
+        if (!serverVoices.length) {
+          const empty = document.createElement('div');
+          empty.className = 'vl-empty';
+          empty.textContent = '語音目錄未就緒，請稍後重試。';
+          popover.appendChild(empty);
+          return;
+        }
+        // Render neural voices
+        serverVoices.forEach((v) => {
+          const item = document.createElement('div');
+          item.className = 'vl-item' + (v.id === NEURAL_VOICE ? ' active' : '');
+          item.setAttribute('role', 'option');
+          item.setAttribute('aria-selected', String(v.id === NEURAL_VOICE));
+          item.dataset.id = v.id;
+          item.innerHTML = '<div class="vl-name">' + v.name + '</div><div class="vl-id">' + v.id + ' · ' + v.lang + '</div>';
+          item.addEventListener('click', () => {
+            NEURAL_VOICE = v.id;
+            try { localStorage.setItem(KEY_NEURAL, v.id); } catch (e) {}
+            paintBtn();
+            closePopover();
+            // Speak a lang-appropriate sample so the user hears the voice
+            const sample = (v.lang === 'zh-HK') ? '你好，我係香港粵語語音。' :
+                           (v.lang === 'zh-CN') ? '你好，我係普通話語音。' : v.name;
+            speak(sample);
+          });
+          popover.appendChild(item);
+        });
+      } else {
+        // Browser route: list filtered built-in voices (zh-*, en-*, default first)
+        const allVoices = (window.speechSynthesis ? speechSynthesis.getVoices() : []);
+        const filtered = allVoices.filter(v => /^(zh|en|ja|ko)/i.test(v.lang || ''));
+        const voices = filtered.length ? filtered : allVoices;
+        if (!voices.length) {
+          const empty = document.createElement('div');
+          empty.className = 'vl-empty';
+          empty.textContent = '瀏覽器未提供語音，請用 Chrome / Edge 開啟。';
+          popover.appendChild(empty);
+          return;
+        }
+        // Section: built-in
+        const section = document.createElement('div');
+        section.className = 'vl-section';
+        section.textContent = '瀏覽器內建 (' + voices.length + ')';
+        popover.appendChild(section);
+        voices.forEach((v) => {
+          const item = document.createElement('div');
+          item.className = 'vl-item' + (ttVoice && v.voiceURI === ttVoice.voiceURI ? ' active' : '');
+          item.setAttribute('role', 'option');
+          item.setAttribute('aria-selected', String(ttVoice && v.voiceURI === ttVoice.voiceURI));
+          item.dataset.uri = v.voiceURI;
+          item.innerHTML = '<div class="vl-name">' + (v.name || '(unnamed)') + '</div><div class="vl-id">' + (v.lang || '') + (v.localService ? ' · local' : ' · remote') + '</div>';
+          item.addEventListener('click', () => {
+            ttVoice = v;
+            try { localStorage.setItem(KEY_BROWSER, v.voiceURI); } catch (e) {}
+            paintBtn();
+            closePopover();
+            const sample = (/^zh-HK/i.test(v.lang)) ? '你好，我係香港粵語語音。' :
+                           (/^zh-CN/i.test(v.lang)) ? '你好，我係普通話語音。' :
+                           (/^zh-TW/i.test(v.lang)) ? '你好，我係台灣國語語音。' :
+                           (/^en/i.test(v.lang)) ? 'Hello, this is a voice sample.' : v.name;
+            speak(sample);
+          });
+          popover.appendChild(item);
+        });
+      }
     }
+
+    function openPopover() {
+      // close other popovers if any (none currently)
+      popover.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+      renderList();
+      // Reposition bubble (popover pushes stage down)
+      try { positionBubble(); } catch (e) {}
+    }
+    function closePopover() {
+      popover.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+    function togglePopover() {
+      if (popover.classList.contains('open')) closePopover();
+      else openPopover();
+    }
+
+    // Restore browser voice choice on boot (if user previously selected in browser mode)
+    if (savedBrowserVoiceURI) {
+      const match = (window.speechSynthesis ? speechSynthesis.getVoices() : []).find(v => v.voiceURI === savedBrowserVoiceURI);
+      if (match) ttVoice = match;
+    }
+    if ('speechSynthesis' in window) {
+      // Voices may load asynchronously; re-paint when ready
+      speechSynthesis.onvoiceschanged = () => { paintBtn(); };
+    }
+
+    btn.addEventListener('click', (e) => { e.stopPropagation(); togglePopover(); });
+    // Re-paint label / re-render list when TTS route toggles
+    window.addEventListener('xiaob:ttsModeChange', () => {
+      paintBtn();
+      if (popover.classList.contains('open')) renderList();
+    });
+    // Click outside closes
+    document.addEventListener('click', (e) => {
+      if (!popover.classList.contains('open')) return;
+      if (popover.contains(e.target) || btn.contains(e.target)) return;
+      closePopover();
+    });
+    // ESC closes
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && popover.classList.contains('open')) closePopover();
+    });
   })();
   document.getElementById('btn-close').addEventListener('click', () => {
     try { window.parent.postMessage({ ns: 'avatar-widget', type: 'close' }, '*'); } catch (e) {}
