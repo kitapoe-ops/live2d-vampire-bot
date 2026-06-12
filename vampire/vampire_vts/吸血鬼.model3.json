@@ -1,0 +1,96 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "吸血鬼.moc3",
+		"Textures": [
+			"吸血鬼.2048/texture_00.png",
+			"吸血鬼.2048/texture_01.png",
+			"吸血鬼.2048/texture_02.png",
+			"吸血鬼.2048/texture_03.png"
+		],
+		"Physics": "吸血鬼.physics3.json",
+		"DisplayInfo": "吸血鬼.cdi3.json",
+		"Expressions": [
+			{
+				"Name": "blood-body",
+				"File": "blood-body.exp3.json"
+			},
+			{
+				"Name": "blood-face",
+				"File": "blood-face.exp3.json"
+			},
+			{
+				"Name": "circleeyes",
+				"File": "circleeyes.exp3.json"
+			},
+			{
+				"Name": "click",
+				"File": "click.exp3.json"
+			},
+			{
+				"Name": "hearteyes",
+				"File": "hearteyes.exp3.json"
+			},
+			{
+				"Name": "knife",
+				"File": "knife.exp3.json"
+			},
+			{
+				"Name": "mad",
+				"File": "mad.exp3.json"
+			},
+			{
+				"Name": "mc",
+				"File": "mc.exp3.json"
+			},
+			{
+				"Name": "mouse",
+				"File": "mouse.exp3.json"
+			},
+			{
+				"Name": "sad",
+				"File": "sad.exp3.json"
+			},
+			{
+				"Name": "shy",
+				"File": "shy.exp3.json"
+			},
+			{
+				"Name": "stareyes",
+				"File": "stareyes.exp3.json"
+			},
+			{
+				"Name": "vampire",
+				"File": "吸血鬼.exp3.json"
+			},
+			{
+				"Name": "vampire2",
+				"File": "vampire2.exp3.json"
+			}
+		],
+		"Motions": {
+			"Scene1": [
+				{
+					"File": "Scene1.motion3.json"
+				}
+			],
+			"Idle": [
+				{
+					"File": "2.motion3.json"
+				}
+			]
+		}
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		},
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": []
+		}
+	]
+}
