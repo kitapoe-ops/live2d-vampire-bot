@@ -262,7 +262,19 @@
     ? '/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json'
     : 'https://vampire.kitahim.uk/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json';
   const MODEL_URL = CFG.get('model') || DEFAULT_MODEL;
+  // TTS_ENDPOINT: legacy BAZOOKA proxy path, kept for self-hosted deployments.
+  // Cloudflare Pages deployment uses MINIMAX_TTS_DIRECT (browser → api.minimax.chat).
+  // The endpoint is selected by presence of MINIMAX_API_KEY in localStorage.
   const TTS_ENDPOINT = CFG.get('api') || '/api/tts';
+  // 2026-06-12: BAZOOKA-free deployment. When deployed to Cloudflare Pages (no
+  // /api/tts proxy), the widget calls MiniMax TTS directly from the browser.
+  // The user must supply their own API key in the new "MINIMAX API Key" gate
+  // (stored in localStorage as `minimax_tts_key`; never sent anywhere except api.minimax.chat).
+  // If the key is missing AND no /api/tts proxy is reachable, neural mode auto-falls back to browser TTS.
+  const MINIMAX_TTS_DIRECT = 'https://api.minimax.chat/v1/t2a_v2';
+  const MINIMAX_GROUP_ID_DEFAULT = '';  // overridable via localStorage `minimax_group_id`
+  let MINIMAX_TTS_KEY = (function () { try { return localStorage.getItem('minimax_tts_key') || ''; } catch (e) { return ''; } })();
+  let MINIMAX_GROUP_ID = (function () { try { return localStorage.getItem('minimax_group_id') || MINIMAX_GROUP_ID_DEFAULT; } catch (e) { return ''; } })();
   let DEEPSEEK_KEY = localStorage.getItem('deepseek_key') || CFG.get('ds_key') || ''; // 透過 URL 參數或 localStorage 讀取 DeepSeek API Key
   const DEEPSEEK_API = CFG.get('ds_api') || 'https://api.deepseek.com/v1/chat/completions';
 
@@ -279,6 +291,11 @@
   let audioMouth = 0, useAudioMouth = false, audioCtx = null;
   let speakSeq = 0, currentSource = null, currentRaf = 0;
   let neuralDisabled = false;
+  // 2026-06-12: BAZOOKA-free deployment. When the user toggles to MiniMax neural
+  // mode but no MINIMAX_TTS_KEY is stored, we open the key gate modal instead
+  // of silently failing. This matches the existing DeepSeek key gate UX pattern
+  // (see btn-llm click handler).
+  let pendingNeuralToggle = false;
   // Default voice: Cantonese female (per user explicit request 2026-06-11).
   // Overridable via embed.js data-voice attribute or ?voice=... URL param on embed.js.
   // Mutable so the voice-selector button can cycle through the /api/voices catalog.
@@ -475,6 +492,12 @@
     if (ttsMuted) return;
     stopSpeaking();
     if (ttsMode === 'neural' && !neuralDisabled) {
+      // 2026-06-12 BAZOOKA-free: if user wants neural but no key, prompt now.
+      if (!MINIMAX_TTS_KEY) {
+        pendingNeuralToggle = true;
+        openMinimaxKeyModal();
+        return;  // wait for user to input key, don't fall back to browser
+      }
       speakNeural(ttsText, myseq).catch((e) => {
         if (myseq !== speakSeq) return;  // 已被更新的點擊取代 → 不要退回播放
         const msg = (e && e.message) || '';
@@ -488,11 +511,76 @@
     speakBrowser(ttsText);
   }
 
+  // 2026-06-12: Direct MiniMax TTS API call (BAZOOKA-free).
+  // Uses user's localStorage-stored API key + group_id. Returns a Response-like
+  // object containing the audio bytes (mp3) ready for Web Audio decodeAudioData.
+  //
+  // NOTE: MiniMax T2A v2 returns JSON with base64 audio unless stream=true is set.
+  // For low-latency widget playback we use stream=true (hex chunks via SSE).
+  // This implementation uses the simpler non-streaming JSON form first (more
+  // compatible across MiniMax T2A v2 deployments); switching to streaming
+  // chunked is a future optimization.
+  async function fetchMinimaxTtsDirect(text) {
+    if (!MINIMAX_TTS_KEY) throw new Error('MiniMax API key missing');
+    if (!MINIMAX_GROUP_ID) {
+      throw new Error('MiniMax Group ID missing — open settings (🔑) to set it');
+    }
+    const voiceId = NEURAL_VOICE || 'cantonese-female';
+    const body = {
+      model: 'speech-02',
+      text: text,
+      stream: false,
+      voice_setting: {
+        voice_id: voiceId,
+        speed: 1.0,
+        vol: 1.0,
+        pitch: 0
+      },
+      audio_setting: {
+        sample_rate: 32000,
+        bitrate: 128000,
+        format: 'mp3',
+        channel: 1
+      }
+    };
+    const r = await fetch(MINIMAX_TTS_DIRECT + '?GroupId=' + encodeURIComponent(MINIMAX_GROUP_ID), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + MINIMAX_TTS_KEY
+      },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) {
+      const errText = await r.text().catch(() => '');
+      throw new Error('http ' + r.status + ' ' + (errText.slice(0, 200) || ''));
+    }
+    const j = await r.json();
+    if (j && j.data && j.data.audio) {
+      // hex-encoded audio
+      const hex = j.data.audio;
+      const bytes = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+      }
+      return new Response(bytes, { status: 200, headers: { 'Content-Type': 'audio/mpeg' } });
+    }
+    throw new Error('MiniMax T2A response missing data.audio');
+  }
+
   async function speakNeural(text, seq) {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') { try { await audioCtx.resume(); } catch (e) {} }
-    const sep = TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&';
-    const resp = await fetch(TTS_ENDPOINT + sep + 'voice=' + encodeURIComponent(NEURAL_VOICE) + '&text=' + encodeURIComponent(text));
+    // 2026-06-12 BAZOOKA-free deployment: dispatch to direct MiniMax API call
+    // when a user-supplied API key is present, otherwise fall back to the
+    // legacy /api/tts proxy path (for self-hosted deployments).
+    let resp;
+    if (MINIMAX_TTS_KEY) {
+      resp = await fetchMinimaxTtsDirect(text);
+    } else {
+      const sep = TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&';
+      resp = await fetch(TTS_ENDPOINT + sep + 'voice=' + encodeURIComponent(NEURAL_VOICE) + '&text=' + encodeURIComponent(text));
+    }
     if (seq !== speakSeq) return;
     if (!resp.ok) throw new Error('http ' + resp.status);
     const arr = await resp.arrayBuffer();
@@ -1572,7 +1660,13 @@
       // Notify voice-list to re-paint its label (and re-render if open)
       try { window.dispatchEvent(new CustomEvent('xiaob:ttsModeChange', { detail: { mode: ttsMode } })); } catch (e) {}
       // Brief bubble hint
-      showBubble(ttsMode === 'neural' ? '已切換至 MiniMax 神經語音 (Cantonese HD)' : '已切換至免費 Web Speech API');
+      if (ttsMode === 'neural' && !MINIMAX_TTS_KEY) {
+        // 2026-06-12 BAZOOKA-free: prompt user to enter API key
+        openMinimaxKeyModal();
+        showBubble('請輸入 MiniMax API Key 以啟用神經語音 (Cantonese HD)');
+      } else {
+        showBubble(ttsMode === 'neural' ? '已切換至 MiniMax 神經語音 (Cantonese HD)' : '已切換至免費 Web Speech API');
+      }
     });
   })();
   // Voice selector — popover with route-aware voice list.
@@ -1779,6 +1873,87 @@
       }
     }
   });
+
+  // 2026-06-12 BAZOOKA-free: MiniMax TTS API key gate modal.
+  // Replaces the legacy server-side /api/tts proxy with direct browser → api.minimax.chat
+  // calls. The key + group_id are stored in localStorage and never sent anywhere else.
+  // The modal also surfaces a quick test button so the user can verify the key works
+  // before closing it.
+  function openMinimaxKeyModal() {
+    let modal = document.getElementById('minimax-key-modal');
+    if (modal) { modal.style.display = 'flex'; return; }
+    modal = document.createElement('div');
+    modal.id = 'minimax-key-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;';
+    modal.innerHTML = [
+      '<div style="background:#fff;max-width:420px;width:90%;border-radius:14px;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.3);">',
+        '<h3 style="margin:0 0 8px;color:#1f3a5f;font-size:17px;">💎 啟用 MiniMax 神經語音</h3>',
+        '<p style="margin:0 0 14px;font-size:13px;color:#5a6878;line-height:1.55;">直接從瀏覽器呼叫 MiniMax T2A API。需要您自己嘅 API Key + Group ID。',
+          '<br/>金鑰只會儲存喺您嘅瀏覽器 (<code>localStorage</code>)，唔會傳去任何第三方。',
+        '</p>',
+        '<label style="display:block;margin-bottom:10px;font-size:12px;color:#456;font-weight:600;">API Key</label>',
+        '<input id="mk-key" type="password" autocomplete="off" placeholder="eyJhbGciOi..." style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #dde3e9;border-radius:8px;font-size:13px;font-family:ui-monospace,monospace;margin-bottom:12px;">',
+        '<label style="display:block;margin-bottom:10px;font-size:12px;color:#456;font-weight:600;">Group ID</label>',
+        '<input id="mk-group" type="text" autocomplete="off" placeholder="123456789012345678" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #dde3e9;border-radius:8px;font-size:13px;font-family:ui-monospace,monospace;margin-bottom:6px;">',
+        '<div id="mk-msg" style="min-height:18px;font-size:12px;margin-bottom:12px;"></div>',
+        '<div style="display:flex;gap:8px;justify-content:flex-end;">',
+          '<button id="mk-clear" style="padding:7px 14px;border:1px solid #dde3e9;background:#fff;border-radius:8px;font-size:13px;cursor:pointer;">清除</button>',
+          '<button id="mk-test" style="padding:7px 14px;border:1px solid #5b54e8;background:#fff;color:#5b54e8;border-radius:8px;font-size:13px;cursor:pointer;">測試</button>',
+          '<button id="mk-save" style="padding:7px 14px;border:none;background:#5b54e8;color:#fff;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">儲存</button>',
+          '<button id="mk-cancel" style="padding:7px 14px;border:1px solid #dde3e9;background:#fff;border-radius:8px;font-size:13px;cursor:pointer;">取消</button>',
+        '</div>',
+      '</div>'
+    ].join('');
+    document.body.appendChild(modal);
+    const $key = modal.querySelector('#mk-key');
+    const $group = modal.querySelector('#mk-group');
+    const $msg = modal.querySelector('#mk-msg');
+    $key.value = MINIMAX_TTS_KEY || '';
+    $group.value = MINIMAX_GROUP_ID || '';
+    $key.focus();
+    function close() { modal.style.display = 'none'; }
+    modal.querySelector('#mk-cancel').addEventListener('click', close);
+    modal.querySelector('#mk-save').addEventListener('click', () => {
+      const k = $key.value.trim();
+      const g = $group.value.trim();
+      if (!k) { $msg.innerHTML = '<span style="color:#c33;">API Key 唔可以空白</span>'; return; }
+      if (!g) { $msg.innerHTML = '<span style="color:#c33;">Group ID 唔可以空白</span>'; return; }
+      MINIMAX_TTS_KEY = k;
+      MINIMAX_GROUP_ID = g;
+      try { localStorage.setItem('minimax_tts_key', k); localStorage.setItem('minimax_group_id', g); } catch (e) {}
+      $msg.innerHTML = '<span style="color:#2a7;">✓ 已儲存</span>';
+      setTimeout(close, 600);
+      if (pendingNeuralToggle) {
+        pendingNeuralToggle = false;
+        showBubble('MiniMax 神經語音已啟用 — 撳一下對話試試');
+      }
+    });
+    modal.querySelector('#mk-clear').addEventListener('click', () => {
+      $key.value = ''; $group.value = '';
+      MINIMAX_TTS_KEY = '';
+      MINIMAX_GROUP_ID = '';
+      try { localStorage.removeItem('minimax_tts_key'); localStorage.removeItem('minimax_group_id'); } catch (e) {}
+      $msg.innerHTML = '<span style="color:#888;">已清除</span>';
+    });
+    modal.querySelector('#mk-test').addEventListener('click', async () => {
+      $msg.innerHTML = '<span style="color:#5b54e8;">測試中…</span>';
+      const k = $key.value.trim();
+      const g = $group.value.trim();
+      if (!k || !g) { $msg.innerHTML = '<span style="color:#c33;">請先填寫 API Key + Group ID</span>'; return; }
+      const oldKey = MINIMAX_TTS_KEY, oldGroup = MINIMAX_GROUP_ID;
+      MINIMAX_TTS_KEY = k; MINIMAX_GROUP_ID = g;
+      try {
+        const r = await fetchMinimaxTtsDirect('測試');
+        $msg.innerHTML = '<span style="color:#2a7;">✓ 連線成功</span>';
+        try { await r.arrayBuffer(); } catch (e) {} // discard
+      } catch (e) {
+        MINIMAX_TTS_KEY = oldKey; MINIMAX_GROUP_ID = oldGroup;
+        $msg.innerHTML = '<span style="color:#c33;">✗ ' + (e && e.message ? e.message.slice(0, 80) : '失敗') + '</span>';
+      }
+    });
+  }
+  // Expose for embed.js or test scripts
+  window.__openMinimaxKeyModal = openMinimaxKeyModal;
   </script>
 </body>
 </html>

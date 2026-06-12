@@ -1,33 +1,25 @@
 # =============================================================================
 # live2d-fork .gitignore
 # =============================================================================
-# Excludes heavy/proprietary model assets. Source code, configs, and scripts
-# are committed. To use the widget, the user must supply their own Live2D
+# Excludes heavy/proprietary model assets on non-canonical paths. Source code,
+# configs, and scripts are committed. To use the widget, supply your own Live2D
 # model files at vampire/vampire_vts/<your-model>/.
 #
 # 2026-06-12 policy change: A1 (full static mirror for Cloudflare Pages)
-# The vampire/vampire_vts/ tree is now tracked in git so Cloudflare Pages
-# can serve the model from BAZOOKA-free static infrastructure. This matches
-# the upstream YuriCrystal/ai-avatar-bot repo's posture (model3.json +
-# .exp3.json + .2048 textures + motion3.json + small JSON metadata).
+# The vampire/vampire_vts/ tree is now FULLY tracked in git (including the
+# 7 MB .moc3 binary) so Cloudflare Pages can serve the complete model from
+# BAZOOKA-free static infrastructure. This matches the upstream
+# YuriCrystal/ai-avatar-bot repo's posture.
 #
-# Binary .moc3 / .cdi3 / .physics3.json / .vtube.json remain ignored: the
-# runtime loads them via .model3.json reference indirection, and the
-# .2048 textures + exp3 metadata are sufficient for the widget to render
-# the model fully (Cubism 5.x self-contained render path).
+# Verification: widget.html line 1030 calls `Live2DModel.from(MODEL_URL)`,
+# which requires the .moc3 binary (mesh data) + .model3.json (metadata).
+# The 4 .2048 texture PNGs are the actual visual assets. Without all of
+# these, the model cannot be rendered at all.
 #
 # Consumers running their own model should:
 #   1. Replace `vampire/vampire_vts/` with their own assets
 #   2. Update `vampire.txt` (license/attribution)
 #   3. Re-run `scripts/Verify_Vampire_Model.py` to sanity-check params
-
-# --- Binary Live2D model internals (still ignored) ---
-*.moc3
-*.moc
-*.cdi3
-*.physics3.json
-*.vtube.json
-*.zip
 
 # --- Local-only copies of model on different paths (not canonical) ---
 backend/static/live2d/
@@ -36,6 +28,14 @@ frontend/live2d/**/*.moc3
 frontend/live2d/**/*.png
 frontend/live2d/**/*.physics3.json
 frontend/live2d/**/texture_*
+scripts/vampire/
+
+# --- Source archives (development reference only) ---
+*.zip
+
+# --- Build output (regenerate via `python build_pages_dist.py`) ---
+dist-pages/
+
 scripts/vampire/
 
 # --- Python ---
