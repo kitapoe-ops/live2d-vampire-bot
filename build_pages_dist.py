@@ -99,15 +99,53 @@ def write_security_files():
     (DIST / "_headers").write_text(headers, encoding="utf-8")
     print("Wrote _headers")
 
-    # No rewrites needed for static widget; the existing routes are direct file lookups
+    # Legacy BAZOOKA path rewrites for third-party embeds.
+    # 2026-06-12 16:06 BUG FIX: third-party sites that embedded
+    # <script src="https://vampire.kitahim.uk/static/embed/embed.js"> are now
+    # broken because Pages SPA fallback returns 200 + text/html for that path,
+    # which the browser blocks via strict MIME check. Rewriting to root.
     redirects = """\
 # Cloudflare Pages _redirects
 # 2026-06-12: vampire.kitahim.uk -> static widget (no /api/* proxy).
 # /api/* paths would 404 here; widget code falls back to direct MiniMax TTS API
 # when the user supplies their own key via the in-widget modal.
+
+# === 2026-06-12 16:06 BUG FIX: third-party embeds using legacy BAZOOKA paths ===
+# Browser console error: "Refused to execute script from
+# 'https://vampire.kitahim.uk/static/embed/embed.js?v=20260612v04' because its
+# MIME type ('text/html') is not executable, and strict MIME type checking is
+# enabled." Third-party sites that embedded the widget via the legacy BAZOOKA
+# path /static/embed/embed.js get a 200 + HTML fallback from Pages (SPA-style
+# routing for unknown paths), not a 404 — so the browser blocks the script.
+# Rewrite legacy paths to root via 301 (permanent) so the redirect is cached
+# client-side and the browser fetches the new path with the correct MIME type.
+
+# 1. Explicit directory slugs (must come BEFORE splat — Pages matches first
+#    matching rule)
+/static/embed/                 /                          301
+/static/embed                  /                          301
+
+# 2. Explicit per-file rules (so /static/embed/embed.js returns 301 not
+#    SPA-fallback 200). Pages quirk: when no rule matches and no file exists,
+#    Pages returns SPA 200; explicit rules bypass the SPA fallback.
+/static/embed/embed.js         /embed.js                  301
+/static/embed/widget.html      /widget                    301
+/static/embed/widget           /widget                    301
+/static/embed/index.html       /                          301
+/static/embed/knowledge.js     /knowledge.js              301
+/static/embed/demo.html        /                          301
+
+# 3. Catch-all for any other /static/embed/* path (handles vendor/* and
+#    future files)
+/static/embed/*                /:splat                    301
+
+# === 2026-06-12 16:10: also redirect legacy model path /static/live2d/ -> /live2d/ ===
+# widget.html DEFAULT_MODEL was patched to ./live2d/vampire/... at build time,
+# but if any external page cached the old hardcoded URL, this preserves them.
+/static/live2d/*               /live2d/:splat              301
 """
     (DIST / "_redirects").write_text(redirects, encoding="utf-8")
-    print("Wrote _redirects")
+    print("Wrote _redirects (with legacy /static/embed/* rewrite)")
 
 if __name__ == "__main__":
     print("=== build_pages_dist.py ===")
