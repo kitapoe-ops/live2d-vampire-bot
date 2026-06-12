@@ -46,8 +46,10 @@ app = FastAPI(title="BAZOOKA Live2D Backend")
 # ---------------------------------------------------------------------------
 WIDGET_CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://esm.run; "
+    "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' https://esm.run; "
+    "script-src-attr 'unsafe-inline'; "  # allow on* event attributes (e.g. onload)
     "style-src 'self' 'unsafe-inline'; "
+    "style-src-attr 'unsafe-inline'; "  # allow style="..." attribute
     "img-src 'self' data: blob: https:; "
     "media-src 'self' blob: mediastream:; "
     "font-src 'self' data:; "
