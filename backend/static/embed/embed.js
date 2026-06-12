@@ -64,7 +64,7 @@
   }
   // Always add cache-bust to knowledge.js (it's the most-changed file)
   var _kUrl = cfg.get('knowledge');
-  if (_kUrl && _kUrl.indexOf('v=') < 0) cfg.set('knowledge', _kUrl + (_kUrl.indexOf('?') < 0 ? '?v=' : '&v=') + '20260611v13');
+  if (_kUrl && _kUrl.indexOf('v=') < 0) cfg.set('knowledge', _kUrl + (_kUrl.indexOf('?') < 0 ? '?v=' : '&v=') + '20260611v14');
   // Default TTS endpoint to absolute /api/tts (avoid 404 from relative path
   // resolution into the static /static/embed/ directory). This is the critical
   // path that the user-facing 3rd-party widget sites will use.

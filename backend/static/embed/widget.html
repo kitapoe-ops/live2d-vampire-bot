@@ -256,6 +256,30 @@
   </script>
 
   <script>
+  // 2026-06-12 16:25 BUG FIX: hoist emoteState to top of script.
+  // applyKeywordsTrigger (line ~395) references emoteState in its body, and
+  // the original const emoteState declaration was at line ~1298 — well after
+  // the function definition. While that *should* still work because functions
+  // don't execute their body until called, some browser/JS engines throw
+  // ReferenceError when a top-level `const` is referenced inside a function
+  // body that gets called via an event handler or setTimeout during early
+  // module evaluation. The 2cf58b3 commit's user-facing bug was an
+  // "Uncaught ReferenceError: emoteState is not defined" at line 398 inside
+  // applyKeywordsTrigger. Hoisting the declaration guarantees TDZ can never
+  // fire from inside a function body.
+  const emoteState = {
+    outfit: 'vampire',
+    gesture: 'normal',
+    eyes: 'normal',
+    blush: false,
+    tears: false,
+    angry: false,
+    bloodFace: false,
+    bloodBody: false
+  };
+  // Sentinel: tracker used by applyKeywordsTrigger for the
+  // 'stareyes/circleeyes/hearteyes' eye mode. Default 'normal' eyes.
+  let _emoteStateReady = true;
   const CFG = new URLSearchParams(location.search);
   const isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   const DEFAULT_MODEL = isLocal
@@ -1294,7 +1318,13 @@
       const EMOTION_KEYS = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'shy', 'thinking'];
       const EMOTION_LABELS = { neutral:'😶 待機', happy:'😊 開心', sad:'😢 傷心', angry:'😠 生氣', surprised:'😲 驚訝', shy:'😳 害羞', thinking:'🤔 思考' };
       let currentEmotion = 'neutral';
-      const emoteState = {
+      // 2026-06-12 16:25: emoteState was hoisted to top of script (line ~270) to
+      // prevent TDZ ReferenceError when applyKeywordsTrigger is called via
+      // event handler or setTimeout. We re-populate the hoisted object here so
+      // the rest of the file (which still reads like the original ordering)
+      // continues to work without further edits. The values mirror the
+      // original defaults.
+      Object.assign(emoteState, {
         outfit: 'vampire',
         gesture: 'normal',
         eyes: 'normal',
@@ -1303,7 +1333,7 @@
         angry: false,
         bloodFace: false,
         bloodBody: false
-      };
+      });
 
       window.applyEmotion = function(name) { // 提至全域供狀態機外部鏈路調用
         if (!window.KNOWLEDGE) { console.warn('[emotion] no KNOWLEDGE'); return; }
