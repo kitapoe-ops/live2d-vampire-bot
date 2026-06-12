@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>吸血鬼 (Vampire) — AI 虛擬人 Demo · BAZOOKA</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%235b54e8%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22central%22%20font-size%3D%2242%22%20font-family%3D%22Apple%20Color%20Emoji%2CSegoe%20UI%20Emoji%2Csans-serif%22%3E%F0%9F%A7%9B%3C%2Ftext%3E%3C%2Fsvg%3E" />
-<meta name="description" content="網頁右下角的語音 AI 虛擬人助理 — 吸血鬼角色 + Live2D + 瀏覽器語音 + 本機 LLM" />
+<meta name="description" content="網頁右下角的語音 AI 虛擬人助理 — 吸血鬼角色 + Live2D + 雙 TTS 路線 (瀏覽器免費 / MiniMax 神經語音粵語 HD) + DeepSeek 大腦" />
 <style>
   :root { --ink:#1f3a5f; --teal:#5b54e8; }
   * { box-sizing: border-box; }
@@ -29,35 +29,49 @@
 </head>
 <body>
   <header>
-    <h1>🧛 吸血鬼 (Vampire) — AI 虛擬人 Demo</h1>
-    <p>網頁右下角會出現一位語音 AI 助理 —— 你可以「跟她說話」，她會聽懂、回答、開口說話並對嘴。<br/>大腦可經由設置 DeepSeek API Key 啟用，對話內容與表情同步完全在瀏覽器端執行，API 金鑰保存在本機不外漏。</p>
+    <h1>🧛 吸血鬼 (Vampire) — AI 虛擬人 Widget</h1>
+    <p>網頁右下角會出現一位語音 AI 虛擬人 — 你可以「跟她說話」，她會聽懂、回答、開口說話並即時對嘴。<br/>預設免費 Web Speech API；撳一下 <b>💎</b> 切換至 <b>MiniMax 神經語音</b> 享用粵語 HD。DeepSeek / WebLLM 兩個大腦任選。</p>
   </header>
 
   <div class="wrap">
     <div class="card">
-      <h2>怎麼玩（請用 Chrome 開啟）</h2>
+      <h2>怎麼玩（建議用 Chrome 桌機）</h2>
       <ol class="steps">
-        <li>看右下角那位吸血鬼 —— 點她一下，她會打招呼、開口說話。</li>
-        <li>點 <b>🎤 說話</b> → 准許麥克風 → 直接問她；不方便開麥也可以<b>直接打字</b>，例如「<b>怎麼安裝</b>」「<b>怎麼換成你的角色</b>」。</li>
-        <li>想讓她更聰明、能自然閒聊：點 <b>🧠</b> 輸入您的 <b>DeepSeek API Key</b> 啟用「AI 大腦」（金鑰保存在您的瀏覽器中，不外漏）。</li>
+        <li>看右下角那位吸血鬼 — 點她一下，她會打招呼並自我介紹（首次載入需數秒下載 Live2D 模型）。</li>
+        <li>撳 <b>🎤 說話</b> 准許麥克風 → 直接問她；不開麥亦可<b>直接打字</b>（支援中文、英文、IME 組字）。</li>
+        <li>撳 <b>🌐 免費</b> / <b>💎 MiniMax</b> 切換 TTS 路線：免費 Web Speech API 零成本；<b>MiniMax</b> 享有粵語神經語音 HD 及 12 種聲線。</li>
+        <li>撳 <b>🗣️ 語音</b> 揀聲線：MiniMax 模式 12 個粵語/普通話聲線；瀏覽器模式 9 個系統內建 zh-HK / zh-TW / zh-CN / en-US 聲線。</li>
+        <li>撳 <b>🧠</b> 輸入您的 <b>DeepSeek API Key</b> 啟用「大腦」（金鑰只存在您的瀏覽器，不外漏）。</li>
+        <li>撳 <b>😊</b> 切換表情 / <b>🔊</b> 靜音 / <b>1.0×</b> 調語速（瀏覽器模式） / <b>✕</b> 收起。</li>
       </ol>
     </div>
 
     <div class="card">
       <h2>部署資訊</h2>
-      <p class="note">本 demo 部署於 <b>BAZOOKA</b> 個人 PC，透過 Cloudflare Tunnel 公開於 <code>vampire.kitahim.uk</code>。模型：<b>吸血鬼</b> (11.47 MB · Cubism 5.x)，已優化至 2048×2048 textures 以符合 15MB Web 預算。</p>
+      <p class="note">本 demo 部署於 <b>BAZOOKA</b> 個人 PC，透過 Cloudflare Tunnel 公開於 <code>vampire.kitahim.uk</code>。Live2D 模型：<b>吸血鬼</b> (11.47 MB · Cubism 5.x)，已優化至 2048×2048 textures。</p>
       <p>
         <span class="pill">Cloudflare Tunnel</span>
         <span class="pill">FastAPI + WebSocket 60FPS</span>
         <span class="pill">Live2D Cubism 5.x</span>
-        <span class="pill">2048×2048 textures</span>
+        <span class="pill">Self-hosted vendor JS (769 KB)</span>
+        <span class="pill">Cantonese TTS (MiniMax)</span>
+        <span class="pill">DeepSeek LLM (optional)</span>
+        <span class="pill">Strict CSP + nosniff</span>
+        <span class="pill">CORS-safe iframe embed</span>
         <span class="pill">一行 &lt;script&gt; 嵌入</span>
       </p>
     </div>
 
     <div class="card" style="border-left:4px solid #2f6d8f; background:#eef6fb;">
-      <p class="note" style="margin:0;">💡 一行嵌入範例：<br/><br/>
+      <p class="note" style="margin:0 0 12px 0;">💡 <b>一行嵌入範例</b>（最簡）：<br/><br/>
         <code>&lt;script src="https://vampire.kitahim.uk/static/embed/embed.js"&gt;&lt;/script&gt;</code>
+      </p>
+      <p class="note" style="margin:0 0 8px 0;">⚙️ <b>可選參數</b>（<code>data-*</code> 覆寫預設）：</p>
+      <p class="note" style="margin:0; font-family:ui-monospace,monospace; font-size:12.5px; line-height:1.7;">
+        &lt;script src=".../embed.js"<br/>
+        &nbsp;&nbsp;data-model="你的 Live2D model3.json 網址"<br/>
+        &nbsp;&nbsp;data-knowledge="你的 FAQ JSON 網址"<br/>
+        &nbsp;&nbsp;data-api="/api/tts"&nbsp;&nbsp;data-voice="cantonese-female"&gt;&lt;/script&gt;
       </p>
     </div>
   </div>
