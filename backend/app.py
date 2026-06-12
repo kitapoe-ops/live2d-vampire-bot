@@ -42,7 +42,8 @@ async def add_security_and_cache_headers(request: Request, call_next):
     path = request.url.path
     if path.endswith(".html") or path == "/" or path.endswith("/"):
         # HTML always revalidate (FastAPI default is no Cache-Control, browser may cache 30 days)
-        resp.headers.setdefault("Cache-Control", "no-cache, must-revalidate")
+        # Use no-store (webhint preferred for highly dynamic HTML) instead of must-revalidate.
+        resp.headers.setdefault("Cache-Control", "no-store, max-age=0")
     return resp
 
 # ---------------------------------------------------------------------------
