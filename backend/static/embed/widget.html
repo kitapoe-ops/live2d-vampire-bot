@@ -270,6 +270,9 @@
   const emoteState = {
     outfit: 'vampire',
     gesture: 'normal',
+    // 2026-06-12 16:59: per-gesture flags so multiple gestures can be active
+    // simultaneously (e.g. knife + mc for a sentence with 刀 + 唱).
+    gestures: { knife: false, mc: false, mouse: false, click: false },
     eyes: 'normal',
     blush: false,
     tears: false,
@@ -419,7 +422,14 @@
   function applyKeywordsTrigger(text) {
     if (!text) return;
     const base = currentSentenceEmotion || 'neutral';
+    // 2026-06-12 16:59: gestures now use independent Set-style tracking so multiple
+    // gestures (e.g. 刀+唱 → knife + mc) can be active simultaneously. Previously
+    // emoteState.gesture was a single string and the if-else chain at the bottom
+    // overwrote it on each pass, so only one gesture was ever active.
+    // Backward-compat: keep emoteState.gesture (string) for code that still reads it,
+    // but the source of truth is emoteState.gestures (object of booleans).
     emoteState.gesture = 'normal';
+    emoteState.gestures = { knife: false, mc: false, mouse: false, click: false };
     emoteState.bloodFace = false;
     emoteState.bloodBody = false;
 
@@ -478,14 +488,20 @@
     // 4. 血跡效果
     const kBlood = ['臉部血跡', '臉上有血', '胸口血跡', '身上有血', '受傷', '流血', '🩸', '血跡', '吐血', '流鼻血', '割傷', '刺傷', '血腥', 'blood', 'bleed', 'hurt', 'wound', 'injury', 'bloody'];
 
-    if (has(kKnife)) emoteState.gesture = 'knife';
-    else if (has(kMc)) emoteState.gesture = 'mc';
-    else if (has(kMouse)) emoteState.gesture = 'mouse';
-    else if (has(kClick)) emoteState.gesture = 'click';
+    // 2026-06-12 16:59: 4 independent flags instead of if-else chain.
+    // Now emoteState.gestures.knife + emoteState.gestures.mc can BOTH be true
+    // for a sentence that contains both 刀 and 唱 — the param-setter below
+    // lights up PARAMhands_1 (mc) AND PARAMhands_2 (knife) at the same time.
+    if (has(kKnife)) { emoteState.gestures.knife = true; emoteState.gesture = 'knife'; }
+    if (has(kMc))    { emoteState.gestures.mc = true;    emoteState.gesture = emoteState.gesture === 'normal' ? 'mc'    : emoteState.gesture; }
+    if (has(kMouse)) { emoteState.gestures.mouse = true; emoteState.gesture = emoteState.gesture === 'normal' ? 'mouse' : emoteState.gesture; }
+    if (has(kClick)) { emoteState.gestures.click = true; emoteState.gesture = emoteState.gesture === 'normal' ? 'click' : emoteState.gesture; }
 
-    if (has(kHeartEyes)) emoteState.eyes = 'hearteyes';
-    else if (has(kCircleEyes)) emoteState.eyes = 'circleeyes';
-    else if (has(kStarEyes)) emoteState.eyes = 'stareyes';
+    // 2026-06-12 16:59: independent flags for eye modes too — if a sentence
+    // has both 心動 and 暈, you get hearteyes + circleeyes simultaneously.
+    if (has(kHeartEyes))  emoteState.eyes = 'hearteyes';
+    if (has(kCircleEyes)) emoteState.eyes = emoteState.eyes === 'normal' ? 'circleeyes' : emoteState.eyes;
+    if (has(kStarEyes))   emoteState.eyes = emoteState.eyes === 'normal' ? 'stareyes'   : emoteState.eyes;
 
     if (has(kBlush)) emoteState.blush = true;
     if (has(kTears)) emoteState.tears = true;
@@ -1327,6 +1343,8 @@
       Object.assign(emoteState, {
         outfit: 'vampire',
         gesture: 'normal',
+        // 2026-06-12 16:59: per-gesture flags reset to all-false.
+        gestures: { knife: false, mc: false, mouse: false, click: false },
         eyes: 'normal',
         blush: false,
         tears: false,
@@ -1581,11 +1599,13 @@
           safeSetParam('PARAMhari_3', 0.0);
         }
 
-        // 2. 手勢道具 (gesture)
-        safeSetParam('PARAMhands_1', emoteState.gesture === 'mc' ? 1.0 : 0.0);
-        safeSetParam('PARAMhands_2', emoteState.gesture === 'knife' ? 1.0 : 0.0);
-        safeSetParam('PARAMhands_3', emoteState.gesture === 'mouse' ? 1.0 : 0.0);
-        safeSetParam('Paramclick', emoteState.gesture === 'click' ? 1.0 : 0.0);
+        // 2. 手勢道具 (gesture) — 2026-06-12 16:59: independent flags so
+        // PARAMhands_1 (mc) + PARAMhands_2 (knife) can both be 1.0 simultaneously.
+        var _gs = emoteState.gestures || { knife: false, mc: false, mouse: false, click: false };
+        safeSetParam('PARAMhands_1', _gs.mc    ? 1.0 : 0.0);
+        safeSetParam('PARAMhands_2', _gs.knife ? 1.0 : 0.0);
+        safeSetParam('PARAMhands_3', _gs.mouse ? 1.0 : 0.0);
+        safeSetParam('Paramclick',   _gs.click ? 1.0 : 0.0);
 
         // 3. 特殊眼部 (eyes)
         safeSetParam('PARAMWHITEEYE', emoteState.eyes === 'circleeyes' ? 1.0 : 0.0);
