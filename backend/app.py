@@ -64,14 +64,42 @@ WIDGET_CSP = (
     "base-uri 'self'; "
     "form-action 'none'; "
     "object-src 'none'; "
-    "upgrade-insecure-requests"
+    "upgrade-insecure-requests; "
+    "report-uri /api/csp-violation; "
+    "report-to csp-endpoint"
 )
+
+# Reporting API v3 group definition (modern alternative to report-uri).
+# Browsers will POST violation reports as application/reports+json to this endpoint.
+# Safari/iOS still uses legacy report-uri → we accept both formats.
+CSP_REPORT_TO = (
+    '{"group":"csp-endpoint","max_age":10886400,'
+    '"endpoints":[{"url":"/api/csp-violation"}],'
+    '"include_subdomains":false}'
+)
+
+# CSP violation log path (JSONL, one report per line; never committed).
+# Resolved lazily at request-time because BACKEND_DIR is defined later.
+CSP_LOG_DIR = None
+CSP_LOG_FILE = None
+
+
+def _ensure_csp_log_path():
+    global CSP_LOG_DIR, CSP_LOG_FILE
+    if CSP_LOG_DIR is None:
+        CSP_LOG_DIR = BACKEND_DIR / "logs"
+        CSP_LOG_DIR.mkdir(parents=True, exist_ok=True)
+        CSP_LOG_FILE = CSP_LOG_DIR / "csp-violations.jsonl"
+    return CSP_LOG_FILE
 
 
 @app.middleware("http")
 async def add_security_and_cache_headers(request: Request, call_next):
     resp = await call_next(request)
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    # Reporting API group (modern browsers read this; legacy browsers ignore)
+    resp.headers.setdefault("Reporting-Endpoints", 'csp-endpoint="/api/csp-violation"')
+    resp.headers.setdefault("Report-To", CSP_REPORT_TO)
     path = request.url.path
     if path.endswith(".html") or path == "/" or path.endswith("/"):
         # HTML always revalidate (FastAPI default is no Cache-Control, browser may cache 30 days)
@@ -227,6 +255,66 @@ def lerp_params() -> dict:
         t = target_params[k]
         current_params[k] = c + (t - c) * speed
     return current_params
+
+
+# ---------------------------------------------------------------------------
+# CSP violation report endpoint
+#   - Accepts both legacy report-uri (CSP1, content-type application/csp-report)
+#     and modern report-to (Reporting API v3, content-type application/reports+json)
+#   - Logs to backend/logs/csp-violations.jsonl (never committed; .gitignored)
+#   - Does NOT log IPs, cookies, or any user-identifying data (browser CSP spec
+#     already strips these, but we double-check on the server side)
+# ---------------------------------------------------------------------------
+import time as _time
+import json as _json
+
+_MAX_CSP_LOG_BYTES = 10 * 1024 * 1024  # 10 MB rotation cap
+
+
+@app.post("/api/csp-violation")
+async def csp_violation(request: Request):
+    """Receive a CSP violation report. Two accepted formats:
+    1. Legacy report-uri: { 'csp-report': { ... } }
+    2. Modern report-to: [ { 'type': 'csp-violation', 'body': { ... } } ]
+    """
+    try:
+        raw = await request.body()
+        if not raw:
+            return Response(status_code=204)
+        body = _json.loads(raw)
+        # Normalize: extract the inner report regardless of format
+        report = None
+        if isinstance(body, list) and body and body[0].get("type") == "csp-violation":
+            report = body[0].get("body", {})
+            report["_format"] = "report-to"
+        elif isinstance(body, dict) and "csp-report" in body:
+            report = body["csp-report"]
+            report["_format"] = "report-uri"
+        if not report:
+            return Response(status_code=204)
+        # Strip any user-identifying data (defense in depth)
+        for k in ("source-file", "sample", "script-sample"):
+            if k in report and isinstance(report[k], str):
+                # Truncate long sample strings
+                if len(report[k]) > 200:
+                    report[k] = report[k][:200] + "..."
+        # Add server-side timestamp
+        report["_received_at"] = int(_time.time())
+        # Append to JSONL log (with size cap + rotation)
+        log_path = _ensure_csp_log_path()
+        if log_path.exists() and log_path.stat().st_size > _MAX_CSP_LOG_BYTES:
+            # Rotate: rename to .old, start fresh
+            old = log_path.with_suffix(".jsonl.old")
+            if old.exists():
+                old.unlink()
+            log_path.rename(old)
+        with log_path.open("a", encoding="utf-8") as f:
+            f.write(_json.dumps(report, ensure_ascii=False) + "\n")
+    except Exception as e:
+        # Never raise to client — log to stderr only
+        print(f"[CSP report error] {e}", flush=True)
+    # Always 204 No Content (CSP spec) regardless of internal success/failure
+    return Response(status_code=204)
 
 
 # ---------------------------------------------------------------------------
