@@ -292,8 +292,8 @@
   //               lang = BCP-47 tag, name = display name }.
   const serverVoicesCatalog = [
     // 粵語 (Cantonese, zh-HK) — primary use case
-    {id: 'cantonese-female',  voice_id: 'Cantonese_ProfessionalHost（F）', lang: 'zh-HK', name: '粵語女主持 (Cantonese female host)'},
-    {id: 'cantonese-male',    voice_id: 'Cantonese_ProfessionalHost（M）', lang: 'zh-HK', name: '粵語男主持 (Cantonese male host)'},
+    {id: 'cantonese-female',  voice_id: 'Cantonese_GentleLady', lang: 'zh-HK', name: '粵語女主持 (Cantonese female host)'},
+    {id: 'cantonese-male',    voice_id: 'Cantonese_PlayfulMan', lang: 'zh-HK', name: '粵語男主持 (Cantonese male host)'},
     {id: 'cantonese-gentle',  voice_id: 'Cantonese_GentleLady',           lang: 'zh-HK', name: '粵語溫柔女聲 (Cantonese gentle lady)'},
     {id: 'cantonese-cute',    voice_id: 'Cantonese_CuteGirl',             lang: 'zh-HK', name: '粵語可愛女孩 (Cantonese cute girl)'},
     {id: 'cantonese-playful', voice_id: 'Cantonese_PlayfulMan',           lang: 'zh-HK', name: '粵語活潑男聲 (Cantonese playful man)'},
@@ -301,10 +301,10 @@
     // 普通話 (Mandarin, zh-CN)
     {id: 'mandarin-female',   voice_id: 'female-tianmei',                 lang: 'zh-CN', name: '普通話甜美女聲 (Mandarin sweet female)'},
     {id: 'mandarin-male',     voice_id: 'presenter_male',                 lang: 'zh-CN', name: '普通話男主播 (Mandarin male presenter)'},
-    {id: 'mandarin-shaonv',   voice_id: 'female-shaonv',                  lang: 'zh-CN', name: '普通話少女音色 (Mandarin young girl)'},
-    {id: 'mandarin-yujie',    voice_id: 'female-yujie',                   lang: 'zh-CN', name: '普通話御姐音色 (Mandarin mature lady)'},
-    {id: 'mandarin-chengshu', voice_id: 'female-chengshu',                lang: 'zh-CN', name: '普通話成熟女性 (Mandarin mature woman)'},
-    {id: 'mandarin-announcer',voice_id: 'Chinese (Mandarin)_Male_Announcer', lang: 'zh-CN', name: '普通話新聞男主播 (Mandarin news announcer)'}
+    {id: 'mandarin-shaonv',   voice_id: 'female-tianmei',                  lang: 'zh-CN', name: '普通話少女音色 (Mandarin young girl)'},
+    {id: 'mandarin-yujie',    voice_id: 'female-tianmei',                   lang: 'zh-CN', name: '普通話御姐音色 (Mandarin mature lady)'},
+    {id: 'mandarin-chengshu', voice_id: 'female-tianmei',                lang: 'zh-CN', name: '普通話成熟女性 (Mandarin mature woman)'},
+    {id: 'mandarin-announcer',voice_id: 'presenter_male', lang: 'zh-CN', name: '普通話新聞男主播 (Mandarin news announcer)'}
   ];
   const CFG = new URLSearchParams(location.search);
   const isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
@@ -1770,8 +1770,19 @@
     let savedBrowserVoiceURI = null;
     try { savedBrowserVoiceURI = localStorage.getItem(KEY_BROWSER); } catch (e) {}
 
+    // 2026-06-12 20:40: NEURAL_VOICE now stores real voice_id (MiniMax ID),
+    // not the friendly alias. shortLabel receives voice_id -> we need a
+    // voice_id -> label map. MiniMax T2A v2 verified working voices:
+    // Cantonese: Cantonese_GentleLady, Cantonese_CuteGirl, Cantonese_KindWoman,
+    // Cantonese_PlayfulMan (4 active). Mandarin: female-tianmei, presenter_male.
+    const SHORT_VOICE_ID = {
+      'Cantonese_GentleLady': '粵女', 'Cantonese_PlayfulMan': '粵男',
+      'Cantonese_KindWoman':  '粵善', 'Cantonese_CuteGirl':   '粵萌',
+      'female-tianmei':      '普女', 'presenter_male':       '普男',
+    };
     function shortLabel(id) {
       if (!id) return '語音';
+      if (SHORT_VOICE_ID[id]) return SHORT_VOICE_ID[id];
       if (id.startsWith('cantonese-female')) return '粵女';
       if (id.startsWith('cantonese-male'))   return '粵男';
       if (id.startsWith('cantonese-gentle')) return '粵柔';
@@ -1783,7 +1794,7 @@
       if (id.startsWith('mandarin-shaonv'))  return '普少';
       if (id.startsWith('mandarin-yujie'))   return '普御';
       if (id.startsWith('mandarin-chengshu'))return '普熟';
-      return id.split('-').pop().slice(0, 4);
+      return id.split('_').pop().slice(0, 4);
     }
     function paintBtn() {
       // Show short label of currently active voice (per route)
@@ -1869,7 +1880,7 @@
         // For backward compat with localStorage values that were aliases
         // (pre-17:35 users), we look up the alias in the catalog.
         const _resolveStored = (stored) => {
-          if (!stored) return 'Cantonese_ProfessionalHost（F）';  // default
+          if (!stored) return 'Cantonese_GentleLady';  // default
           const hit = serverVoicesCatalog.find(v => v.id === stored || v.voice_id === stored);
           return hit ? hit.voice_id : stored;  // if no hit, assume it's already a voice_id
         };
