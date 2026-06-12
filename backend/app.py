@@ -168,7 +168,7 @@ TELEMETRY = {
 
 # ── MiniMax TTS ──────────────────────────────────────────────────────────────
 MINIMAX_TTS_ENDPOINT = "https://api.minimax.chat/v1/t2a_v2"
-MINIMAX_GROUP_ID     = os.getenv("MINIMAX_GROUP_ID", "2031609952837050448")
+MINIMAX_GROUP_ID     = os.getenv("MINIMAX_GROUP_ID") or os.getenv("MINIMAX_TTS_GROUP_ID") or os.getenv("MINIMAX_API_GROUP_ID") or ""
 
 # Voice map: Azure-style names + friendly aliases → MiniMax voice_id.
 # Lets the widget keep using familiar names (zh-TW-HsiaoChenNeural, zh-HK-HiuMaanNeural, …)
@@ -422,6 +422,9 @@ async def tts_endpoint(voice: str = Query(default=DEFAULT_VOICE_ID), text: str =
     if not api_key:
         return Response(status_code=400, media_type="text/plain",
                          content="MINIMAX_API_KEY not set")
+    if not MINIMAX_GROUP_ID:
+        return Response(status_code=400, media_type="text/plain",
+                         content="MINIMAX_GROUP_ID not set")
     voice_id = resolve_voice(voice)
     try:
         payload = {

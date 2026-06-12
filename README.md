@@ -55,8 +55,8 @@
 ```bash
 cd backend
 pip install fastapi uvicorn requests
-export MINIMAX_API_KEY="sk-cp-..."
-export MINIMAX_GROUP_ID="2031609952837050448"   # optional, defaults above
+export MINIMAX_API_KEY="<your_minimax_api_key>"
+export MINIMAX_GROUP_ID="<your_minimax_group_id>"
 python -m uvicorn backend.app:app --host 0.0.0.0 --port 8000
 ```
 
