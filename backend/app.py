@@ -31,10 +31,41 @@ app = FastAPI(title="BAZOOKA Live2D Backend")
 # ---------------------------------------------------------------------------
 # Security & cache headers (audit 2026-06-12: address webhint/axe warnings)
 #   - X-Content-Type-Options: nosniff   → block MIME sniffing
-#   - Cache-Control: no-cache           → HTML files always revalidate (fix cache-control
+#   - Cache-Control: no-store           → HTML files always revalidate (fix cache-control
 #                                          missing-for-HTML warning; widget.html changes
 #                                          frequently and must not be served stale)
+#   - Content-Security-Policy           → audit 2026-06-12 10:23 user request.
+#                                          Allows: vampire.kitahim.uk 1st-party,
+#                                          DeepSeek LLM, MiniMax TTS, WebLLM ESM CDN,
+#                                          inline scripts/styles (widget uses 3 inline
+#                                          <script> blocks + inline <style>), Web Audio
+#                                          blob:, data: URIs (Cubism textures), WebSocket
+#                                          to vampire.kitahim.uk, WebLLM Worker.
+#   - X-Frame-Options / frame-ancestors  → widget.html is designed to be iframe-embedded
+#                                          by 3rd-party sites, so frame-ancestors '*'.
 # ---------------------------------------------------------------------------
+WIDGET_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://esm.run; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob: https:; "
+    "media-src 'self' blob: mediastream:; "
+    "font-src 'self' data:; "
+    "connect-src 'self' "
+                "https://api.deepseek.com "
+                "https://api.minimax.chat "
+                "https://vampire.kitahim.uk "
+                "wss://vampire.kitahim.uk; "
+    "worker-src 'self' blob:; "
+    "frame-src 'self' https://vampire.kitahim.uk; "
+    "frame-ancestors *; "
+    "base-uri 'self'; "
+    "form-action 'none'; "
+    "object-src 'none'; "
+    "upgrade-insecure-requests"
+)
+
+
 @app.middleware("http")
 async def add_security_and_cache_headers(request: Request, call_next):
     resp = await call_next(request)
@@ -44,6 +75,8 @@ async def add_security_and_cache_headers(request: Request, call_next):
         # HTML always revalidate (FastAPI default is no Cache-Control, browser may cache 30 days)
         # Use no-store (webhint preferred for highly dynamic HTML) instead of must-revalidate.
         resp.headers.setdefault("Cache-Control", "no-store, max-age=0")
+        # CSP applies to HTML documents (where scripts/styles are evaluated)
+        resp.headers.setdefault("Content-Security-Policy", WIDGET_CSP)
     return resp
 
 # ---------------------------------------------------------------------------
