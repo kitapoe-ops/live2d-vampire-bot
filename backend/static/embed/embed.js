@@ -1,5 +1,5 @@
 /* =====================================================================
- * embed.js — AI 虛擬人嵌入載入器
+ * embed.js ??AI ?�擬人�??��??�器
  * BAZOOKA / vampire.kitahim.uk adaption of YuriCrystal/ai-avatar-bot
  * Source: https://raw.githubusercontent.com/YuriCrystal/ai-avatar-bot/main/embed.js
  *
@@ -38,7 +38,7 @@
   var widgetUrl = (me && me.getAttribute('data-widget')) || (base + 'widget.html');
   // Cache-bust: append build version to force browser to fetch latest widget.html
   // (bypass any Cloudflare/browser cache that may hold stale polling code)
-  var _buildV = '20260612v01';
+  var _buildV = '20260612v02';
   if (widgetUrl.indexOf('?') < 0) widgetUrl += '?v=' + _buildV;
   else widgetUrl += '&v=' + _buildV;
   var startOpen = (me && me.getAttribute('data-open') !== 'false');
@@ -54,9 +54,9 @@
   if (!cfg.has('model')) {
     var isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
     if (isLocal) {
-      cfg.set('model', '/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json');
+      cfg.set('model', '/static/live2d/vampire/' + encodeURIComponent('?��?�?) + '.model3.json');
     } else {
-      cfg.set('model', 'https://vampire.kitahim.uk/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json');
+      cfg.set('model', 'https://vampire.kitahim.uk/static/live2d/vampire/' + encodeURIComponent('?��?�?) + '.model3.json');
     }
   }
   if (!cfg.has('knowledge')) {
@@ -89,7 +89,7 @@
   // iframe
   var iframe = document.createElement('iframe');
   iframe.src = iframeSrc;
-  iframe.title = 'AI 虛擬人助理';
+  iframe.title = 'AI ?�擬人助??;
   iframe.setAttribute('allow', 'microphone; autoplay');
   iframe.setAttribute('allowtransparency', 'true');
   iframe.style.cssText = 'width:100%;height:100%;border:0;background:transparent;color-scheme:normal;';
@@ -98,9 +98,9 @@
   var bubble = document.createElement('button');
   bubble.type = 'button';
   bubble.className = 'aw-bubble';
-  bubble.setAttribute('aria-label', '開啟 AI 虛擬人助理');
-  bubble.setAttribute('title', '開啟 AI 虛擬人助理');
-  bubble.textContent = '💬';
+  bubble.setAttribute('aria-label', '?��? AI ?�擬人助??);
+  bubble.setAttribute('title', '?��? AI ?�擬人助??);
+  bubble.textContent = '?��';
   bubble.style.cssText = [
     'position:absolute', 'right:2px', 'bottom:2px', 'width:64px', 'height:64px',
     'border:0', 'border-radius:50%', 'cursor:pointer', 'font-size:28px',
