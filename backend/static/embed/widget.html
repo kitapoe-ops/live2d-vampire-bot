@@ -110,7 +110,7 @@
   #debug-hud.collapsed #debug-hud-body { display:none; }
 
   /* ===== Voice list popover (anchored to btn-voice) ===== */
-  #voice-list {
+  #voice-list, #emote-list {
     position:absolute; left:8px; right:8px; bottom:calc(100% + 8px);
     background:var(--surface); color:var(--ink);
     border-radius:14px; padding:6px;
@@ -118,26 +118,26 @@
     max-height:50vh; overflow-y:auto; z-index:99;
     display:none;   /* toggled by .open */
   }
-  #voice-list.open { display:block; }
-  #voice-list .vl-header {
+  #voice-list.open, #emote-list.open { display:block; }
+  #voice-list .vl-header, #emote-list .vl-header {
     font-size:12px; font-weight:600; color:#666; padding:6px 10px 4px;
     border-bottom:1px solid #eef0f4; margin-bottom:4px;
     display:flex; justify-content:space-between; align-items:center;
   }
-  #voice-list .vl-empty {
+  #voice-list .vl-empty, #emote-list .vl-empty {
     padding:14px 10px; text-align:center; font-size:12px; color:#888;
   }
-  #voice-list .vl-item {
+  #voice-list .vl-item, #emote-list .vl-item {
     display:flex; flex-direction:column; gap:1px;
     padding:8px 10px; border-radius:9px; cursor:pointer;
     font-size:13.5px; line-height:1.3;
   }
-  #voice-list .vl-item:hover { background:rgba(91,84,232,.08); }
-  #voice-list .vl-item.active { background:linear-gradient(135deg,var(--brand-2),var(--brand)); color:#fff; }
-  #voice-list .vl-item .vl-name { font-weight:600; }
-  #voice-list .vl-item .vl-id { font-size:11px; opacity:.65; font-family:ui-monospace,monospace; }
-  #voice-list .vl-item.active .vl-id { opacity:.85; }
-  #voice-list .vl-section {
+  #voice-list .vl-item:hover, #emote-list .vl-item:hover { background:rgba(91,84,232,.08); }
+  #voice-list .vl-item.active, #emote-list .vl-item.active { background:linear-gradient(135deg,var(--brand-2),var(--brand)); color:#fff; }
+  #voice-list .vl-item .vl-name, #emote-list .vl-item .vl-name { font-weight:600; }
+  #voice-list .vl-item .vl-id, #emote-list .vl-item .vl-id { font-size:11px; opacity:.65; font-family:ui-monospace,monospace; }
+  #voice-list .vl-item.active .vl-id, #emote-list .vl-item.active .vl-id { opacity:.85; }
+  #voice-list .vl-section, #emote-list .vl-section {
     font-size:11px; font-weight:700; color:var(--brand);
     padding:10px 10px 4px; letter-spacing:.3px;
     text-transform:uppercase;
@@ -157,7 +157,7 @@
       <div class="dock-row" role="toolbar" aria-label="虛擬人控制列">
         <button class="ctrl primary" id="btn-mic"   aria-label="開始語音對話" title="開始語音對話"><span aria-hidden="true">🎤</span> 說話</button>
         <button class="ctrl" id="btn-llm"   aria-label="設置 DeepSeek API Key 啟用 AI 大腦" aria-pressed="false" title="設置 DeepSeek API Key"><span aria-hidden="true">🧠</span></button>
-        <button class="ctrl" id="btn-emote" aria-label="切換表情 (1-7/0 隨機)" aria-pressed="false" title="表情輪播 (1-7/0 隨機)"><span aria-hidden="true">😊</span></button>
+        <button class="ctrl" id="btn-emote" aria-label="切換衣裝形態" aria-pressed="false" title="切換衣裝形態"><span aria-hidden="true">🧥</span> 衣裝</button>
         <button class="ctrl" id="btn-mute"  aria-label="靜音" aria-pressed="false" title="靜音 / 取消靜音"><span aria-hidden="true">🔊</span></button>
         <button class="ctrl" id="btn-voice" aria-label="選擇語音" aria-haspopup="listbox" aria-expanded="false" title="選擇語音 (MiniMax 路線有 12 個語音 / 瀏覽器路線有系統內建語音)"><span aria-hidden="true">🗣️</span> <span id="btn-voice-label">語音</span></button>
         <button class="ctrl" id="btn-tts-mode" aria-label="切換 TTS 路線 (免費 Web Speech API / MiniMax 神經語音)" aria-pressed="false" title="TTS 路線：免費 (Web Speech API) / 切換至 MiniMax 神經語音"><span aria-hidden="true">🌐</span> 免費</button>
@@ -166,6 +166,7 @@
     </div>
     <!-- Voice list popover (anchored above control bar, opens on btn-voice click) -->
     <div id="voice-list" role="listbox" aria-label="語音選擇"></div>
+    <div id="emote-list" role="listbox" aria-label="表情選擇"></div>
   </div>
   <div id="direct-warn">請透過 <code>embed.js</code> 載入此元件。</div>
   <div id="debug-hud">
@@ -269,6 +270,7 @@
 
   let model = null, app = null;
   let isSpeaking = false, mouthValue = 0, mouthTarget = 0.7;
+  let currentSentenceEmotion = 'neutral';
   let ttsMuted = false, ttsRate = 1.0, ttVoice = null;
   // TTS routing: 'browser' (default, free Web Speech API) or 'neural' (MiniMax TTS via /api/tts).
   // Toggled via #btn-tts-mode. Server-side `neuralDisabled` lock still applies as a safety net
@@ -321,7 +323,14 @@
     const barRect = bar.getBoundingClientRect();
     const stageRect = stage.getBoundingClientRect();
     const gap = 8;
-    bubble.style.bottom = (stageRect.height - barRect.top + gap) + 'px';
+    const bottomVal = (stageRect.height - barRect.top + gap) + 'px';
+    bubble.style.bottom = bottomVal;
+
+    // 同步更新彈出選單的底部位置，避免定位在螢幕上方不可見
+    const voicePopover = document.getElementById('voice-list');
+    if (voicePopover) voicePopover.style.bottom = bottomVal;
+    const emotePopover = document.getElementById('emote-list');
+    if (emotePopover) emotePopover.style.bottom = bottomVal;
   }
   window.addEventListener('resize', positionBubble);
   window.addEventListener('load', positionBubble);
@@ -366,12 +375,98 @@
     return text.slice(0, softCap);
   }
 
+  function applyKeywordsTrigger(text) {
+    if (!text) return;
+    const base = currentSentenceEmotion || 'neutral';
+    emoteState.gesture = 'normal';
+    emoteState.bloodFace = false;
+    emoteState.bloodBody = false;
+
+    if (base === 'happy') {
+      emoteState.eyes = 'hearteyes';
+      emoteState.blush = false;
+      emoteState.tears = false;
+      emoteState.angry = false;
+    } else if (base === 'sad') {
+      emoteState.eyes = 'normal';
+      emoteState.blush = false;
+      emoteState.tears = true;
+      emoteState.angry = false;
+    } else if (base === 'angry') {
+      emoteState.eyes = 'normal';
+      emoteState.blush = false;
+      emoteState.tears = false;
+      emoteState.angry = true;
+    } else if (base === 'shy') {
+      emoteState.eyes = 'normal';
+      emoteState.blush = true;
+      emoteState.tears = false;
+      emoteState.angry = false;
+    } else if (base === 'surprised') {
+      emoteState.eyes = 'circleeyes';
+      emoteState.blush = false;
+      emoteState.tears = false;
+      emoteState.angry = false;
+    } else {
+      emoteState.eyes = 'normal';
+      emoteState.blush = false;
+      emoteState.tears = false;
+      emoteState.angry = false;
+    }
+
+    const t = text.toLowerCase();
+    const has = (words) => words.some(w => t.includes(w));
+
+    // 擴展的關鍵詞詞庫
+    // 1. 手勢道具
+    const kKnife = ['小刀', '匕首', '刺', '切', '殺', '割', '🔪', '武器', '危險', '刀子', '防身', '攻擊', '砍', '捅', '威脅', '動手', '決鬥', '死', '命案', '刀', 'knife', 'dagger', 'sword', 'attack', 'kill'];
+    const kMc = ['麥克風', '話筒', '唱歌', '歌唱', '主持', '🎤', '音樂', '唱首歌', '歌聲', '演講', '播音', '發言', '廣播', '表演', '歌手', '🎵', '🎶', '唱', '歌', 'sing', 'song', 'microphone', 'mic', 'music'];
+    const kMouse = ['滑鼠', '電腦', '🖱️', '游標', '控制', '滑鼠裝備', '雙擊', '螢幕', '鍵盤', '打字', '寫程式', '編程', '代碼', 'coding', '上網', '衝浪', '網頁', 'mouse', 'computer', 'keyboard', 'code', 'program'];
+    const kClick = ['戳', '點', '按', '👆', '指', '碰', '摸', '觸', '點擊', '按鈕', '選擇', '確定', '送出', 'click', 'press', 'touch', 'point'];
+
+    // 2. 特殊眼部
+    const kHeartEyes = ['愛心', '喜歡', '愛你', '心動', '😍', '❤️', '中意', '愛慕', '心心', '好帥', '好美', '心跳', '告白', '表白', '寶貝', '親愛的', '心儀', '可愛', '漂亮', '迷人', '老公', '老婆', 'love', 'like', 'heart', 'cute', 'sweet', 'crush'];
+    const kCircleEyes = ['暈', '呆', '轉圈', '混亂', '眩', '🌀', '懵', '頭暈', '暈厥', '迷糊', '發呆', '不知所措', '困惑', '不懂', '搞不懂', '看不懂', '難題', '複雜', '茫', 'dizzy', 'faint', 'confused', 'stunned', 'blank'];
+    const kStarEyes = ['星星', '閃亮', '崇拜', '羨慕', '🤩', '✨', '期待', '偶像', '好厲害', '太強了', '好棒', '盼望', '許願', '閃耀', '亮晶晶', 'star', 'shine', 'admire', 'expect', 'wish'];
+
+    // 3. 面部效果
+    const kBlush = ['害羞', '紅暈', '臉紅', '不好意思', '😳', '討厭啦', '撒嬌', '純情', '內向', '緊張', '尷尬', '拍謝', 'shy', 'blush', 'embarrassed', 'nervous'];
+    const kTears = ['流淚', '哭', '傷心', '難過', '委屈', '😭', '😢', '嗚嗚', '悲傷', '哀傷', '好慘', '泣', '桑心', '崩潰', '失落', '沮喪', '痛哭', '眼淚', 'cry', 'tear', 'sad', 'sob', 'breakdown', 'depressed'];
+    const kAngry = ['生氣', '青筋', '憤怒', '惱火', '不爽', '😠', '😡', '閉嘴', '發飆', '抓狂', '暴怒', '火大', '生氣氣', '氣死', '討厭你', 'angry', 'mad', 'furious', 'pissed', 'annoyed', 'shut up'];
+
+    // 4. 血跡效果
+    const kBlood = ['臉部血跡', '臉上有血', '胸口血跡', '身上有血', '受傷', '流血', '🩸', '血跡', '吐血', '流鼻血', '割傷', '刺傷', '血腥', 'blood', 'bleed', 'hurt', 'wound', 'injury', 'bloody'];
+
+    if (has(kKnife)) emoteState.gesture = 'knife';
+    else if (has(kMc)) emoteState.gesture = 'mc';
+    else if (has(kMouse)) emoteState.gesture = 'mouse';
+    else if (has(kClick)) emoteState.gesture = 'click';
+
+    if (has(kHeartEyes)) emoteState.eyes = 'hearteyes';
+    else if (has(kCircleEyes)) emoteState.eyes = 'circleeyes';
+    else if (has(kStarEyes)) emoteState.eyes = 'stareyes';
+
+    if (has(kBlush)) emoteState.blush = true;
+    if (has(kTears)) emoteState.tears = true;
+    if (has(kAngry)) emoteState.angry = true;
+
+    if (has(kBlood)) {
+      emoteState.bloodFace = true;
+      emoteState.bloodBody = true;
+    }
+
+    if (typeof updateEmoteListActiveUI === 'function') {
+      updateEmoteListActiveUI();
+    }
+  }
+
   function speak(text) {
     // Defense in depth: strip any leftover emotion tags from the TTS-bound text.
     // The streaming engine already strips them, but hard-coded callers and any
     // post-streaming retry paths should never leak tags like <neutral> to TTS.
     var stripped = String(text || '').replace(/<\s*(?:neutral|happy|sad|angry|surprised|shy|thinking)\s*>/gi, '').trim();
     if (!stripped) return;
+    applyKeywordsTrigger(stripped);
     // TTS-bound copy is smart-truncated; bubble can show the full stripped text.
     var ttsText = _ttsTruncate(stripped, 120);
     const myseq = ++speakSeq;
@@ -738,6 +833,7 @@
 
   function handleUser(text) {
     if (!text) return;
+    currentSentenceEmotion = 'neutral';
     showBubble('你：' + text);
     
     // 一旦進入用戶交互對話，立即使展示輪播定時器失效，交由 AI 大腦接管
@@ -1110,6 +1206,16 @@
       const EMOTION_KEYS = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'shy', 'thinking'];
       const EMOTION_LABELS = { neutral:'😶 待機', happy:'😊 開心', sad:'😢 傷心', angry:'😠 生氣', surprised:'😲 驚訝', shy:'😳 害羞', thinking:'🤔 思考' };
       let currentEmotion = 'neutral';
+      const emoteState = {
+        outfit: 'vampire',
+        gesture: 'normal',
+        eyes: 'normal',
+        blush: false,
+        tears: false,
+        angry: false,
+        bloodFace: false,
+        bloodBody: false
+      };
 
       window.applyEmotion = function(name) { // 提至全域供狀態機外部鏈路調用
         if (!window.KNOWLEDGE) { console.warn('[emotion] no KNOWLEDGE'); return; }
@@ -1117,8 +1223,42 @@
         if (!preset) { console.warn('[emotion] unknown:', name); return; }
         const r = window.KNOWLEDGE.bulkSet(preset);
         currentEmotion = name;
+        currentSentenceEmotion = name;
 
-        // 呼叫 Live2D 原生表情系統播放對應的 exp3.json
+        // 同步至 emoteState
+        if (name === 'happy') {
+          emoteState.eyes = 'hearteyes';
+          emoteState.blush = false;
+          emoteState.tears = false;
+          emoteState.angry = false;
+        } else if (name === 'sad') {
+          emoteState.eyes = 'normal';
+          emoteState.blush = false;
+          emoteState.tears = true;
+          emoteState.angry = false;
+        } else if (name === 'angry') {
+          emoteState.eyes = 'normal';
+          emoteState.blush = false;
+          emoteState.tears = false;
+          emoteState.angry = true;
+        } else if (name === 'shy') {
+          emoteState.eyes = 'normal';
+          emoteState.blush = true;
+          emoteState.tears = false;
+          emoteState.angry = false;
+        } else if (name === 'surprised') {
+          emoteState.eyes = 'circleeyes';
+          emoteState.blush = false;
+          emoteState.tears = false;
+          emoteState.angry = false;
+        } else if (name === 'neutral') {
+          emoteState.eyes = 'normal';
+          emoteState.blush = false;
+          emoteState.tears = false;
+          emoteState.angry = false;
+        }
+
+        // 呼叫 Live2D 原生表情系統播放對應的 exp3.json (可作為 fallback)
         if (typeof model !== 'undefined' && model && typeof model.expression === 'function') {
           const expMap = {
             sad: 'sad',
@@ -1126,7 +1266,7 @@
             angry: 'mad',
             happy: 'hearteyes',
             surprised: 'circleeyes',
-            neutral: 'vampire' // vampire 是預設服裝與正常表情
+            neutral: emoteState.outfit === 'vampire2' ? 'vampire2' : 'vampire'
           };
           const expName = expMap[name];
           if (expName) {
@@ -1139,18 +1279,48 @@
           }
         }
 
+        // 同步更新表情選單中被選中的按鈕樣式
+        if (typeof updateEmoteListActiveUI === 'function') {
+          updateEmoteListActiveUI();
+        }
+
         console.log('[emotion] ' + name + ' => ok=' + r.ok + ' failed=' + r.failed);
         showBubble('表情：' + (EMOTION_LABELS[name] || name));
-      }
+      };
 
-      const btnEmote = document.getElementById('btn-emote');
-      if (btnEmote) {
-        let emoIdx = 0;
-        btnEmote.addEventListener('click', () => {
-          emoIdx = (emoIdx + 1) % EMOTION_KEYS.length;
-          applyEmotion(EMOTION_KEYS[emoIdx]);
+      // 表情與外觀客製化選單已移除，此處改為衣裝轉換按鈕一鍵切換邏輯
+      window.updateEmoteListActiveUI = function() {}; // 空函數相容性
+      (function() {
+        const btn = document.getElementById('btn-emote');
+
+        // 修改按鈕的標示與屬性，以代表衣裝切換
+        btn.setAttribute('aria-label', '切換衣裝形態 (黑色/白色)');
+        btn.setAttribute('title', '切換衣裝形態 (黑色/白色)');
+        btn.innerHTML = '<span aria-hidden="true">🧥</span> 衣裝';
+
+        function toggleOutfit() {
+          const nextOutfit = emoteState.outfit === 'vampire' ? 'vampire2' : 'vampire';
+          emoteState.outfit = nextOutfit;
+
+          if (model && typeof model.expression === 'function') {
+            try {
+              model.expression(nextOutfit === 'vampire2' ? 'vampire2' : 'vampire');
+              console.log('[Live2D] Outfit toggled to:', nextOutfit);
+            } catch (err) {
+              console.warn('[Live2D] Failed to toggle outfit expression:', err);
+            }
+          }
+
+          showBubble('已切換衣裝：' + (nextOutfit === 'vampire2' ? '白色衣裝' : '黑色衣裝'));
+          btn.setAttribute('aria-pressed', String(nextOutfit === 'vampire2'));
+        }
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleOutfit();
         });
-      }
+      })();
+
       document.addEventListener('keydown', (e) => {
         if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
         const k = e.key;
@@ -1217,6 +1387,16 @@
           mouseY = e.clientY - rect.top;
           hasMouseInput = true;
         });
+        canvasEl.addEventListener('click', () => {
+          if (model && typeof model.motion === 'function') {
+            try {
+              model.motion('Scene1');
+              console.log('[Live2D] Play clicked reaction motion: Scene1');
+            } catch (e) {
+              console.warn('[Live2D] Failed to play Scene1 motion:', e);
+            }
+          }
+        });
         canvasEl.addEventListener('pointerleave', () => {
           hasMouseInput = false;
         });
@@ -1249,11 +1429,67 @@
         const breath = (Math.sin(t * 1.5) + 1.0) / 2.0;
         safeSetParam('PARAM_BREATH', breath);
 
-        // 身體晃動 (PARAM_BODY_ANGLE_X/Y)
-        const bodySwayX = Math.sin(t * 0.4) * 2.5; // -2.5 到 2.5 度的擺動
-        const bodySwayY = Math.cos(t * 0.3) * 1.5;
+        // 身體與肩膀晃動 (PARAM_BODY_ANGLE_X/Y/Z, PARAM_shoulder)
+        let bodySwayX = Math.sin(t * 0.4) * 2.5;
+        let bodySwayY = Math.cos(t * 0.3) * 1.5;
+        if (isSpeaking) {
+          // 說話時增加晃動幅度和頻率，讓身體顯得生動
+          bodySwayX += Math.sin(t * 3.0) * 3.5;
+          bodySwayY += Math.cos(t * 2.5) * 2.0;
+          safeSetParam('PARAM_BODY_ANGLE_Z', Math.sin(t * 2.0) * 2.0);
+          safeSetParam('PARAM_shoulder', Math.sin(t * 4.0) * 3.5);
+        } else {
+          safeSetParam('PARAM_BODY_ANGLE_Z', 0.0);
+          safeSetParam('PARAM_shoulder', 0.0);
+        }
         safeSetParam('PARAM_BODY_ANGLE_X', bodySwayX);
         safeSetParam('PARAM_BODY_ANGLE_Y', bodySwayY);
+
+        // ─── 寫入全域 emoteState 外觀與表情參數 ───
+        // 1. 服裝型態 (outfit)
+        if (emoteState.outfit === 'vampire') {
+          safeSetParam('PARAMoutfit1_2', 1.0);
+          safeSetParam('PARAMhariWB', 1.0);
+          safeSetParam('PARAMhariWB2', 0.0);
+          safeSetParam('PARAMhari_7', 1.0);
+          safeSetParam('PARAMhari_8', 1.0);
+          safeSetParam('PARAMhari_3', 1.0);
+        } else if (emoteState.outfit === 'vampire2') {
+          safeSetParam('PARAMoutfit1_2', 0.0);
+          safeSetParam('PARAMhariWB', 0.0);
+          safeSetParam('PARAMhariWB2', 1.0);
+          safeSetParam('PARAMhari_7', 1.0);
+          safeSetParam('PARAMhari_8', 1.0);
+          safeSetParam('PARAMhari_3', 0.0);
+        }
+
+        // 2. 手勢道具 (gesture)
+        safeSetParam('PARAMhands_1', emoteState.gesture === 'mc' ? 1.0 : 0.0);
+        safeSetParam('PARAMhands_2', emoteState.gesture === 'knife' ? 1.0 : 0.0);
+        safeSetParam('PARAMhands_3', emoteState.gesture === 'mouse' ? 1.0 : 0.0);
+        safeSetParam('Paramclick', emoteState.gesture === 'click' ? 1.0 : 0.0);
+
+        // 3. 特殊眼部 (eyes)
+        safeSetParam('PARAMWHITEEYE', emoteState.eyes === 'circleeyes' ? 1.0 : 0.0);
+        safeSetParam('PARAMhearteye', emoteState.eyes === 'hearteyes' ? 1.0 : 0.0);
+        safeSetParam('PARAMstareye', emoteState.eyes === 'stareyes' ? 1.0 : 0.0);
+
+        // 4. 臉部效果 (blush, tears, angry)
+        safeSetParam('PARAMSHY', emoteState.blush ? 1.0 : 0.0);
+        if (emoteState.tears) {
+          safeSetParam('PARAMTEARS', 1.0);
+          safeSetParam('PARAM_BROW_L_Y', -1.0);
+          safeSetParam('PARAM_BROW_L_FORM', -1.0);
+          safeSetParam('PARAM_BROW_R_FORM', -1.0);
+          safeSetParam('PARAM_BROW_R_Y', -1.0);
+        } else {
+          safeSetParam('PARAMTEARS', 0.0);
+        }
+        safeSetParam('PARAMANGRY', emoteState.angry ? 1.0 : 0.0);
+
+        // 5. 血跡效果 (bloodFace, bloodBody)
+        safeSetParam('PARAMBLOOD2', emoteState.bloodFace ? 1.0 : 0.0);
+        safeSetParam('PARAMblood1', emoteState.bloodBody ? 1.0 : 0.0);
 
         // 眨眼邏輯
         if (t - lastBlinkT > nextBlinkIn) {
