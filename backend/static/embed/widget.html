@@ -1117,6 +1117,28 @@
         if (!preset) { console.warn('[emotion] unknown:', name); return; }
         const r = window.KNOWLEDGE.bulkSet(preset);
         currentEmotion = name;
+
+        // 呼叫 Live2D 原生表情系統播放對應的 exp3.json
+        if (typeof model !== 'undefined' && model && typeof model.expression === 'function') {
+          const expMap = {
+            sad: 'sad',
+            shy: 'shy',
+            angry: 'mad',
+            happy: 'hearteyes',
+            surprised: 'circleeyes',
+            neutral: 'vampire' // vampire 是預設服裝與正常表情
+          };
+          const expName = expMap[name];
+          if (expName) {
+            try {
+              model.expression(expName);
+              console.log('[Live2D] Played native expression: ' + expName);
+            } catch (e) {
+              console.warn('[Live2D] Failed to play native expression:', e);
+            }
+          }
+        }
+
         console.log('[emotion] ' + name + ' => ok=' + r.ok + ' failed=' + r.failed);
         showBubble('表情：' + (EMOTION_LABELS[name] || name));
       }
