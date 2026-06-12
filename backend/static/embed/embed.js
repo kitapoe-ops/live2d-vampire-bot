@@ -38,7 +38,7 @@
   var widgetUrl = (me && me.getAttribute('data-widget')) || (base + 'widget.html');
   // Cache-bust: append build version to force browser to fetch latest widget.html
   // (bypass any Cloudflare/browser cache that may hold stale polling code)
-  var _buildV = '20260612v08';
+  var _buildV = '20260612v09';
   if (widgetUrl.indexOf('?') < 0) widgetUrl += '?v=' + _buildV;
   else widgetUrl += '&v=' + _buildV;
   var startOpen = (me && me.getAttribute('data-open') !== 'false');
@@ -64,7 +64,7 @@
   }
   // Always add cache-bust to knowledge.js (it's the most-changed file)
   var _kUrl = cfg.get('knowledge');
-  if (_kUrl && _kUrl.indexOf('v=') < 0) cfg.set('knowledge', _kUrl + (_kUrl.indexOf('?') < 0 ? '?v=' : '&v=') + '20260611v17');
+  if (_kUrl && _kUrl.indexOf('v=') < 0) cfg.set('knowledge', _kUrl + (_kUrl.indexOf('?') < 0 ? '?v=' : '&v=') + '20260611v18');
   // Default TTS endpoint to absolute /api/tts (avoid 404 from relative path
   // resolution into the static /static/embed/ directory). This is the critical
   // path that the user-facing 3rd-party widget sites will use.

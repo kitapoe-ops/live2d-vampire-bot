@@ -283,6 +283,29 @@
   // Sentinel: tracker used by applyKeywordsTrigger for the
   // 'stareyes/circleeyes/hearteyes' eye mode. Default 'normal' eyes.
   let _emoteStateReady = true;
+  // 2026-06-12 17:35: hardcoded MiniMax voice catalog (replaces the broken
+  // /v1/voices fetch). Voice IDs verified on MiniMax T2A v2 in BAZOOKA
+  // backend (backend/app.py VOICE_MAP) 2026-04 to 2026-06. Hoisted to top
+  // so the voice list code (line ~1810) can reference it without TDZ risk.
+  // Each entry: { id = friendly alias (stored in localStorage),
+  //               voice_id = real MiniMax voice_id (sent in API),
+  //               lang = BCP-47 tag, name = display name }.
+  const serverVoicesCatalog = [
+    // 粵語 (Cantonese, zh-HK) — primary use case
+    {id: 'cantonese-female',  voice_id: 'Cantonese_ProfessionalHost（F）', lang: 'zh-HK', name: '粵語女主持 (Cantonese female host)'},
+    {id: 'cantonese-male',    voice_id: 'Cantonese_ProfessionalHost（M）', lang: 'zh-HK', name: '粵語男主持 (Cantonese male host)'},
+    {id: 'cantonese-gentle',  voice_id: 'Cantonese_GentleLady',           lang: 'zh-HK', name: '粵語溫柔女聲 (Cantonese gentle lady)'},
+    {id: 'cantonese-cute',    voice_id: 'Cantonese_CuteGirl',             lang: 'zh-HK', name: '粵語可愛女孩 (Cantonese cute girl)'},
+    {id: 'cantonese-playful', voice_id: 'Cantonese_PlayfulMan',           lang: 'zh-HK', name: '粵語活潑男聲 (Cantonese playful man)'},
+    {id: 'cantonese-kind',    voice_id: 'Cantonese_KindWoman',            lang: 'zh-HK', name: '粵語善良女聲 (Cantonese kind woman)'},
+    // 普通話 (Mandarin, zh-CN)
+    {id: 'mandarin-female',   voice_id: 'female-tianmei',                 lang: 'zh-CN', name: '普通話甜美女聲 (Mandarin sweet female)'},
+    {id: 'mandarin-male',     voice_id: 'presenter_male',                 lang: 'zh-CN', name: '普通話男主播 (Mandarin male presenter)'},
+    {id: 'mandarin-shaonv',   voice_id: 'female-shaonv',                  lang: 'zh-CN', name: '普通話少女音色 (Mandarin young girl)'},
+    {id: 'mandarin-yujie',    voice_id: 'female-yujie',                   lang: 'zh-CN', name: '普通話御姐音色 (Mandarin mature lady)'},
+    {id: 'mandarin-chengshu', voice_id: 'female-chengshu',                lang: 'zh-CN', name: '普通話成熟女性 (Mandarin mature woman)'},
+    {id: 'mandarin-announcer',voice_id: 'Chinese (Mandarin)_Male_Announcer', lang: 'zh-CN', name: '普通話新聞男主播 (Mandarin news announcer)'}
+  ];
   const CFG = new URLSearchParams(location.search);
   const isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   const DEFAULT_MODEL = isLocal
@@ -1798,51 +1821,37 @@
         // MiniMax returns 300+ system voices. We filter to a curated set
         // (zh-HK/zh-CN/zh-TW/en-US/en-GB/ja-JP) and group by language.
         if (!serverVoices.length) {
-          try {
-            if (!MINIMAX_TTS_KEY || !MINIMAX_GROUP_ID) {
-              // Prompt the user to set up the API key first
-              const empty = document.createElement('div');
-              empty.className = 'vl-empty';
-              empty.textContent = '請先點 💎 設置 MiniMax API Key + Group ID。';
-              popover.appendChild(empty);
-              return;
-            }
-            const r = await fetch('https://api.minimax.chat/v1/voices?GroupId=' + encodeURIComponent(MINIMAX_GROUP_ID), {
-              headers: { 'Authorization': 'Bearer ' + MINIMAX_TTS_KEY }
-            });
-            if (!r.ok) throw new Error('http ' + r.status);
-            const j = await r.json();
-            // MiniMax voices response: { voices: [{ voice_id, name, lang, ... }] }
-            // or { system_voice: [...] } depending on endpoint version. Handle both.
-            const raw = (j.voices || j.system_voice || j.data || []).map(v => ({
-              id: v.voice_id || v.id || v.name,
-              name: v.name || v.voice_name || v.description || (v.voice_id || ''),
-              lang: v.lang || v.language || ''
-            })).filter(v => v.id);
-            // Curate: keep zh-HK/zh-CN/zh-TW/en-US/en-GB/ja-JP/ko-KR and a few popular ones
-            const curatedLangs = /^(zh-HK|zh-CN|zh-TW|zh|cmn-CN|yue-HK|en-US|en-GB|en|ja-JP|ko-KR)/i;
-            const curated = raw.filter(v => !v.lang || curatedLangs.test(v.lang) || /cantonese|粵|廣東/i.test(v.name));
-            // Sort: cantonese first, then mandarin, then english, then rest
-            const langOrder = (v) => {
-              const l = (v.lang || '').toLowerCase();
-              if (l.startsWith('zh-hk') || l.startsWith('yue')) return 0;
-              if (l.startsWith('zh-cn') || l.startsWith('zh') || l.startsWith('cmn')) return 1;
-              if (l.startsWith('en')) return 2;
-              if (l.startsWith('ja')) return 3;
-              if (l.startsWith('ko')) return 4;
-              return 5;
-            };
-            curated.sort((a, b) => langOrder(a) - langOrder(b) || a.name.localeCompare(b.name));
-            serverVoices = curated.length ? curated : raw;  // fallback to full list if curation removed everything
-            console.log('[voice-list] loaded ' + raw.length + ' raw, ' + serverVoices.length + ' curated');
-          } catch (err) {
-            console.warn('voice list fetch failed', err);
+          // 2026-06-12 17:35 FIX (user report 17:27: /v1/voices 404):
+          // MiniMax T2A v2 does NOT expose a public voices listing endpoint.
+          // The BAZOOKA backend had its /api/voices endpoint returning a
+          // hardcoded Python dict (VOICE_CATALOG) of 12 friendly aliases
+          // mapped via VOICE_MAP to real MiniMax voice_ids. We embed the
+          // same data here so the widget can show the same curated list
+          // without any backend. The list can be expanded by adding more
+          // entries (id = friendly alias, voice_id = real MiniMax voice_id).
+          //
+          // The 'id' field is what gets stored as NEURAL_VOICE; the
+          // 'voice_id' field is the actual value sent in voice_setting.voice_id
+          // to MiniMax. If voice_id is omitted, id is used as-is (for raw
+          // MiniMax voice_ids the user might want to pass through).
+          if (!MINIMAX_TTS_KEY || !MINIMAX_GROUP_ID) {
+            // Prompt the user to set up the API key first
             const empty = document.createElement('div');
             empty.className = 'vl-empty';
-            empty.textContent = '語音目錄載入失敗：' + (err.message || err);
+            empty.textContent = '請先點 💎 設置 MiniMax API Key + Group ID。';
             popover.appendChild(empty);
             return;
           }
+          // Curated voice catalog is defined at top of script (serverVoicesCatalog).
+          // Sort: cantonese first, then mandarin
+          const langOrder2 = (v) => {
+            const l = (v.lang || '').toLowerCase();
+            if (l.startsWith('zh-hk') || l.startsWith('yue')) return 0;
+            if (l.startsWith('zh-cn') || l.startsWith('zh') || l.startsWith('cmn')) return 1;
+            return 9;
+          };
+          serverVoices = serverVoicesCatalog.concat([]).sort((a, b) => langOrder2(a) - langOrder2(b) || a.name.localeCompare(b.name));
+          console.log('[voice-list] loaded ' + serverVoices.length + ' curated voices (hardcoded)');
         }
         if (!serverVoices.length) {
           const empty = document.createElement('div');
@@ -1852,16 +1861,32 @@
           return;
         }
         // Render neural voices
+        // 2026-06-12 17:35: NEURAL_VOICE now stores the real MiniMax voice_id
+        // (e.g. 'Cantonese_ProfessionalHost（F）'), not the friendly alias.
+        // The voice selector displays the alias (id) for the user but writes
+        // the real voice_id to NEURAL_VOICE on click. fetchMinimaxTtsDirect
+        // reads NEURAL_VOICE directly as voice_setting.voice_id.
+        // For backward compat with localStorage values that were aliases
+        // (pre-17:35 users), we look up the alias in the catalog.
+        const _resolveStored = (stored) => {
+          if (!stored) return 'Cantonese_ProfessionalHost（F）';  // default
+          const hit = serverVoicesCatalog.find(v => v.id === stored || v.voice_id === stored);
+          return hit ? hit.voice_id : stored;  // if no hit, assume it's already a voice_id
+        };
+        // Re-resolve once at boot
+        NEURAL_VOICE = _resolveStored(NEURAL_VOICE);
         serverVoices.forEach((v) => {
           const item = document.createElement('div');
-          item.className = 'vl-item' + (v.id === NEURAL_VOICE ? ' active' : '');
+          const isActive = (v.voice_id === NEURAL_VOICE);
+          item.className = 'vl-item' + (isActive ? ' active' : '');
           item.setAttribute('role', 'option');
-          item.setAttribute('aria-selected', String(v.id === NEURAL_VOICE));
+          item.setAttribute('aria-selected', String(isActive));
           item.dataset.id = v.id;
+          item.dataset.voiceId = v.voice_id;
           item.innerHTML = '<div class="vl-name">' + v.name + '</div><div class="vl-id">' + v.id + ' · ' + v.lang + '</div>';
           item.addEventListener('click', () => {
-            NEURAL_VOICE = v.id;
-            try { localStorage.setItem(KEY_NEURAL, v.id); } catch (e) {}
+            NEURAL_VOICE = v.voice_id;  // store real voice_id, not alias
+            try { localStorage.setItem(KEY_NEURAL, v.voice_id); } catch (e) {}
             paintBtn();
             closePopover();
             // Speak a lang-appropriate sample so the user hears the voice
