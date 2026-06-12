@@ -125,7 +125,7 @@
         <button class="ctrl" id="btn-emote" aria-label="切換表情 (1-7/0 隨機)" aria-pressed="false" title="表情輪播 (1-7/0 隨機)"><span aria-hidden="true">😊</span></button>
         <button class="ctrl" id="btn-mute"  aria-label="靜音" aria-pressed="false" title="靜音 / 取消靜音"><span aria-hidden="true">🔊</span></button>
         <button class="ctrl" id="btn-voice" aria-label="切換語音" title="切換語音"><span aria-hidden="true">🗣️</span></button>
-        <button class="ctrl" id="btn-speed" aria-label="調整語速" title="調整語速">1.0×</button>
+        <button class="ctrl" id="btn-tts-mode" aria-label="切換 TTS 路線 (免費 Web Speech API / MiniMax 神經語音)" aria-pressed="false" title="TTS 路線：免費 (Web Speech API) / 切換至 MiniMax 神經語音"><span aria-hidden="true">🌐</span> 免費</button>
         <button class="ctrl" id="btn-close" aria-label="收起助理" title="收起助理"><span aria-hidden="true">✕</span></button>
       </div>
     </div>
@@ -233,6 +233,10 @@
   let model = null, app = null;
   let isSpeaking = false, mouthValue = 0, mouthTarget = 0.7;
   let ttsMuted = false, ttsRate = 1.0, ttVoice = null;
+  // TTS routing: 'browser' (default, free Web Speech API) or 'neural' (MiniMax TTS via /api/tts).
+  // Toggled via #btn-tts-mode. Server-side `neuralDisabled` lock still applies as a safety net
+  // (e.g. 502 from MiniMax → auto-fallback to browser) but user can manually retry by toggling.
+  let ttsMode = (function () { try { return localStorage.getItem('xiaob_tts_mode') || 'browser'; } catch (e) { return 'browser'; } })();
   let audioMouth = 0, useAudioMouth = false, audioCtx = null;
   let speakSeq = 0, currentSource = null, currentRaf = 0;
   let neuralDisabled = false;
@@ -338,15 +342,18 @@
     postToParent('speaking', { text: stripped });
     if (ttsMuted) return;
     stopSpeaking();
-    if (neuralDisabled) { speakBrowser(ttsText); return; }
-    speakNeural(ttsText, myseq).catch((e) => {
-      if (myseq !== speakSeq) return;
-      const msg = (e && e.message) || '';
-      if (/http 4\d\d|Failed to fetch|NetworkError|Load failed/i.test(msg)) neuralDisabled = true;
-      console.warn('神經語音失敗，退回瀏覽器語音：', msg);
-      useAudioMouth = false;
-      speakBrowser(ttsText);
-    });
+    if (ttsMode === 'neural' && !neuralDisabled) {
+      speakNeural(ttsText, myseq).catch((e) => {
+        if (myseq !== speakSeq) return;  // 已被更新的點擊取代 → 不要退回播放
+        const msg = (e && e.message) || '';
+        if (/http 4\d\d|Failed to fetch|NetworkError|Load failed/i.test(msg)) neuralDisabled = true; // 結構性失敗(無後端/CORS/被擋)→不再試神經語音
+        console.warn('神經語音失敗，退回瀏覽器語音：', msg);
+        useAudioMouth = false;
+        speakBrowser(ttsText);
+      });
+      return;
+    }
+    speakBrowser(ttsText);
   }
 
   async function speakNeural(text, seq) {
@@ -1247,12 +1254,30 @@
     if (ttsMuted) stopSpeaking();
     e.currentTarget.textContent = ttsMuted ? '🔇' : '🔊';
   });
-  document.getElementById('btn-speed').addEventListener('click', (e) => {
-    const rates = [0.8, 1.0, 1.2, 1.5, 2.0];
-    const idx = rates.indexOf(ttsRate);
-    ttsRate = rates[(idx + 1) % rates.length];
-    e.currentTarget.textContent = ttsRate.toFixed(1) + '×';
-  });
+  // TTS route toggle: 'browser' (default, free Web Speech API) ↔ 'neural' (MiniMax TTS).
+  // Persisted in localStorage so the user's choice survives page reloads.
+  (function() {
+    const btn = document.getElementById('btn-tts-mode');
+    const KEY = 'xiaob_tts_mode';
+    function paint() {
+      const isNeural = (ttsMode === 'neural');
+      btn.setAttribute('aria-pressed', String(isNeural));
+      btn.innerHTML = '<span aria-hidden="true">' + (isNeural ? '💎' : '🌐') + '</span> ' + (isNeural ? 'MiniMax' : '免費');
+      btn.title = isNeural
+        ? 'MiniMax 神經語音 (Cantonese HD)。撳一下切換返免費 Web Speech API。'
+        : '免費 Web Speech API (瀏覽器內建)。撳一下切換至 MiniMax 神經語音。';
+    }
+    // Sync from storage on boot (already loaded into ttsMode above) and paint
+    paint();
+    btn.addEventListener('click', () => {
+      ttsMode = (ttsMode === 'browser') ? 'neural' : 'browser';
+      try { localStorage.setItem(KEY, ttsMode); } catch (e) {}
+      neuralDisabled = false;   // user manual toggle = fresh retry opportunity
+      paint();
+      // Brief bubble hint
+      showBubble(ttsMode === 'neural' ? '已切換至 MiniMax 神經語音 (Cantonese HD)' : '已切換至免費 Web Speech API');
+    });
+  })();
   // Voice selector — fetch /api/voices and cycle through, with localStorage persistence
   (function() {
     const btn = document.getElementById('btn-voice');
