@@ -90,7 +90,12 @@
   var iframe = document.createElement('iframe');
   iframe.src = iframeSrc;
   iframe.title = 'AI 虛擬人助理';
-  iframe.setAttribute('allow', 'microphone; autoplay');
+  // Mobile mic fix (2026-06-13): speech-recognition must be declared in iframe `allow`
+  // for cross-origin embeds; bare `microphone` covers getUserMedia but not
+  // SpeechRecognition on Android Chrome / iOS Safari. Wildcards (*) let any
+  // descendant origin use these features — fine since the iframe loads our
+  // own widget.html on the same domain.
+  iframe.setAttribute('allow', 'microphone *; camera *; autoplay *; speech-recognition *');
   iframe.setAttribute('allowtransparency', 'true');
   iframe.style.cssText = 'width:100%;height:100%;border:0;background:transparent;color-scheme:normal;';
 
