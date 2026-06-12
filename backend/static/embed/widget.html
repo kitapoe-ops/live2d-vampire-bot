@@ -669,7 +669,7 @@
     const data = new Uint8Array(analyser.fftSize);
     currentSource = src;
     useAudioMouth = true; isSpeaking = true;
-    if (model) try { model.motion('Tap'); } catch (e) {}
+    if (model) try { model.motion('Tap'); restoreOutfitFromEmoteState(); } catch (e) {}
     const loop = () => {
       if (currentSource !== src) return;
       analyser.getByteTimeDomainData(data);
@@ -698,7 +698,7 @@
     u.onend = () => { isSpeaking = false; clearInterval(speakBrowser._poll); };
     const fire = () => {
       speechSynthesis.speak(u);
-      isSpeaking = true; mouthTarget = 0.7; if (model) try { model.motion('Tap'); } catch (e) {}
+      isSpeaking = true; mouthTarget = 0.7; if (model) try { model.motion('Tap'); restoreOutfitFromEmoteState(); } catch (e) {}
       const t0 = performance.now();
       clearInterval(speakBrowser._poll);
       speakBrowser._poll = setInterval(() => {
@@ -1196,6 +1196,27 @@
       } catch (e) {}
 
       // ── Motion injection: load .motion3.json files and register them ──
+      // 2026-06-12: Helper to restore outfit params after any motion finishes.
+      // Called by the onAnimationEnd callback added to each CubismMotion in injectMotions().
+      // This is the definitive fix for the "select black → motion resets to white" bug.
+      function restoreOutfitFromEmoteState() {
+        if (emoteState.outfit === 'vampire2') {
+          safeSetParam('PARAMoutfit1_2', 0.0);
+          safeSetParam('PARAMhariWB',   0.0);
+          safeSetParam('PARAMhariWB2',   1.0);
+          safeSetParam('PARAMhari_7',    1.0);
+          safeSetParam('PARAMhari_8',    1.0);
+          safeSetParam('PARAMhari_3',    0.0);
+        } else {
+          safeSetParam('PARAMoutfit1_2', 1.0);
+          safeSetParam('PARAMhariWB',   1.0);
+          safeSetParam('PARAMhariWB2',   0.0);
+          safeSetParam('PARAMhari_7',    1.0);
+          safeSetParam('PARAMhari_8',    1.0);
+          safeSetParam('PARAMhari_3',    1.0);
+        }
+      }
+
       async function injectMotions() {
         const BASE = CFG.get('model').replace(/[^/]+\.model3\.json$/, '');
         const motionFiles = [
@@ -1215,6 +1236,27 @@
               cubismMotion = CubismMotion.create(motionJson);
             }
             if (!cubismMotion) { console.warn('[Live2D] CubismMotion.create unavailable for', mf.name); continue; }
+            // 2026-06-12 BUG FIX: motion files (2.motion3.json, Scene1.motion3.json)
+            // declare PARAMoutfit1_2 but have NO keyframes (times=[], vals=[]).
+            // Live2D Cubism SDK resets un-keyframed parameters to model default (0=white)
+            // every time a motion plays. This overwrites the outfit state set by the
+            // render loop's safeSetParam on every frame.
+            // Fix: add onAnimationEnd callback to each CubismMotion so the outfit is
+            // restored the moment any motion (Tap/Idle/Scene1) finishes.
+            if (typeof cubismMotion.onAnimationEnd === 'function') {
+              cubismMotion.onAnimationEnd(() => {
+                restoreOutfitFromEmoteState();
+                console.log('[Live2D] Motion "' + mf.name + '" ended — outfit restored to:', emoteState.outfit);
+              });
+            } else if (typeof cubismMotion.on === 'function') {
+              // PixiJS Live2D uses .on('motionFinish', ...) instead
+              cubismMotion.on('motionFinish', () => {
+                restoreOutfitFromEmoteState();
+                console.log('[Live2D] Motion "' + mf.name + '" ended — outfit restored to:', emoteState.outfit);
+              });
+            } else {
+              console.warn('[Live2D] Cannot attach motion-end callback for', mf.name, '(no onAnimationEnd or .on method)');
+            }
             // Register in model.internalModel.motionGroups (Map)
             const im = model.internalModel;
             if (!im.motionGroups) im.motionGroups = new Map();
@@ -1252,7 +1294,7 @@
             const groups = ['Idle', 'idle', 'IDLE', 'Motion', 'motion'];
             let played = false;
             for (const g of groups) {
-              try { model.motion(g); played = true; console.log('[Live2D] Started motion group:', g); break; } catch (e) { }
+              try { model.motion(g); restoreOutfitFromEmoteState(); played = true; console.log('[Live2D] Started motion group:', g); break; } catch (e) { }
             }
             if (!played) {
               try {
@@ -1260,7 +1302,7 @@
                 const motions = settings && settings.motions;
                 if (motions) {
                   const keys = Object.keys(motions);
-                  if (keys.length > 0) { model.motion(keys[0]); played = true; console.log('[Live2D] Started fallback group:', keys[0]); }
+                  if (keys.length > 0) { model.motion(keys[0]); restoreOutfitFromEmoteState(); played = true; console.log('[Live2D] Started fallback group:', keys[0]); }
                 }
               } catch (e) { }
             }
@@ -1567,7 +1609,7 @@
         canvasEl.addEventListener('click', () => {
           if (model && typeof model.motion === 'function') {
             try {
-              model.motion('Scene1');
+              model.motion('Scene1'); restoreOutfitFromEmoteState();
               console.log('[Live2D] Play clicked reaction motion: Scene1');
             } catch (e) {
               console.warn('[Live2D] Failed to play Scene1 motion:', e);
