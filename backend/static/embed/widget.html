@@ -1437,7 +1437,7 @@
             angry: 'mad',
             happy: 'hearteyes',
             surprised: 'circleeyes',
-            neutral: emoteState.outfit === 'vampire2' ? 'vampire2' : 'vampire'
+            neutral: emoteState.outfit === 'vampire2' ? 'vampire2' : '吸血鬼'
           };
           const expName = expMap[name];
           if (expName) {
@@ -1470,13 +1470,19 @@
         btn.innerHTML = '<span aria-hidden="true">🧥</span> 衣裝';
 
         function toggleOutfit() {
-          const nextOutfit = emoteState.outfit === 'vampire' ? 'vampire2' : 'vampire';
+          const isBlack = (emoteState.outfit !== 'vampire2');
+          const nextOutfit = isBlack ? 'vampire2' : 'vampire';
           emoteState.outfit = nextOutfit;
 
           if (model && typeof model.expression === 'function') {
             try {
-              model.expression(nextOutfit === 'vampire2' ? 'vampire2' : 'vampire');
-              console.log('[Live2D] Outfit toggled to:', nextOutfit);
+              // 2026-06-12 BUG FIX: vampire.exp3.json does NOT exist.
+              // The black outfit file is named 吸血鬼.exp3.json (Chinese).
+              // When model.expression('vampire') was called, Live2D threw
+              // because the .exp3.json file was not found.
+              const expName = (nextOutfit === 'vampire2') ? 'vampire2' : '吸血鬼';
+              model.expression(expName);
+              console.log('[Live2D] Outfit toggled to:', nextOutfit, '-> expression:', expName);
             } catch (err) {
               console.warn('[Live2D] Failed to toggle outfit expression:', err);
             }
