@@ -159,7 +159,7 @@
         <button class="ctrl" id="btn-llm"   aria-label="設置 DeepSeek API Key 啟用 AI 大腦" aria-pressed="false" title="設置 DeepSeek API Key"><span aria-hidden="true">🧠</span></button>
         <button class="ctrl" id="btn-emote" aria-label="切換衣裝形態" aria-pressed="false" title="切換衣裝形態"><span aria-hidden="true">🧥</span> 衣裝</button>
         <button class="ctrl" id="btn-mute"  aria-label="靜音" aria-pressed="false" title="靜音 / 取消靜音"><span aria-hidden="true">🔊</span></button>
-        <button class="ctrl" id="btn-voice" aria-label="選擇語音" aria-haspopup="listbox" aria-expanded="false" title="選擇語音 (MiniMax 路線有 12 個語音 / 瀏覽器路線有系統內建語音)"><span aria-hidden="true">🗣️</span> <span id="btn-voice-label">語音</span></button>
+        <button class="ctrl" id="btn-voice" aria-label="選擇語音" aria-haspopup="listbox" aria-expanded="false" title="選擇語音 (MiniMax 路線按需要 API Key 之後自動載入完整語音目錄 / 瀏覽器路線有系統內建語音)"><span aria-hidden="true">🗣️</span> <span id="btn-voice-label">語音</span></button>
         <button class="ctrl" id="btn-tts-mode" aria-label="切換 TTS 路線 (免費 Web Speech API / MiniMax 神經語音)" aria-pressed="false" title="TTS 路線：免費 (Web Speech API) / 切換至 MiniMax 神經語音"><span aria-hidden="true">🌐</span> 免費</button>
         <button class="ctrl" id="btn-close" aria-label="收起助理" title="收起助理"><span aria-hidden="true">✕</span></button>
       </div>
@@ -566,24 +566,28 @@
       throw new Error('MiniMax Group ID missing — open settings (🔑) to set it');
     }
     const voiceId = NEURAL_VOICE || 'cantonese-female';
+    // 2026-06-12 17:12 FIX: align with BAZOOKA backend (backend/app.py /api/tts
+    // proven payload) — model was 'speech-02' but MiniMax T2A v2 requires
+    // 'speech-02-hd' for non-empty data.audio response. Also drop the unsupported
+    // 'vol' / 'pitch' fields from voice_setting (they caused silent
+    // data.audio omission in the new MiniMax T2A v2 build). Use snake_case
+    // group_id query param to match the documented endpoint signature.
     const body = {
-      model: 'speech-02',
-      text: text,
+      model: 'speech-02-hd',
+      text: String(text || '').slice(0, 150),   // hard cap 150 chars (matches BAZOOKA)
       stream: false,
       voice_setting: {
         voice_id: voiceId,
-        speed: 1.0,
-        vol: 1.0,
-        pitch: 0
+        speed: 1.0
       },
       audio_setting: {
         sample_rate: 32000,
-        bitrate: 128000,
         format: 'mp3',
+        bitrate: 128000,
         channel: 1
       }
     };
-    const r = await fetch(MINIMAX_TTS_DIRECT + '?GroupId=' + encodeURIComponent(MINIMAX_GROUP_ID), {
+    const r = await fetch(MINIMAX_TTS_DIRECT + '?group_id=' + encodeURIComponent(MINIMAX_GROUP_ID), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -596,6 +600,14 @@
       throw new Error('http ' + r.status + ' ' + (errText.slice(0, 200) || ''));
     }
     const j = await r.json();
+    // 2026-06-12 17:12 FIX: also check base_resp.status_code (BAZOOKA-style)
+    // before trusting data.audio. MiniMax returns 200 OK with empty data
+    // when the voice_id is wrong / deprecated / group_id mismatch — the
+    // base_resp.status_code carries the actual error in those cases.
+    if (j && j.base_resp && j.base_resp.status_code !== undefined && j.base_resp.status_code !== 0) {
+      const msg = j.base_resp.status_msg || ('MiniMax error ' + j.base_resp.status_code);
+      throw new Error('MiniMax voice error: ' + msg + ' (voice_id=' + voiceId + ')');
+    }
     if (j && j.data && j.data.audio) {
       // hex-encoded audio
       const hex = j.data.audio;
@@ -605,7 +617,7 @@
       }
       return new Response(bytes, { status: 200, headers: { 'Content-Type': 'audio/mpeg' } });
     }
-    throw new Error('MiniMax T2A response missing data.audio');
+    throw new Error('MiniMax T2A response missing data.audio (model=' + body.model + ', voice=' + voiceId + ')');
   }
 
   async function speakNeural(text, seq) {
@@ -1770,18 +1782,67 @@
       // Header
       const header = document.createElement('div');
       header.className = 'vl-header';
-      header.innerHTML = '<span>' + (isNeural ? 'MiniMax 神經語音 (12 個)' : '瀏覽器內建語音') + '</span><span style="font-size:11px;opacity:.7;">' + (isNeural ? '💎 server' : '🌐 free') + '</span>';
+      // 2026-06-12 17:15: dynamic count now that voice catalog is loaded
+      // directly from MiniMax (was hardcoded "12 個" when the only available
+      // voices came from a 12-item BAZOOKA backend).
+      const neuralCount = (isNeural && serverVoices.length) ? serverVoices.length : null;
+      header.innerHTML = '<span>' + (isNeural ? ('MiniMax 神經語音' + (neuralCount ? ' (' + neuralCount + ' 個)' : '')) : '瀏覽器內建語音') + '</span><span style="font-size:11px;opacity:.7;">' + (isNeural ? '💎 server' : '🌐 free') + '</span>';
       popover.appendChild(header);
 
       if (isNeural) {
         // Fetch server voice list lazily
+        // 2026-06-12 17:12 FIX (BAZOOKA-free): previously fetched the legacy
+        // BAZOOKA backend /api/voices endpoint. On Cloudflare Pages there is
+        // no backend, so the list was always empty. Now we call MiniMax
+        // /v1/voices directly with the user-supplied API key + group_id.
+        // MiniMax returns 300+ system voices. We filter to a curated set
+        // (zh-HK/zh-CN/zh-TW/en-US/en-GB/ja-JP) and group by language.
         if (!serverVoices.length) {
           try {
-            const base = TTS_ENDPOINT.replace(/\/api\/tts.*$/, '');
-            const r = await fetch(base + '/api/voices');
+            if (!MINIMAX_TTS_KEY || !MINIMAX_GROUP_ID) {
+              // Prompt the user to set up the API key first
+              const empty = document.createElement('div');
+              empty.className = 'vl-empty';
+              empty.textContent = '請先點 💎 設置 MiniMax API Key + Group ID。';
+              popover.appendChild(empty);
+              return;
+            }
+            const r = await fetch('https://api.minimax.chat/v1/voices?GroupId=' + encodeURIComponent(MINIMAX_GROUP_ID), {
+              headers: { 'Authorization': 'Bearer ' + MINIMAX_TTS_KEY }
+            });
+            if (!r.ok) throw new Error('http ' + r.status);
             const j = await r.json();
-            serverVoices = j.voices || [];
-          } catch (err) { console.warn('voice list fetch failed', err); }
+            // MiniMax voices response: { voices: [{ voice_id, name, lang, ... }] }
+            // or { system_voice: [...] } depending on endpoint version. Handle both.
+            const raw = (j.voices || j.system_voice || j.data || []).map(v => ({
+              id: v.voice_id || v.id || v.name,
+              name: v.name || v.voice_name || v.description || (v.voice_id || ''),
+              lang: v.lang || v.language || ''
+            })).filter(v => v.id);
+            // Curate: keep zh-HK/zh-CN/zh-TW/en-US/en-GB/ja-JP/ko-KR and a few popular ones
+            const curatedLangs = /^(zh-HK|zh-CN|zh-TW|zh|cmn-CN|yue-HK|en-US|en-GB|en|ja-JP|ko-KR)/i;
+            const curated = raw.filter(v => !v.lang || curatedLangs.test(v.lang) || /cantonese|粵|廣東/i.test(v.name));
+            // Sort: cantonese first, then mandarin, then english, then rest
+            const langOrder = (v) => {
+              const l = (v.lang || '').toLowerCase();
+              if (l.startsWith('zh-hk') || l.startsWith('yue')) return 0;
+              if (l.startsWith('zh-cn') || l.startsWith('zh') || l.startsWith('cmn')) return 1;
+              if (l.startsWith('en')) return 2;
+              if (l.startsWith('ja')) return 3;
+              if (l.startsWith('ko')) return 4;
+              return 5;
+            };
+            curated.sort((a, b) => langOrder(a) - langOrder(b) || a.name.localeCompare(b.name));
+            serverVoices = curated.length ? curated : raw;  // fallback to full list if curation removed everything
+            console.log('[voice-list] loaded ' + raw.length + ' raw, ' + serverVoices.length + ' curated');
+          } catch (err) {
+            console.warn('voice list fetch failed', err);
+            const empty = document.createElement('div');
+            empty.className = 'vl-empty';
+            empty.textContent = '語音目錄載入失敗：' + (err.message || err);
+            popover.appendChild(empty);
+            return;
+          }
         }
         if (!serverVoices.length) {
           const empty = document.createElement('div');
