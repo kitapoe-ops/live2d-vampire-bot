@@ -38,7 +38,7 @@
   var widgetUrl = (me && me.getAttribute('data-widget')) || (base + 'widget.html');
   // Cache-bust: append build version to force browser to fetch latest widget.html
   // (bypass any Cloudflare/browser cache that may hold stale polling code)
-  var _buildV = '20260611v13';
+  var _buildV = '20260612v01';
   if (widgetUrl.indexOf('?') < 0) widgetUrl += '?v=' + _buildV;
   else widgetUrl += '&v=' + _buildV;
   var startOpen = (me && me.getAttribute('data-open') !== 'false');

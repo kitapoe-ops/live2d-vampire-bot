@@ -20,12 +20,30 @@ import base64
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 import requests
 
 app = FastAPI(title="BAZOOKA Live2D Backend")
+
+
+# ---------------------------------------------------------------------------
+# Security & cache headers (audit 2026-06-12: address webhint/axe warnings)
+#   - X-Content-Type-Options: nosniff   → block MIME sniffing
+#   - Cache-Control: no-cache           → HTML files always revalidate (fix cache-control
+#                                          missing-for-HTML warning; widget.html changes
+#                                          frequently and must not be served stale)
+# ---------------------------------------------------------------------------
+@app.middleware("http")
+async def add_security_and_cache_headers(request: Request, call_next):
+    resp = await call_next(request)
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    path = request.url.path
+    if path.endswith(".html") or path == "/" or path.endswith("/"):
+        # HTML always revalidate (FastAPI default is no Cache-Control, browser may cache 30 days)
+        resp.headers.setdefault("Cache-Control", "no-cache, must-revalidate")
+    return resp
 
 # ---------------------------------------------------------------------------
 # Paths

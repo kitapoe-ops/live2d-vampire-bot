@@ -46,23 +46,27 @@
   .ctrl.llm-on { background:linear-gradient(135deg,#f2b34f,#e69426); }
   @keyframes pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(231,76,60,.55);} 50%{ box-shadow:0 0 0 7px rgba(231,76,60,0);} }
   #bubble {
-    /* Anchored above the control bar so it never blocks the avatar's face.
-       Control bar is at bottom:10px with ~2 rows of 36px buttons + padding ≈ 100px.
-       Place bubble at bottom: 110px so it sits cleanly above the bar. */
-    position:absolute; right:14px; left:14px; bottom:110px; top:auto;
+    /* Anchor at top so it never collides with the control bar (which has
+       1-3 rows of buttons depending on viewport width). Arrow points down
+       toward the avatar's face. */
+    position:absolute; top:14px; left:14px; right:14px;
     background:var(--surface); color:var(--ink); border-radius:16px; padding:11px 14px;
     font-size:14px; line-height:1.55;
     box-shadow:0 10px 30px rgba(0,0,0,.18), inset 0 0 0 1px rgba(91,84,232,.1);
-    opacity:0; transform:translateY(8px) scale(.98); transform-origin:bottom center;
+    opacity:0; transform:translateY(-8px) scale(.98); transform-origin:top center;
     transition:opacity .22s, transform .22s; pointer-events:none;
-    max-height:120px; overflow-y:auto;
+    max-height:40vh; overflow-y:auto;
   }
-  #bubble::after { content:""; position:absolute; right:38px; top:-7px; width:14px; height:14px;
+  #bubble::after { content:""; position:absolute; left:38px; bottom:-7px; width:14px; height:14px;
     background:var(--surface); transform:rotate(45deg); }
   #bubble.show { opacity:1; transform:none; }
+  /* PC view (>= 480px): narrow bubble on top-right */
+  @media (min-width: 480px) {
+    #bubble { left:auto; right:14px; max-width:300px; }
+  }
   #suggestions {
     display:none;   /* hidden per user request 2026-06-12 */
-    position:absolute; left:10px; right:10px; bottom:104px;
+    position:absolute; left:10px; right:10px; top:50%;
     flex-wrap:wrap; gap:6px; justify-content:center; pointer-events:auto;
   }
   #suggestions .sg-label {
@@ -179,9 +183,12 @@
     })();
   </script>
 
-  <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.10/dist/browser/pixi.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+  <!-- Self-hosted (3rd-party CDN → first-party; bypasses browser Tracking Prevention
+       storage blocks on cdn.jsdelivr.net that prevent PIXI init on iOS Safari / Brave).
+       Total: 769 KB. See backend/static/embed/vendor/README.md for licenses. -->
+  <script src="vendor/live2dcubismcore.min.js"></script>
+  <script src="vendor/pixi.min.js"></script>
+  <script src="vendor/cubism4.min.js"></script>
   <script src="knowledge.js"></script>
 
   <script type="module">
