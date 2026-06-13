@@ -1501,20 +1501,43 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             // render loop's safeSetParam on every frame.
             // Fix: add onAnimationEnd callback to each CubismMotion so the outfit is
             // restored the moment any motion (Tap/Idle/Scene1) finishes.
-            if (typeof cubismMotion.onAnimationEnd === 'function') {
-              cubismMotion.onAnimationEnd(() => {
+            //
+            // 2026-06-13 v20: the cubismMotion instance itself does NOT expose
+            // onAnimationEnd() or .on() in the @pixi/live2d-display 0.4.x CubismMotion
+            // build. The motionFinish event is emitted on the model, not on the
+            // motion. So we attach a single listener to `model` and filter by
+            // the motion group name. Idempotent: we install the listener once,
+            // before the loop, and re-use it for every motion we inject.
+            if (!model.__v20_motionFinishInstalled) {
+              model.__v20_motionFinishInstalled = true;
+              model.__v20_lastFinishedGroup = null;
+              model.on('motionFinish', (ev) => {
+                // PixiJS Live2D passes a MotionEvent-like object with a `name`
+                // (group) and the internal Motion instance. Some versions
+                // pass just the name as a string. Handle both.
+                const name = (ev && (ev.name || ev.group)) || model.__v20_lastFinishedGroup;
+                if (!name) return;
                 restoreOutfitFromEmoteState();
-                console.log('[Live2D] Motion "' + mf.name + '" ended — outfit restored to:', emoteState.outfit);
+                console.log('[Live2D] Motion "' + name + '" ended — outfit restored to:', emoteState.outfit);
               });
-            } else if (typeof cubismMotion.on === 'function') {
-              // PixiJS Live2D uses .on('motionFinish', ...) instead
-              cubismMotion.on('motionFinish', () => {
-                restoreOutfitFromEmoteState();
-                console.log('[Live2D] Motion "' + mf.name + '" ended — outfit restored to:', emoteState.outfit);
-              });
-            } else {
-              console.warn('[Live2D] Cannot attach motion-end callback for', mf.name, '(no onAnimationEnd or .on method)');
             }
+            // Track the most recent motion group that started, so the
+            // motionFinish callback can fall back to it if the event payload
+            // doesn't include the group name (older PixiJS versions).
+            (function attachStartHook() {
+              if (cubismMotion._v20_startHooked) return;
+              cubismMotion._v20_startHooked = true;
+              // Wrap the existing play / start if any
+              if (typeof cubismMotion.play === 'function') {
+                const origPlay = cubismMotion.play.bind(cubismMotion);
+                cubismMotion.play = function() {
+                  model.__v20_lastFinishedGroup = mf.name;
+                  return origPlay();
+                };
+              }
+            })();
+            // (No more per-motion listener: the model-level motionFinish
+            // handler above will fire for all of them.)
             // Register in model.internalModel.motionGroups (Map)
             const im = model.internalModel;
             if (!im.motionGroups) im.motionGroups = new Map();
