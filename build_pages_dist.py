@@ -81,8 +81,21 @@ def write_security_files():
   # Android Chrome mobile mic restriction. This reverts to near-baseline
   # (X-Content-Type-Options kept for MIME sniffing, no mic impact).
   # Re-enable security incrementally once mobile mic is verified working.
+  # 2026-06-13 v25: per-file Content-Type rules instead of a blanket text/html
+  # at the catch-all `/*` rule. CF Pages _headers rules ACCUMULATE rather
+  # than REPLACE, so a text/html rule at `/*` would force .js / .json / .png
+  # responses to also advertise Content-Type: text/html. Caught and rolled
+  # back; we now set Content-Type only on specific glob patterns.
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+
+/*.html
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
+/static/embed/*.js
+  Content-Type: application/javascript; charset=utf-8
+  Cache-Control: public, max-age=300, must-revalidate
 
 /static/embed/*
   Cache-Control: public, max-age=300, must-revalidate
@@ -96,10 +109,28 @@ def write_security_files():
   X-Content-Type-Options: nosniff
 
 /live2d/*/*.moc3
+  Content-Type: application/octet-stream
   Cache-Control: public, max-age=86400, immutable
 
-/live2d/*/*.model3.json
+/live2d/**/*.model3.json
+  Content-Type: application/json
   Cache-Control: public, max-age=0, must-revalidate
+
+/live2d/**/*.pngs
+  Content-Type: image/png
+  Cache-Control: public, max-age=86400, immutable
+
+/live2d/**/*.motion3.json
+  Content-Type: application/json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/live2d/**/*.exp3.json
+  Content-Type: application/json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/live2d/**/*.png
+  Content-Type: image/png
+  Cache-Control: public, max-age=86400, immutable
 """
     (DIST / "_headers").write_text(headers, encoding="utf-8")
     print("Wrote _headers")
