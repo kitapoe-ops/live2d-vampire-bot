@@ -1545,12 +1545,39 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             // handler above will fire for all of them.)
             // Register in model.internalModel.motionGroups (Map)
             const im = model.internalModel;
+            // Register in model.internalModel.motionGroups (Map).
+            // This is the legacy path that some other code in this file
+            // (e.g. playIdle's debug log) reads, so keep it for back-compat.
+            const im = model.internalModel;
             if (!im.motionGroups) im.motionGroups = new Map();
             im.motionGroups.set(mf.name, cubismMotion);
-            // Mirror into settings.motions so playIdle() finds it
-            if (!im.settings) im.settings = {};
-            if (!im.settings.motions) im.settings.motions = {};
-            im.settings.motions[mf.name] = [{ fade_in: 0.5, fade_out: 0.5 }];
+
+            // 2026-06-13 v26: prefer the MotionManager.add() path over
+            // writing im.settings.motions[mf.name] = [{ fade_in, fade_out }].
+            // The latter triggers a TypeError in the .moc3 motion loader
+            // when model.motion(group) is called, because it expects each
+            // entry to have a `file` field; without one, resolveURL(undefined)
+            // throws and the user sees 'Failed to load motion: undefined'.
+            //
+            // MotionManager.add() registers a pre-loaded factory so the
+            // manager skips the file load and just plays the cubismMotion
+            // instance we already have. This is the documented Pixi Live2D
+            // 0.4.x path for in-memory motion injection.
+            try {
+              const mm = im.motionManager;
+              if (mm && typeof mm.add === 'function') {
+                // mm.add(name, factory, priority) - factory is () => Motion
+                // Returning the same instance is safe because the manager
+                // calls _setup() on it (idempotent) and resets state.
+                mm.add(mf.name, () => cubismMotion, 3);
+              } else if (mm && typeof mm.define === 'function') {
+                // older API alias
+                mm.define(mf.name, () => cubismMotion, 3);
+              }
+            } catch (eMM) {
+              console.warn('[Live2D] motionManager.add failed for', mf.name, ':', eMM);
+            }
+
             console.log('[Live2D] Motion injected:', mf.name, '(duration:', motionJson.Meta && motionJson.Meta.Duration, 's)');
           } catch (e) { console.warn('[Live2D] injectMotions error for', mf.name, ':', e); }
         }
