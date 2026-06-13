@@ -1864,7 +1864,113 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           mouseY = e.clientY - rect.top;
           hasMouseInput = true;
         });
-        canvasEl.addEventListener('click', () => {
+        // 2026-06-13 v18: pointerdown / pointermove / pointerup handlers
+        // to enable dragging the model's body across the canvas.
+        // - Left button drag (button === 0) translates the body via
+        //   PARAM_BODY_POSITION_X / PARAM_BODY_POSITION_Y. Movement is
+        //   accumulated into a dragOffset pair that persists after release
+        //   (per user spec: "stay" - the body stays where the user puts it
+        //   until they drag it again).
+        // - A pointerdown+pointerup with < 5px of total movement is
+        //   classified as a click and continues to play the Scene1 motion.
+        // - Drag coexists with mouse-follow (model.track): the head/eye
+        //   still follows the cursor while the user drags the body.
+        const DRAG_PX_TO_PARAM = 0.05;  // 1 px of mouse movement -> 0.05 unit body offset
+        const DRAG_CLICK_THRESHOLD = 5; // < 5 px movement = treat as click
+        const DRAG_BODY_MAX = 30.0;     // clamp body offset to ±30 (safe rig range)
+        const dragState = {
+          pointerId: null,
+          startX: 0, startY: 0,
+          lastX: 0, lastY: 0,
+          totalMoved: 0,
+          isDragging: false,
+          offsetX: 0, offsetY: 0, // accumulated body translation in param units
+        };
+        canvasEl.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0) return; // left button only
+          dragState.pointerId = e.pointerId;
+          dragState.startX = dragState.lastX = e.clientX;
+          dragState.startY = dragState.lastY = e.clientY;
+          dragState.totalMoved = 0;
+          dragState.isDragging = false;
+          try { canvasEl.setPointerCapture(e.pointerId); } catch (_) {}
+        });
+        canvasEl.addEventListener('pointermove', (e) => {
+          // (mouse-follow handler is the registered one above; this is in
+          // addition - browsers fire both, so the order of registration
+          // matters. We use the second pointermove handler to also accumulate
+          // drag delta if a drag is in progress for this pointer.)
+          if (dragState.pointerId !== e.pointerId) return;
+          const dx = e.clientX - dragState.lastX;
+          const dy = e.clientY - dragState.lastY;
+          dragState.lastX = e.clientX;
+          dragState.lastY = e.clientY;
+          dragState.totalMoved += Math.abs(dx) + Math.abs(dy);
+          if (dragState.totalMoved > DRAG_CLICK_THRESHOLD) {
+            dragState.isDragging = true;
+            // update accumulated body offset (clamped to safe range)
+            dragState.offsetX = Math.max(-DRAG_BODY_MAX, Math.min(DRAG_BODY_MAX,
+              dragState.offsetX + dx * DRAG_PX_TO_PARAM));
+            dragState.offsetY = Math.max(-DRAG_BODY_MAX, Math.min(DRAG_BODY_MAX,
+              dragState.offsetY + dy * DRAG_PX_TO_PARAM));
+          }
+        });
+        function endDrag(e) {
+          if (dragState.pointerId !== e.pointerId) return;
+          dragState.pointerId = null;
+          // isDragging is left as-is; it's checked by the click fallback
+          // in the click handler below via a separate flag.
+        }
+        canvasEl.addEventListener('pointerup', endDrag);
+        canvasEl.addEventListener('pointercancel', endDrag);
+
+        // 2026-06-13 v18: runtime introspection dump. Boot-time one-shot
+        // that lists every parameter the model exposes, grouped by prefix,
+        // so we can answer "does this model have right-hand/right-leg
+        // articulation?" without grep'ing the .moc3 binary.
+        // Activate via URL param: ?introspect=1 (default: console.log only
+        // with a smaller summary; full dump with ?introspect=full).
+        (function() {
+          const url = new URL(window.location.href);
+          const mode = url.searchParams.get('introspect');
+          if (!mode) return;
+          try {
+            const cm = model && model.internalModel && model.internalModel.coreModel;
+            if (!cm) { console.warn('[v18 introspect] no coreModel'); return; }
+            const dump = (cm._parameterIds && Array.isArray(cm._parameterIds)) ? cm._parameterIds.slice() : [];
+            if (mode === 'full') {
+              // Full dump: every parameter, sorted
+              const lines = ['[v18 introspection] ' + dump.length + ' parameters (full):'];
+              for (const id of dump) lines.push('  ' + id);
+              console.log(lines.join('\n'));
+              return;
+            }
+            // Default: grouped by prefix
+            const groups = {};
+            for (const id of dump) {
+              // extract prefix: PARAMHAND_1 -> HAND, PARAMlegL1 -> LEG, PARAM_BODY_ANGLE_X -> BODY
+              const m = String(id).match(/^PARAM([A-Z_]+?)(?:[0-9_].*)?$/) || String(id).match(/^PAR([A-Z]+)/i);
+              const key = m ? m[1] : 'OTHER';
+              (groups[key] = groups[key] || []).push(id);
+            }
+            const lines = ['[v18 introspection] ' + dump.length + ' parameters (grouped):'];
+            const keys = Object.keys(groups).sort();
+            for (const k of keys) {
+              lines.push('  ' + k.padEnd(8) + ' (' + groups[k].length + '): ' + groups[k].slice(0, 8).join(', ') + (groups[k].length > 8 ? ', ...' : ''));
+            }
+            console.log(lines.join('\n'));
+            // Also stash on window for ad-hoc reading from devtools
+            window.__v18_introspect = { total: dump.length, byGroup: groups, all: dump };
+          } catch (eIntrospect) {
+            console.warn('[v18 introspection] failed:', eIntrospect);
+          }
+        })();
+        canvasEl.addEventListener('click', (e) => {
+          // If a drag just ended, skip the click motion.
+          if (dragState.isDragging) {
+            dragState.isDragging = false;
+            return;
+          }
           if (model && typeof model.motion === 'function') {
             try {
               model.motion('Scene1'); restoreOutfitFromEmoteState();
@@ -1921,6 +2027,25 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         }
         safeSetParam('PARAM_BODY_ANGLE_X', bodySwayX);
         safeSetParam('PARAM_BODY_ANGLE_Y', bodySwayY);
+
+        // 2026-06-13 v18: apply drag-translation offset to body position.
+        // The user can drag the model across the canvas and it stays put
+        // after release. This overrides any per-frame reset because it runs
+        // at the end of every model.update tick, after motion/sway are applied.
+        if (typeof dragState !== 'undefined' && dragState && (dragState.offsetX !== 0 || dragState.offsetY !== 0)) {
+          try {
+            // Add to current value (preserve any motion-induced offset) and clamp.
+            const baseX = (model && model.internalModel && model.internalModel.coreModel && typeof model.internalModel.coreModel.getParameterValueById === 'function')
+              ? model.internalModel.coreModel.getParameterValueById('PARAM_BODY_POSITION_X') : 0;
+            const baseY = (model && model.internalModel && model.internalModel.coreModel && typeof model.internalModel.coreModel.getParameterValueById === 'function')
+              ? model.internalModel.coreModel.getParameterValueById('PARAM_BODY_POSITION_Y') : 0;
+            // dragState.offsetX/Y are the *additional* offset from the drag
+            // gesture; we want the final body position to equal that offset,
+            // so we set it directly (not additive) but clamp to safe range.
+            safeSetParam('PARAM_BODY_POSITION_X', Math.max(-30, Math.min(30, dragState.offsetX)));
+            safeSetParam('PARAM_BODY_POSITION_Y', Math.max(-30, Math.min(30, dragState.offsetY)));
+          } catch (e) { /* param may not exist on all model variants */ }
+        }
 
         // ─── 寫入全域 emoteState 外觀與表情參數 ───
         // 1. 服裝型態 (outfit) — 2026-06-13 v16: delegated to applyOutfit() (single source of truth)
