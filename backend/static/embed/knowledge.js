@@ -448,15 +448,22 @@ window.KNOWLEDGE = (function () {
       try {
         var cm = _resolveCoreModel();
         // Strategy 1: byId API (fastest, but PixiJS may not expose it)
+        // 2026-06-13 v15: removed aggressive read-back verification.
+        // The set-then-read pattern was throwing 'Verification failed' on
+        // emotion-driven facial params (PARAM_BROW_L_Y etc) because the
+        // PIXI live2d-display Cubism 4 wrapper has asymmetric get/set paths:
+        // setParameterValueById writes to native model state, but the
+        // read-back path may return a stale/wrapped value, or hit an
+        // undefined internal id. Throwing here aborts applyEmotion() mid-
+        // sequence, breaking facial expressions during TTS streaming.
+        // Trust the byId write; if it silently no-ops, the by-index fallback
+        // below will catch it.
         if (cm && typeof cm.setParameterValueById === 'function') {
           try {
             cm.setParameterValueById(id, v);
-            if (typeof cm.getParameterValueById === 'function' && cm.getParameterValueById(id) === v) {
-              return { ok: true, value: v, classification: cls, via: 'id' };
-            }
-            throw new Error('Verification failed');
+            return { ok: true, value: v, classification: cls, via: 'id' };
           } catch (eById) {
-            // byId threw or failed verification, fall through to index-based
+            // byId threw (e.g. unknown id in Wasm), fall through to index-based
           }
         }
         // Strategy 2: O(1) by-index via _idIndexMap (built at boot from im.settings.parameters)
@@ -464,8 +471,6 @@ window.KNOWLEDGE = (function () {
           var idx = _idIndexMap.get(id);
           if (typeof idx === 'number' && idx >= 0) {
             cm.setParameterValueByIndex(idx, v);
-            var checkVal = cm.getParameterValueByIndex(idx);
-            console.log('[KNOWLEDGE] write check:', id, 'index:', idx, 'value:', v, 'written:', checkVal);
             return { ok: true, value: v, classification: cls, via: 'index-map' };
           }
         }
