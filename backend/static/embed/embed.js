@@ -51,12 +51,20 @@
     if (v) cfg.set(k, v);
   });
   // Default to vampire model. If running locally on localhost/127.0.0.1, use relative path to prevent CORS issues.
+  // 2026-06-13 v24: hardcode the URL-encoded form (%E5%90%B8%E8%A1%80%E9%AC%BC) instead of
+  // calling encodeURIComponent('吸血鬼') at runtime. This sidesteps any encoding
+  // bug in the host environment's JavaScript engine (e.g. legacy IE, a CSP
+  // that strips non-ASCII source, or a static analysis tool that misrenders
+  // CJK characters in the source file as mojibake like 𢙺銵擛 and 'fixes'
+  // them to garbage). The hardcoded form is byte-identical to what
+  // encodeURIComponent('吸血鬼') produces.
   if (!cfg.has('model')) {
+    var VAMP_ENC = '%E5%90%B8%E8%A1%80%E9%AC%BC';
     var isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
     if (isLocal) {
-      cfg.set('model', '/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json');
+      cfg.set('model', '/static/live2d/vampire/' + VAMP_ENC + '.model3.json');
     } else {
-      cfg.set('model', 'https://vampire.kitahim.uk/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json');
+      cfg.set('model', 'https://vampire.kitahim.uk/static/live2d/vampire/' + VAMP_ENC + '.model3.json');
     }
   }
   if (!cfg.has('knowledge')) {
@@ -144,9 +152,32 @@
   bubble.addEventListener('click', function () { setOpen(true); try { iframe.focus(); } catch (e) {} });
   bubble.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(true); } });
 
-  // Track iframe-loaded so postMessage is safe
+  // Track iframe-loaded so postMessage is safe.
+  // 2026-06-13 v24: replace single-shot setTimeout(500) with a message queue
+  // that flushes when the iframe fires its load event. The previous code
+  // dropped the message if widget.html took > 500ms to init (common on
+  // slow mobile networks or with cold Cloudflare cache hits), and
+  // compounded multiple pre-load say() calls into a single burst on
+  // the first 500ms tick.
   var ready = false;
-  iframe.addEventListener('load', function () { ready = true; });
+  var messageQueue = [];
+  iframe.addEventListener('load', function () {
+    ready = true;
+    // Flush queued messages once loaded
+    while (messageQueue.length > 0) {
+      var msg = messageQueue.shift();
+      try {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.postMessage(msg, widgetOrigin || '*');
+        }
+      } catch (eFlush) {
+        // If even the flush fails, re-queue at the front so we don't lose
+        // the message; the next load (e.g. on widget reload) will retry.
+        messageQueue.unshift(msg);
+        break;
+      }
+    }
+  });
 
   // Forward close requests from iframe
   window.addEventListener('message', function (e) {
@@ -161,15 +192,19 @@
     open: function () { setOpen(true); },
     close: function () { setOpen(false); },
     say: function (text) {
+      var payload = { ns: NS_OUT, type: 'say', text: String(text || '') };
       try {
         if (ready && iframe.contentWindow) {
-          iframe.contentWindow.postMessage({ ns: NS_OUT, type: 'say', text: String(text || '') }, widgetOrigin || '*');
+          iframe.contentWindow.postMessage(payload, widgetOrigin || '*');
         } else {
-          setTimeout(function () {
-            try { iframe.contentWindow.postMessage({ ns: NS_OUT, type: 'say', text: String(text || '') }, widgetOrigin || '*'); } catch (e) {}
-          }, 500);
+          // Queue it; load handler will flush.
+          messageQueue.push(payload);
         }
-      } catch (e) {}
+      } catch (e) {
+        // If the synchronous postMessage throws (e.g. cross-origin
+        // restriction), fall back to queue. The load handler will retry.
+        messageQueue.push(payload);
+      }
     }
   };
 })();
