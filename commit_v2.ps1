@@ -1,0 +1,4 @@
+Set-Location 'C:\Users\kitap\.openclaw\workspace\live2d-fork'
+git add build_pages_dist.py backend/static/embed/embed.js
+git diff --cached --stat
+git commit -m 'fix(mobile-mic-v2): CSP frame-ancestors + Permissions-Policy mic=* + clean allow tokens' -m 'Per debug smoke test on Android Chrome emulation (headless Chromium 145):' -m '* console warning Unrecognized feature speech-recognition with wildcard - remove wildcard' -m '* console warning X-Frame-Options ALLOW-FORM not recognized - add modern Content-Security-Policy frame-ancestors' -m '* Permissions-Policy microphone=(self) too restrictive for same-origin iframe - change to microphone=*' -m 'Changes' -m '* backend/static/embed/embed.js: iframe allow uses plain speech-recognition token (no wildcard)' -m '* build_pages_dist.py: _headers now sets CSP frame-ancestors + Permissions-Policy mic=*' 2>&1 | Select-Object -First 10

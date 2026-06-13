@@ -1,0 +1,4 @@
+Set-Location 'C:\Users\kitap\.openclaw\workspace\live2d-fork'
+git add build_pages_dist.py backend/static/embed/embed.js
+git diff --cached --stat
+git commit -m 'fix(mobile-mic-v3): widen CSP to allow esm.run webllm + drop speech-recognition token' -m 'Smoke test 2.0 found 3 CSP violations from over-aggressive CSP:' -m '* https://static.cloudflareinsights.com/beacon.min.js blocked' -m '* https://esm.run/@mlc-ai/web-llm blocked' -m '* Plus iframe allow Unrecognized feature speech-recognition warning' -m 'Fix:' -m '* Widen CSP script-src to allow esm.run + static.cloudflareinsights.com' -m '* Widen CSP connect-src to allow esm.run (web-llm fetches model weights)' -m '* Add worker-src blob: (web-llm uses blob URLs for workers)' -m '* Drop speech-recognition token from iframe allow (not in W3C feature list; microphone covers it)' 2>&1 | Select-Object -First 10
