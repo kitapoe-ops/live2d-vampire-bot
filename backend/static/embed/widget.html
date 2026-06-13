@@ -135,6 +135,100 @@
     box-shadow:0 8px 24px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.12);
     max-width:calc(100% - 16px);
   }
+  /* 2026-06-13 v30: corner-actions and settings-modal. The in-frame control
+     bar is now just the type-input + send row. Two floating buttons sit
+     in the bottom-right corner: a settings button and the close button. */
+  #corner-actions {
+    position:absolute; right:8px; bottom:60px;
+    display:flex; flex-direction:row; gap:6px; padding:0; z-index:5;
+  }
+  .corner-btn {
+    background:var(--dock);
+    backdrop-filter:blur(10px) saturate(1.3);
+    -webkit-backdrop-filter:blur(10px) saturate(1.3);
+    box-shadow:0 4px 14px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.12);
+    color:var(--ink);
+    border:none; outline:none;
+    border-radius:14px;
+    padding:6px 10px;
+    font-size:13px; font-weight:600;
+    display:inline-flex; align-items:center; gap:5px;
+    cursor:pointer;
+    transition:transform .12s, box-shadow .12s, background .12s;
+  }
+  .corner-btn:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.18); }
+  .corner-btn:active { transform:translateY(0); }
+  .corner-btn[aria-pressed="true"] { background:var(--brand); color:#fff; }
+  /* Settings modal */
+  .settings-modal {
+    position:fixed; inset:0; z-index:50;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .settings-modal[hidden] { display:none !important; }
+  .settings-backdrop {
+    position:absolute; inset:0;
+    background:rgba(15,17,32,.55);
+    backdrop-filter:blur(2px);
+  }
+  .settings-panel {
+    position:relative;
+    width:min(420px, calc(100vw - 24px));
+    max-height:min(80vh, 560px);
+    background:var(--surface);
+    border-radius:18px;
+    box-shadow:0 24px 60px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.06);
+    display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .settings-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px; border-bottom:1px solid rgba(0,0,0,.08);
+  }
+  .settings-header h2 { margin:0; font-size:16px; font-weight:700; color:var(--ink); }
+  .settings-close {
+    background:transparent; border:none; color:var(--ink); padding:4px 8px;
+    font-size:18px; cursor:pointer; border-radius:8px;
+  }
+  .settings-close:hover { background:rgba(0,0,0,.06); }
+  .settings-body {
+    flex:1; overflow-y:auto; padding:8px 0;
+  }
+  .settings-section {
+    padding:10px 16px 14px; border-bottom:1px solid rgba(0,0,0,.05);
+  }
+  .settings-section:last-child { border-bottom:none; }
+  .settings-section h3 {
+    margin:0 0 10px 0; font-size:13px; font-weight:700;
+    color:var(--brand); letter-spacing:.02em;
+  }
+  .settings-field {
+    display:flex; flex-direction:column; gap:4px;
+    margin-bottom:8px; font-size:12px; color:var(--ink);
+  }
+  .settings-field > span { font-weight:600; }
+  .settings-field input[type="text"],
+  .settings-field input[type="password"],
+  .settings-field select {
+    width:100%; padding:6px 8px; border:1px solid rgba(0,0,0,.16); border-radius:8px;
+    background:#fff; font:inherit; color:var(--ink);
+    appearance:none; -webkit-appearance:none;
+  }
+  .settings-field input:focus,
+  .settings-field select:focus {
+    outline:none; border-color:var(--brand);
+    box-shadow:0 0 0 3px rgba(91,84,232,.18);
+  }
+  .settings-row {
+    flex-direction:row !important; align-items:center; justify-content:space-between;
+  }
+  .settings-row > span { flex:1; }
+  .settings-row input[type="range"] { flex:0 0 60%; }
+  .settings-row input[type="checkbox"] { width:18px; height:18px; cursor:pointer; }
+  .settings-hint { margin:4px 0 0; font-size:11px; color:#666; line-height:1.4; }
+  .settings-footer {
+    padding:10px 16px; border-top:1px solid rgba(0,0,0,.08);
+    display:flex; justify-content:flex-end; gap:8px;
+  }
   .dock-row {
     display:flex; gap:5px; align-items:center; flex-wrap:wrap; justify-content:center;
   }
@@ -277,14 +371,78 @@
         <input id="type-input" type="text" maxlength="200" placeholder="打字問我也可以…" aria-label="輸入文字問題" />
         <button class="ctrl primary" id="btn-send" aria-label="送出文字問題" title="送出文字問題"><span aria-hidden="true">➤</span></button>
       </div>
-      <div class="dock-row" role="toolbar" aria-label="虛擬人控制列">
-        <button class="ctrl primary" id="btn-mic" class="ctrl primary" data-mic-btn="1"   aria-label="開始語音對話" title="開始語音對話"><span aria-hidden="true">🎤</span> 說話</button>
-        <button class="ctrl" id="btn-llm"   aria-label="設置 DeepSeek API Key 啟用 AI 大腦" aria-pressed="false" title="設置 DeepSeek API Key"><span aria-hidden="true">🧠</span></button>
-        <button class="ctrl" id="btn-emote" aria-label="切換衣裝形態" aria-pressed="false" title="切換衣裝形態"><span aria-hidden="true">🧥</span> 衣裝</button>
-        <button class="ctrl" id="btn-mute"  aria-label="靜音" aria-pressed="false" title="靜音 / 取消靜音"><span aria-hidden="true">🔊</span></button>
-        <button class="ctrl" id="btn-voice" aria-label="選擇語音" aria-haspopup="listbox" aria-expanded="false" title="選擇語音 (MiniMax 路線按需要 API Key 之後自動載入完整語音目錄 / 瀏覽器路線有系統內建語音)"><span aria-hidden="true">🗣️</span> <span id="btn-voice-label">語音</span></button>
-        <button class="ctrl" id="btn-tts-mode" aria-label="切換 TTS 路線 (免費 Web Speech API / MiniMax 神經語音)" aria-pressed="false" title="TTS 路線：免費 (Web Speech API) / 切換至 MiniMax 神經語音"><span aria-hidden="true">🌐</span> 免費</button>
-        <button class="ctrl" id="btn-close" aria-label="收起助理" title="收起助理"><span aria-hidden="true">✕</span></button>
+    </div>
+    <!-- 2026-06-13 v30: replace 7-button toolbar with two bottom-right floating
+         buttons: a ⚙️ setting button that opens a global settings modal,
+         and a ✕ collapse button. All other controls (DeepSeek API key,
+         voice select, TTS mode, mic permission, outfit toggle, mute) move
+         into the settings modal so the in-frame UI stays minimal. -->
+    <div id="corner-actions" role="toolbar" aria-label="虛擬人快速動作">
+      <button class="ctrl corner-btn" id="btn-settings" aria-label="開啟設定面板" title="設定" aria-haspopup="dialog" aria-expanded="false"><span aria-hidden="true">⚙️</span> 設定</button>
+      <button class="ctrl corner-btn" id="btn-close" aria-label="收起助理" title="收起助理"><span aria-hidden="true">✕</span></button>
+    </div>
+    <!-- Global settings modal (hidden by default). Populated by the
+         settings renderer below; v30 moved every per-feature toggle out
+         of the control bar so the in-frame chrome is just text input +
+         send + 2 corner buttons. -->
+    <div id="settings-modal" class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+      <div class="settings-backdrop" data-settings-close="1"></div>
+      <div class="settings-panel" role="document">
+        <header class="settings-header">
+          <h2 id="settings-title">⚙️ 設定</h2>
+          <button class="ctrl settings-close" id="btn-settings-close" aria-label="關閉設定面板" title="關閉"><span aria-hidden="true">✕</span></button>
+        </header>
+        <div class="settings-body">
+          <section class="settings-section" data-section="llm">
+            <h3>🧠 AI 大腦 (DeepSeek)</h3>
+            <label class="settings-field">
+              <span>API Key</span>
+              <input id="settings-ds-key" type="password" placeholder="sk-..." autocomplete="off" />
+            </label>
+            <label class="settings-field">
+              <span>API Endpoint (選擇性)</span>
+              <input id="settings-ds-api" type="text" placeholder="https://api.deepseek.com/v1/chat/completions" />
+            </label>
+            <p class="settings-hint">Key 儲存喺 localStorage（base64 + obfuscation），唔會上傳任何 server。</p>
+          </section>
+          <section class="settings-section" data-section="tts">
+            <h3>🗣️ 語音合成 (TTS)</h3>
+            <label class="settings-field">
+              <span>TTS 路線</span>
+              <select id="settings-tts-mode">
+                <option value="browser">瀏覽器 (免費，Web Speech API)</option>
+                <option value="neural">MiniMax 神經語音 (高質素，需 API Key)</option>
+              </select>
+            </label>
+            <label class="settings-field">
+              <span>語音</span>
+              <select id="settings-voice"></select>
+            </label>
+            <label class="settings-field settings-row">
+              <span>語速 <span id="settings-tts-rate-val">1.0</span>×</span>
+              <input id="settings-tts-rate" type="range" min="0.5" max="2.0" step="0.1" />
+            </label>
+            <label class="settings-field settings-row">
+              <span>靜音</span>
+              <input id="settings-mute" type="checkbox" />
+            </label>
+          </section>
+          <section class="settings-section" data-section="voice-input">
+            <h3>🎤 語音輸入</h3>
+            <button class="ctrl" id="btn-mic" data-mic-btn="1" aria-label="開始語音對話" title="開始語音對話"><span aria-hidden="true">🎤</span> 撳住說話</button>
+            <p class="settings-hint">Android Chrome 需裝 Google speech backend 先 work（見 bubble 提示）。</p>
+          </section>
+          <section class="settings-section" data-section="emote">
+            <h3>🧥 衣裝 / 表情</h3>
+            <div class="settings-row">
+              <button class="ctrl" id="btn-emote" aria-label="切換衣裝形態" aria-pressed="false" title="切換衣裝形態 (黑色/白色)"><span aria-hidden="true">🧥</span> 衣裝</button>
+              <select id="emote-select" aria-label="表情"></select>
+            </div>
+          </section>
+        </div>
+        <footer class="settings-footer">
+          <button class="ctrl" id="btn-settings-reset" title="清除所有 localStorage 設定">重設</button>
+        </footer>
       </div>
     </div>
     <!-- Voice list popover (anchored above control bar, opens on btn-voice click) -->
@@ -1877,6 +2035,15 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       const EMOTION_KEYS = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'shy', 'thinking'];
       const EMOTION_LABELS = { neutral:'😶 待機', happy:'😊 開心', sad:'😢 傷心', angry:'😠 生氣', surprised:'😲 驚訝', shy:'😳 害羞', thinking:'🤔 思考' };
       let currentEmotion = 'neutral';
+      // 2026-06-13 v30: expose EMOTION_KEYS/LABELS to script-level scope so the
+      // settings modal (which lives outside this IIFE) can populate the
+      // emote-select <select> on open().
+      window.__EMOTION_KEYS = EMOTION_KEYS;
+      window.__EMOTION_LABELS = EMOTION_LABELS;
+      Object.defineProperty(window, 'currentEmotion', {
+        get: function() { return currentEmotion; },
+        configurable: true,
+      });
       // 2026-06-12 16:25: emoteState was hoisted to top of script (line ~270) to
       // prevent TDZ ReferenceError when applyKeywordsTrigger is called via
       // event handler or setTimeout. We re-populate the hoisted object here so
@@ -2455,8 +2622,9 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         }
       }
     })();
-document.getElementById('btn-mic').addEventListener('click', startListening);
-  document.getElementById('btn-mute').addEventListener('click', (e) => {
+document.getElementById('btn-mic') && document.getElementById('btn-mic').addEventListener('click', startListening);
+  const btnMute = document.getElementById('btn-mute');
+  if (btnMute) btnMute.addEventListener('click', (e) => {
     ttsMuted = !ttsMuted;
     e.currentTarget.classList.toggle('ctrl', !ttsMuted);
     if (ttsMuted) stopSpeaking();
@@ -2466,6 +2634,7 @@ document.getElementById('btn-mic').addEventListener('click', startListening);
   // Persisted in localStorage so the user's choice survives page reloads.
   (function() {
     const btn = document.getElementById('btn-tts-mode');
+    if (!btn) return;
     const KEY = 'xiaob_tts_mode';
     function paint() {
       const isNeural = (ttsMode === 'neural');
@@ -2501,6 +2670,7 @@ document.getElementById('btn-mic').addEventListener('click', startListening);
     const btn = document.getElementById('btn-voice');
     const btnLabel = document.getElementById('btn-voice-label');
     const popover = document.getElementById('voice-list');
+    if (!btn) return;
     const KEY_NEURAL = 'xiaob_voice_id';
     const KEY_BROWSER = 'xiaob_browser_voice_uri';
     let serverVoices = [];   // /api/voices (cached)
@@ -2731,35 +2901,195 @@ document.getElementById('btn-mic').addEventListener('click', startListening);
       if (e.key === 'Escape' && popover.classList.contains('open')) closePopover();
     });
   })();
+
+  // 2026-06-13 v30: settings modal open/close + bindings.
+  // The seven buttons (mic / llm / emote / mute / voice / tts-mode / close)
+  // used to live in the control bar. They've been moved to a global
+  // settings modal that's invoked from a single ⚙️ corner button. The
+  // close button is the only one that stayed in the chrome (top of
+  // corner-actions).
+  (function initSettingsModal() {
+    const modal = document.getElementById('settings-modal');
+    const openBtn = document.getElementById('btn-settings');
+    const closeBtn = document.getElementById('btn-settings-close');
+    const resetBtn = document.getElementById('btn-settings-reset');
+    if (!modal || !openBtn) return;
+
+    function open() {
+      // Populate fields from current state every time the modal opens so
+      // the user always sees fresh values, even after hot updates.
+      try {
+        const dsKey = document.getElementById('settings-ds-key');
+        const dsApi = document.getElementById('settings-ds-api');
+        if (dsKey) dsKey.value = (DEEPSEEK_KEY || '').replace(/.(?=.{4})/g, '*');
+        if (dsApi) dsApi.value = DEEPSEEK_API || '';
+        const ttsSel = document.getElementById('settings-tts-mode');
+        if (ttsSel) ttsSel.value = ttsMode;
+        const voiceSel = document.getElementById('settings-voice');
+        if (voiceSel) {
+          // repopulate voice options from serverVoicesCatalog
+          voiceSel.innerHTML = '';
+          const opt0 = document.createElement('option');
+          opt0.value = ''; opt0.textContent = '— 請選擇語音 —';
+          voiceSel.appendChild(opt0);
+          if (Array.isArray(serverVoicesCatalog)) {
+            serverVoicesCatalog.forEach(v => {
+              const o = document.createElement('option');
+              o.value = v.voice_id || v.id;
+              o.textContent = v.id + (v.gender ? ' (' + v.gender + ')' : '');
+              voiceSel.appendChild(o);
+            });
+          }
+          voiceSel.value = NEURAL_VOICE || '';
+        }
+        const rateEl = document.getElementById('settings-tts-rate');
+        const rateValEl = document.getElementById('settings-tts-rate-val');
+        if (rateEl) {
+          rateEl.value = ttsRate;
+          if (rateValEl) rateValEl.textContent = Number(ttsRate).toFixed(1);
+          rateEl.addEventListener('input', () => {
+            ttsRate = Number(rateEl.value);
+            if (rateValEl) rateValEl.textContent = ttsRate.toFixed(1);
+            try { localStorage.setItem('xiaob_tts_rate', String(ttsRate)); } catch (e) {}
+          });
+        }
+        const muteEl = document.getElementById('settings-mute');
+        if (muteEl) {
+          muteEl.checked = ttsMuted;
+          muteEl.addEventListener('change', () => {
+            ttsMuted = muteEl.checked;
+            if (ttsMuted) stopSpeaking();
+            try { localStorage.setItem('xiaob_tts_muted', String(ttsMuted)); } catch (e) {}
+          });
+        }
+        const emoteSel = document.getElementById('emote-select');
+        if (emoteSel) {
+          emoteSel.innerHTML = '';
+          // 2026-06-13 v30: EMOTION_KEYS lives in a closure IIFE; the
+          // settings-modal code runs at script-level and can't see it
+          // directly. Use the window-exposed alias populated at boot.
+          const EMOTION_KEYS = window.__EMOTION_KEYS || [];
+          const EMOTION_LABELS = window.__EMOTION_LABELS || {};
+          EMOTION_KEYS.forEach(k => {
+            const o = document.createElement('option');
+            o.value = k;
+            o.textContent = (EMOTION_LABELS && EMOTION_LABELS[k]) ? EMOTION_LABELS[k] : k;
+            emoteSel.appendChild(o);
+          });
+          emoteSel.value = (window.currentEmotion || 'neutral');
+          emoteSel.addEventListener('change', () => {
+            try { applyEmotion(emoteSel.value); } catch (e) {}
+          });
+        }
+      } catch (ePop) { /* defensive: any one field failing should not block modal */ }
+      modal.hidden = false;
+      openBtn.setAttribute('aria-expanded', 'true');
+      // Focus first field for keyboard users
+      try { (modal.querySelector('input, select, button') || {}).focus && modal.querySelector('input, select, button').focus(); } catch (e) {}
+    }
+    function close() {
+      modal.hidden = true;
+      openBtn.setAttribute('aria-expanded', 'false');
+    }
+    openBtn.addEventListener('click', open);
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    // Backdrop click closes
+    modal.addEventListener('click', (e) => {
+      if (e.target && e.target.getAttribute && e.target.getAttribute('data-settings-close') === '1') close();
+    });
+    // ESC closes
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.hidden) close();
+    });
+    // Reset button
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        if (!confirm('重設會清除所有 localStorage 設定 (DeepSeek Key, 語音, TTS 模式, 靜音)，繼續？')) return;
+        try {
+          ['deepseek_key', 'xiaob_tts_mode', 'xiaob_voice_id', 'xiaob_browser_voice_uri',
+           'xiaob_tts_rate', 'xiaob_tts_muted', 'minimax_key', 'minimax_group_id'].forEach(k => localStorage.removeItem(k));
+        } catch (e) {}
+        location.reload();
+      });
+    }
+    // DeepSeek key apply
+    const dsKeyEl = document.getElementById('settings-ds-key');
+    if (dsKeyEl) {
+      dsKeyEl.addEventListener('change', () => {
+        const v = dsKeyEl.value.trim();
+        if (v && !v.startsWith('*')) {
+          DEEPSEEK_KEY = v;
+          try { localStorage.setItem('deepseek_key', v); } catch (e) {}
+          showBubble('DeepSeek API Key 已儲存');
+        } else if (v === '') {
+          DEEPSEEK_KEY = '';
+          try { localStorage.removeItem('deepseek_key'); } catch (e) {}
+          showBubble('DeepSeek API Key 已清除');
+        }
+      });
+    }
+    // DeepSeek API endpoint
+    const dsApiEl = document.getElementById('settings-ds-api');
+    if (dsApiEl) {
+      dsApiEl.addEventListener('change', () => {
+        DEEPSEEK_API = dsApiEl.value.trim() || 'https://api.deepseek.com/v1/chat/completions';
+        try { localStorage.setItem('xiaob_ds_api', DEEPSEEK_API); } catch (e) {}
+        showBubble('DeepSeek API endpoint 已更新');
+      });
+    }
+    // TTS mode
+    const ttsSel = document.getElementById('settings-tts-mode');
+    if (ttsSel) {
+      ttsSel.addEventListener('change', () => {
+        ttsMode = ttsSel.value;
+        try { localStorage.setItem('xiaob_tts_mode', ttsMode); } catch (e) {}
+        neuralDisabled = false;
+        if (ttsMode === 'neural' && !MINIMAX_TTS_KEY) openMinimaxKeyModal();
+        try { window.dispatchEvent(new CustomEvent('xiaob:ttsModeChange', { detail: { mode: ttsMode } })); } catch (e) {}
+        showBubble(ttsMode === 'neural' ? '已切換至 MiniMax 神經語音' : '已切換至瀏覽器 Web Speech API');
+      });
+    }
+    // Voice
+    const voiceSel = document.getElementById('settings-voice');
+    if (voiceSel) {
+      voiceSel.addEventListener('change', () => {
+        NEURAL_VOICE = voiceSel.value;
+        try { localStorage.setItem('xiaob_voice_id', NEURAL_VOICE); } catch (e) {}
+        showBubble('已切換語音: ' + (voiceSel.selectedOptions[0]?.textContent || NEURAL_VOICE));
+      });
+    }
+  })();
   document.getElementById('btn-close').addEventListener('click', () => {
     try { window.parent.postMessage({ ns: 'avatar-widget', type: 'close' }, '*'); } catch (e) {}
   });
   // 初始化時檢查是否有金鑰，有的話高亮大腦按鈕
   const btnLlm = document.getElementById('btn-llm');
-  if (DEEPSEEK_KEY) {
-    btnLlm.classList.add('llm-on');
-    btnLlm.title = '已啟用 DeepSeek 大腦';
-  }
-
-  btnLlm.addEventListener('click', () => {
-    const key = prompt("請輸入您的 DeepSeek API Key (留下空白並送出可清除金鑰)：", DEEPSEEK_KEY);
-    if (key !== null) {
-      const cleanKey = key.trim();
-      if (cleanKey) {
-        DEEPSEEK_KEY = cleanKey;
-        localStorage.setItem('deepseek_key', DEEPSEEK_KEY);
-        btnLlm.classList.add('llm-on');
-        btnLlm.title = '已啟用 DeepSeek 大腦';
-        speak("DeepSeek 大腦已成功啟用！");
-      } else {
-        DEEPSEEK_KEY = '';
-        localStorage.removeItem('deepseek_key');
-        btnLlm.classList.remove('llm-on');
-        btnLlm.title = '大腦未啟用';
-        speak("已清除 DeepSeek 金鑰。");
-      }
+  if (btnLlm) {
+    if (DEEPSEEK_KEY) {
+      btnLlm.classList.add('llm-on');
+      btnLlm.title = '已啟用 DeepSeek 大腦';
     }
-  });
+
+    btnLlm.addEventListener('click', () => {
+      const key = prompt("請輸入您的 DeepSeek API Key (留下空白並送出可清除金鑰)：", DEEPSEEK_KEY);
+      if (key !== null) {
+        const cleanKey = key.trim();
+        if (cleanKey) {
+          DEEPSEEK_KEY = cleanKey;
+          localStorage.setItem('deepseek_key', DEEPSEEK_KEY);
+          btnLlm.classList.add('llm-on');
+          btnLlm.title = '已啟用 DeepSeek 大腦';
+          speak("DeepSeek 大腦已成功啟用！");
+        } else {
+          DEEPSEEK_KEY = '';
+          localStorage.removeItem('deepseek_key');
+          btnLlm.classList.remove('llm-on');
+          btnLlm.title = '大腦未啟用';
+          speak("已清除 DeepSeek 金鑰。");
+        }
+      }
+    });
+  }
 
   // 2026-06-12 BAZOOKA-free: MiniMax TTS API key gate modal.
   // Replaces the legacy server-side /api/tts proxy with direct browser → api.minimax.chat
