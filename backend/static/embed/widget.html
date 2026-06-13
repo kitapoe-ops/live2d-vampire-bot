@@ -1325,10 +1325,15 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       }
 
       // 重寫 model.update 以確保在 Motion/Expression 計算完畢後強制套用衣裝參數
+      // 2026-06-13 v21: removed the second applyOutfit() call from this
+      // override. The model.on('update', ...) listener below already calls
+      // applyOutfit() once per frame at the end of its per-frame work. With
+      // the override also calling it, we were running the same 6 safeSetParam
+      // writes twice per frame, doubling the Wasm boundary crossing cost.
+      // The override now just delegates to originalUpdate unchanged.
       const originalUpdate = model.update;
       model.update = function(dt) {
-        originalUpdate.call(this, dt);
-        applyOutfit(emoteState.outfit);
+        return originalUpdate.call(this, dt);
       };
       // 2026-06-13 v3: dump boot success to console + localStorage
       try {
@@ -2061,16 +2066,14 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         // The user can drag the model across the canvas and it stays put
         // after release. This overrides any per-frame reset because it runs
         // at the end of every model.update tick, after motion/sway are applied.
+        // 2026-06-13 v21: removed the unguarded getParameterValueById() readback.
+        // Calling it on an id the Live2D Wasm doesn't know about throws a
+        // Wasm trap which can put the coreModel into a dead-lock state, causing
+        // the next RAF tick to run for 22+ seconds (observed in dev=1 logs).
+        // The readback was dead code anyway (baseX/baseY were never used after
+        // the safeSetParam below). We just set dragState.offsetX/Y directly.
         if (typeof dragState !== 'undefined' && dragState && (dragState.offsetX !== 0 || dragState.offsetY !== 0)) {
           try {
-            // Add to current value (preserve any motion-induced offset) and clamp.
-            const baseX = (model && model.internalModel && model.internalModel.coreModel && typeof model.internalModel.coreModel.getParameterValueById === 'function')
-              ? model.internalModel.coreModel.getParameterValueById('PARAM_BODY_POSITION_X') : 0;
-            const baseY = (model && model.internalModel && model.internalModel.coreModel && typeof model.internalModel.coreModel.getParameterValueById === 'function')
-              ? model.internalModel.coreModel.getParameterValueById('PARAM_BODY_POSITION_Y') : 0;
-            // dragState.offsetX/Y are the *additional* offset from the drag
-            // gesture; we want the final body position to equal that offset,
-            // so we set it directly (not additive) but clamp to safe range.
             safeSetParam('PARAM_BODY_POSITION_X', Math.max(-30, Math.min(30, dragState.offsetX)));
             safeSetParam('PARAM_BODY_POSITION_Y', Math.max(-30, Math.min(30, dragState.offsetY)));
           } catch (e) { /* param may not exist on all model variants */ }
