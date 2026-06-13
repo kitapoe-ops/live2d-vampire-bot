@@ -1470,7 +1470,13 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       }
 
       async function injectMotions() {
-        const BASE = CFG.get('model').replace(/[^/]+\.model3\.json$/, '');
+        // 2026-06-13 v19: use MODEL_URL (which has DEFAULT_MODEL fallback)
+        // instead of CFG.get('model') (which is null when the page is loaded
+        // with ?dev=1 or any URL that omits the model= param). The null
+        // crashed injectMotions() with 'Cannot read properties of null
+        // (reading replace)' at boot, which cascaded into the
+        // [boot-rejection] error logged by bootAvatar().
+        const BASE = MODEL_URL.replace(/[^/]+\.model3\.json$/, '');
         const motionFiles = [
           { name: 'Scene1', url: BASE + 'Scene1.motion3.json' },
           { name: 'Idle', url: BASE + '2.motion3.json' },
