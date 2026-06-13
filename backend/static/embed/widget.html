@@ -1810,13 +1810,13 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
 
       setTimeout(() => {
         if (window.KNOWLEDGE) applyEmotion('happy');
-        let cycleIdx = 0;
-        // 註冊至全域命名空間，便於 handleUser 在互動開始時將其精確銷毀
-        window.__demoCarouselInterval = setInterval(() => {
-          if (!window.KNOWLEDGE) return;
-          cycleIdx = (cycleIdx + 1) % EMOTION_KEYS.length;
-          applyEmotion(EMOTION_KEYS[cycleIdx]);
-        }, 8000);
+        // 2026-06-13 v17: 8-second emotion carousel removed per user request.
+        // The auto-cycle was a demo-mode attractor that conflicted with the
+        // outfit/emotion split from v16 (every 8s the carousel would race
+        // the user's manual selection). Also makes the widget feel less
+        // "demo-y" when embedded in real pages.
+        // If a re-enabled version is needed later, expose it as a
+        // window.__demoCarouselInterval opt-in (default off).
       }, 1500);
 
       // Bug 1 修正：將本地尋址代理與安全防禦命名空間 KNOWLEDGE 強制綁定，並全面換用全大寫底線引腳
