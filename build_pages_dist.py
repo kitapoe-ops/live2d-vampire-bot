@@ -74,19 +74,14 @@ def write_security_files():
     headers = """\
 /*
   X-Content-Type-Options: nosniff
-  # 2026-06-13: X-Frame-Options: ALLOW-FORM is deprecated (Chrome shows
-  # "is not a recognized directive" warning). Replace with modern
-  # Content-Security-Policy: frame-ancestors which Chrome respects.
-  X-Frame-Options: ALLOW-FROM https://*
-  Content-Security-Policy: script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.deepseek.com https://esm.run https://cdn.jsdelivr.net https://static.cloudflareinsights.com; connect-src 'self' https://api.deepseek.com https://api.minimax.chat https://static.cloudflareinsights.com https://esm.run https://cdn.jsdelivr.net; worker-src 'self' blob:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com
+  # 2026-06-13 v9: drop X-Frame-Options + Content-Security-Policy + Permissions-Policy
+  # per user request #17185. User confirmed widget worked on Android mobile
+  # before any security headers were added (#17127). Hypothesis: even after
+  # v8 dropped frame-ancestors, the remaining security headers still trigger
+  # Android Chrome mobile mic restriction. This reverts to near-baseline
+  # (X-Content-Type-Options kept for MIME sniffing, no mic impact).
+  # Re-enable security incrementally once mobile mic is verified working.
   Referrer-Policy: strict-origin-when-cross-origin
-  # 2026-06-13 mobile mic fix: change microphone=(self) to microphone=*
-  # so that the embedded widget iframe (also vampire.kitahim.uk) is
-  # explicitly allowed to use mic. Same for camera. geolocation stays
-  # disabled. Trade-off: any 3rd-party page that embeds the widget now
-  # has mic/camera delegated, but they could already render the widget
-  # and capture permissions via the bubble UI; not a meaningful expansion.
-  Permissions-Policy: camera=*, microphone=*, geolocation=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 
 /static/embed/*
