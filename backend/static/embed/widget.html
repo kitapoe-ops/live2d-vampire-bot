@@ -238,28 +238,26 @@
   <script src="knowledge.js"></script>
 
   <script type="module">
-    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
-    const LLM_MODEL = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+    // 2026-06-13 v10: WEBLLM disabled per user #17204.
+    // User now uses DeepSeek API key for LLM, the ~1GB Qwen2.5-1.5B
+    // background download from https://esm.run/@mlc-ai/web-llm is no
+    // longer needed. Stub out the API so widget code that references
+    // window.LLM (load, chat, supported) does not break.
+    // import * as webllm from "https://esm.run/@mlc-ai/web-llm";  // disabled v10
+    const LLM_MODEL = "";
     let engine = null, loadingPromise = null;
     window.LLM = {
-      supported: ('gpu' in navigator),
-      state: 'idle',
+      supported: false,
+      state: 'disabled',
       progress: 0,
       model: LLM_MODEL,
       async load(onProgress) {
-        if (engine) return engine;
-        if (loadingPromise) return loadingPromise;
-        window.LLM.state = 'loading';
-        loadingPromise = webllm.CreateMLCEngine(LLM_MODEL, {
-          initProgressCallback: (p) => { window.LLM.progress = p.progress || 0; if (onProgress) onProgress(p); }
-        }).then((e) => { engine = e; window.LLM.state = 'ready'; return e; })
-          .catch((err) => { window.LLM.state = 'error'; window.LLM.error = String(err); throw err; });
-        return loadingPromise;
+        if (onProgress) onProgress({ progress: 0, text: 'LLM disabled: using DeepSeek API key (v10)' });
+        window.LLM.state = 'disabled';
+        throw new Error('LLM disabled (v10): use DeepSeek API key');
       },
       async chat(messages) {
-        if (!engine) return null;
-        const r = await engine.chat.completions.create({ messages, temperature: 0.4, max_tokens: 220 });
-        return r && r.choices && r.choices[0] && r.choices[0].message.content;
+        return null;  // No local LLM engine; DeepSeek path returns its own response
       }
     };
   </script>
