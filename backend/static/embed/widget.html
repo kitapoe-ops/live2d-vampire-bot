@@ -1294,6 +1294,27 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
 
       model = await Live2DModel.from(MODEL_URL);
       app.stage.addChild(model);
+
+      // 重寫 model.update 以確保在 Motion/Expression 計算完畢後強制套用衣裝參數
+      const originalUpdate = model.update;
+      model.update = function(dt) {
+        originalUpdate.call(this, dt);
+        if (emoteState.outfit === 'vampire') {
+          safeSetParam('PARAMoutfit1_2', 1.0);
+          safeSetParam('PARAMhariWB', 1.0);
+          safeSetParam('PARAMhariWB2', 0.0);
+          safeSetParam('PARAMhari_7', 1.0);
+          safeSetParam('PARAMhari_8', 1.0);
+          safeSetParam('PARAMhari_3', 1.0);
+        } else if (emoteState.outfit === 'vampire2') {
+          safeSetParam('PARAMoutfit1_2', 0.0);
+          safeSetParam('PARAMhariWB', 0.0);
+          safeSetParam('PARAMhariWB2', 1.0);
+          safeSetParam('PARAMhari_7', 1.0);
+          safeSetParam('PARAMhari_8', 1.0);
+          safeSetParam('PARAMhari_3', 0.0);
+        }
+      };
       // 2026-06-13 v3: dump boot success to console + localStorage
       try {
         const __boot = {
@@ -1392,8 +1413,20 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         }
         if (fromPath === 0) {
           console.log('[Live2D] settings.parameters empty, deep-scanning internalModel...');
-          for (const key of Object.keys(im || {})) {
-            try { fromPath += _scanObjectForIds(im[key], 1); } catch (e) {}
+          const params = im && im.parameters;
+          if (params && typeof params.getCount === 'function') {
+            const count = params.getCount();
+            for (let i = 0; i < count; i++) {
+              let idObj = params.getId(i);
+              if (idObj) {
+                let idStr = (typeof idObj.getString === 'function') ? idObj.getString() : String(idObj);
+                if (idStr && !_paramIdMap.has(idStr)) {
+                  _paramIdMap.set(idStr, i);
+                  _paramList.push(idStr);
+                  fromPath++;
+                }
+              }
+            }
           }
         }
         console.log('[Live2D] Built ID->index map: ' + _paramList.length + ' entries');
@@ -1696,7 +1729,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             angry: 'mad',
             happy: 'hearteyes',
             surprised: 'circleeyes',
-            neutral: emoteState.outfit === 'vampire2' ? 'vampire2' : '吸血鬼'
+            neutral: emoteState.outfit === 'vampire2' ? 'vampire2' : 'vampire'
           };
           const expName = expMap[name];
           if (expName) {
@@ -1739,7 +1772,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
               // The black outfit file is named 吸血鬼.exp3.json (Chinese).
               // When model.expression('vampire') was called, Live2D threw
               // because the .exp3.json file was not found.
-              const expName = (nextOutfit === 'vampire2') ? 'vampire2' : '吸血鬼';
+              const expName = (nextOutfit === 'vampire2') ? 'vampire2' : 'vampire';
               model.expression(expName);
               console.log('[Live2D] Outfit toggled to:', nextOutfit, '-> expression:', expName);
             } catch (err) {
@@ -1784,15 +1817,19 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
 
       // Bug 1 修正：將本地尋址代理與安全防禦命名空間 KNOWLEDGE 強制綁定，並全面換用全大寫底線引腳
       function safeSetParam(name, value) {
+        let success = false;
         if (window.KNOWLEDGE && typeof window.KNOWLEDGE.setParam === 'function') {
-          window.KNOWLEDGE.setParam(name, value);
-          return;
+          const res = window.KNOWLEDGE.setParam(name, value);
+          if (res && res.ok) success = true;
         }
-        try {
-          const cm = model && model.internalModel && model.internalModel.coreModel;
-          if (!cm) return;
-          cm.setParameterValueById(name, Number(value));
-        } catch (e) {}
+        if (!success) {
+          try {
+            const cm = model && model.internalModel && model.internalModel.coreModel;
+            if (cm && typeof cm.setParameterValueById === 'function') {
+              cm.setParameterValueById(name, Number(value));
+            }
+          } catch (e) {}
+        }
       }
 
       function probeParamIndices() {
@@ -1839,7 +1876,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       }
 
       let lastBlinkT = 0, nextBlinkIn = 2.0;
-      app.ticker.add(() => {
+      model.on('update', () => {
         const t = performance.now() / 1000;
         const w = app.renderer.width, h = app.renderer.height;
 

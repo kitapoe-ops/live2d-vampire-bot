@@ -1,0 +1,21 @@
+name = "vampire-widget"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "./dist-pages"
+
+# 2026-06-13 v14: disable Web Analytics auto-injection. Cloudflare Pages
+# automatically injects a <script src="https://static.cloudflareinsights.com/...">
+# tag into every HTML response, which on some mobile networks / browsers
+# (Pixel 9 Android 15, China ROM, etc) returns net::ERR_ADDRESS_INVALID.
+# This pollutes DevTools Network tab with an unfixable client-side error
+# and adds ~20KB of unused analytics. Disabling is safe — we already log
+# critical user-facing events via console.log + localStorage dumps, and
+# production traffic analysis happens at the Cloudflare Zone level (DNS,
+# not page-level beacon).
+
+# 永久 disable web analytics (Cloudflare Pages 嘅 auto-inject feature)
+# 對 widget 嘅 analytics dashboard 仍然可以喺 Cloudflare Dashboard → Pages →
+# vampire-widget → Analytics page 看到 (嗰個係 request-level 唔係 page-level beacon)
+#
+# Reference: https://developers.cloudflare.com/pages/functions/web-analytics/
+# 設定: web_analytics = false 永久 disable 個 page-level beacon injection
+web_analytics = false

@@ -355,7 +355,25 @@ window.KNOWLEDGE = (function () {
   //              Built externally and passed via setIdIndexMap().
   var _model = null;
   var _idIndexMap = null;  // Map<string, number> or null
-  function setModel(modelHandle) { _model = modelHandle; }
+  function ensureIdIndexMap() {
+    if (_idIndexMap && _idIndexMap.size > 0) return;
+    if (!_model) return;
+    var cm = _resolveCoreModel();
+    if (!cm) return;
+    var ids = cm._parameterIds;
+    if (!ids || !ids.length) return;
+    var map = new Map();
+    for (var i = 0; i < ids.length; i++) {
+      var idStr = ids[i];
+      if (idStr) {
+        map.set(idStr, i);
+      }
+    }
+    _idIndexMap = map;
+    console.log('[KNOWLEDGE] Dynamically built _idIndexMap via coreModel._parameterIds: ' + _idIndexMap.size + ' entries');
+  }
+
+  function setModel(modelHandle) { _model = modelHandle; ensureIdIndexMap(); }
   function setIdIndexMap(map) { _idIndexMap = map; }
   function getModel() { return _model; }
   function getIdIndexMap() { return _idIndexMap; }
@@ -417,6 +435,7 @@ window.KNOWLEDGE = (function () {
       console.warn('[KNOWLEDGE.setParam] No model handle. Call KNOWLEDGE.setModel(model) first.');
       return { ok: false, reason: 'no_model' };
     }
+    ensureIdIndexMap();
     var v = Number(value);
     if (isNaN(v)) {
       console.warn('[KNOWLEDGE.setParam] NaN value for "' + id + '"');
@@ -432,9 +451,12 @@ window.KNOWLEDGE = (function () {
         if (cm && typeof cm.setParameterValueById === 'function') {
           try {
             cm.setParameterValueById(id, v);
-            return { ok: true, value: v, classification: cls, via: 'id' };
+            if (typeof cm.getParameterValueById === 'function' && cm.getParameterValueById(id) === v) {
+              return { ok: true, value: v, classification: cls, via: 'id' };
+            }
+            throw new Error('Verification failed');
           } catch (eById) {
-            // byId threw (e.g. unknown id in Wasm), fall through to index-based
+            // byId threw or failed verification, fall through to index-based
           }
         }
         // Strategy 2: O(1) by-index via _idIndexMap (built at boot from im.settings.parameters)
@@ -442,6 +464,8 @@ window.KNOWLEDGE = (function () {
           var idx = _idIndexMap.get(id);
           if (typeof idx === 'number' && idx >= 0) {
             cm.setParameterValueByIndex(idx, v);
+            var checkVal = cm.getParameterValueByIndex(idx);
+            console.log('[KNOWLEDGE] write check:', id, 'index:', idx, 'value:', v, 'written:', checkVal);
             return { ok: true, value: v, classification: cls, via: 'index-map' };
           }
         }
@@ -465,7 +489,9 @@ window.KNOWLEDGE = (function () {
           if (typeof proxy.getId === 'function') {
             for (var i = 0; i < count; i++) {
               try {
-                if (proxy.getId(i) === id) { cm.setParameterValueByIndex(i, v); return { ok: true, value: v, classification: cls, via: 'scan' }; }
+                var pId = proxy.getId(i);
+                var pIdStr = (pId && typeof pId.getString === 'function') ? pId.getString() : String(pId);
+                if (pIdStr === id) { cm.setParameterValueByIndex(i, v); return { ok: true, value: v, classification: cls, via: 'scan' }; }
               } catch (e) { /* skip */ }
             }
           }

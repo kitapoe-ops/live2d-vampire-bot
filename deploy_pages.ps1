@@ -19,7 +19,8 @@ $env:CLOUDFLARE_API_TOKEN = $token
 $env:CLOUDFLARE_ACCOUNT_ID = $accountId
 
 # Use --commit-dirty=true since dist-pages/ is gitignored
-wrangler pages deploy dist-pages --project-name vampire-widget --commit-dirty=true --commit-message "fix(mobile-mic): iframe allow speech-recognition + iOS/Android fallback hints" 2>&1
+# 2026-06-13 v14: use --config wrangler.toml to apply web_analytics = false
+wrangler pages deploy dist-pages --project-name vampire-widget --config wrangler.toml --commit-dirty=true --commit-message "fix(mobile-mic): iframe allow speech-recognition + iOS/Android fallback hints" 2>&1
 
 Write-Host ""
 Write-Host "=== Deploy complete ===" -ForegroundColor Green
