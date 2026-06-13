@@ -3,6 +3,120 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- 2026-06-13 v29: block Cloudflare Web Analytics beacon at the network
+     layer. v28's DOM strip and v29 createElement hook had limited
+     success because:
+     - HTMLScriptElement.prototype.src is non-configurable in Chromium
+       so defineProperty fails silently
+     - CF injects the script node synchronously after </body>, which
+       races with our DOMContentLoaded/MutationObserver cleanup
+     - The first fetch request is initiated before any client-side
+       guard can run
+     Most reliable fix: intercept the actual outgoing request by
+     overriding HTMLScriptElement.prototype.src setter on the INSTANCE
+     (not prototype) via a property accessor, and backstop with a
+     function-level check on document.createElement that mangles the
+     element if the tag is 'script' AND the call site context matches
+     CF's auto-injection (we just blanket-block any script whose src
+     would resolve to cloudflareinsights.com, regardless of how it
+     gets set). Plus wrap window.fetch to short-circuit any escape
+     route. -->
+<script>
+(function blockCfBeacon() {
+  var CF_HOST = 'cloudflareinsights.com';
+
+  // 1. Wrap HTMLScriptElement.prototype.src setter. Chromium marks
+  //    this accessor as non-configurable, so a direct defineProperty
+  //    on the prototype throws; instead, we patch the constructor's
+  //    prototype by replacing the element right after creation via
+  //    document.createElement hook below.
+  //    This single fix doesn't work on its own - it's belt-and-suspenders.
+  function cfSrcGuard(value) {
+    return typeof value === 'string' && value.indexOf(CF_HOST) !== -1;
+  }
+
+  // 2. Hook document.createElement. For 'script' elements we wrap the
+  //    returned object so any later src assignment is silently dropped
+  //    if it points at cloudflareinsights.com. This is more robust
+  //    than defining a property on the prototype because it survives
+  //    in browsers that lock down HTMLScriptElement.prototype.
+  try {
+    var origCreateElement = document.createElement.bind(document);
+    document.createElement = function(tag) {
+      var el = origCreateElement(tag);
+      if (String(tag).toLowerCase() === 'script') {
+        try {
+          var srcDesc = Object.getOwnPropertyDescriptor(el, 'src') ||
+                         Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
+          if (srcDesc && srcDesc.set) {
+            var origSet = srcDesc.set;
+            // Per-instance accessor that shadows the prototype's
+            Object.defineProperty(el, 'src', {
+              set: function(v) {
+                if (cfSrcGuard(v)) {
+                  // Drop the assignment; never start a fetch.
+                  return;
+                }
+                return origSet.call(this, v);
+              },
+              get: srcDesc.get,
+              configurable: true,
+              enumerable: true,
+            });
+          }
+        } catch (e) { /* element may be frozen by CF; ignore */ }
+      }
+      return el;
+    };
+  } catch (e) { /* defensive */ }
+
+  // 3. Wrap window.fetch so even if a script somehow ended up with a
+  //    cloudflareinsights.com URL, the network request is short-circuited.
+  try {
+    var origFetch = window.fetch ? window.fetch.bind(window) : null;
+    if (origFetch) {
+      window.fetch = function(input, init) {
+        var url = (typeof input === 'string') ? input :
+                  (input && input.url) ? input.url : '';
+        if (cfSrcGuard(url)) {
+          // Return a never-resolving Promise to swallow the request
+          return new Promise(function() {});
+        }
+        return origFetch(input, init);
+      };
+    }
+  } catch (e) { /* defensive */ }
+
+  // 4. MutationObserver as the v28 fallback: remove any script
+  //    elements that somehow get into the DOM. Run repeatedly during
+  //    the first 5 seconds of load to catch CF's late injection.
+  function removeCfScripts() {
+    try {
+      var scripts = document.querySelectorAll('script[src*="' + CF_HOST + '"], script[data-cf-beacon]');
+      for (var i = 0; i < scripts.length; i++) {
+        scripts[i].parentNode.removeChild(scripts[i]);
+      }
+    } catch (e) {}
+  }
+  function startStripper() {
+    removeCfScripts();
+    [0, 50, 200, 500, 1000, 2000, 5000].forEach(function(t) {
+      setTimeout(removeCfScripts, t);
+    });
+    try {
+      var mo = new MutationObserver(removeCfScripts);
+      mo.observe(document.documentElement, { childList: true, subtree: true });
+      // Disconnect after 10s - by then CF has given up injecting.
+      setTimeout(function() { try { mo.disconnect(); } catch (e) {} }, 10000);
+    } catch (e) {}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startStripper);
+  } else {
+    startStripper();
+  }
+})();
+</script>
 <title>AI Bot Widget — 吸血鬼 (vampire.kitahim.uk)</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%235b54e8%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22central%22%20font-size%3D%2242%22%20font-family%3D%22Apple%20Color%20Emoji%2CSegoe%20UI%20Emoji%2Csans-serif%22%3E%F0%9F%A7%9B%3C%2Ftext%3E%3C%2Fsvg%3E" />
 <style>
