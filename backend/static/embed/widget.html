@@ -372,6 +372,15 @@
   });
 
   function showBubble(text) {
+      // 2026-06-13 v3: log every bubble call for diagnostic
+      try {
+        console.log('[bubble]', JSON.stringify({
+          ts: Date.now(),
+          text: String(text || '').slice(0, 200),
+          visible: !!document.querySelector('.bubble')?.classList.contains('show')
+        }));
+      } catch (e) {}
+      
     const b = document.getElementById('bubble');
     b.textContent = text; b.classList.add('show');
     positionBubble();   // re-pin to control bar (handles button-wrap height changes)
@@ -1170,6 +1179,33 @@
 
       model = await Live2DModel.from(MODEL_URL);
       app.stage.addChild(model);
+      // 2026-06-13 v3: dump boot success to console + localStorage
+      try {
+        const __boot = {
+          ts: new Date().toISOString(),
+          model_loaded: true,
+          model_url: MODEL_URL,
+          ua: navigator.userAgent,
+          has_KNOWLEDGE: !!window.KNOWLEDGE,
+          KNOWLEDGE_keys: window.KNOWLEDGE ? Object.keys(window.KNOWLEDGE).slice(0, 20) : null,
+        };
+        console.log('[boot-success]', JSON.stringify(__boot, null, 2));
+        try { localStorage.setItem('xiaob_boot_diag', JSON.stringify(__boot)); } catch (e) {}
+      } catch (e) {}
+      // 2026-06-13 v3: ensure a welcome bubble always shows on first successful model load
+      // (gates conversation context, helps user see the widget is alive even if AI backend fails)
+      try {
+        if (!sessionStorage.getItem('xiaob_welcomed')) {
+          sessionStorage.setItem('xiaob_welcomed', '1');
+          setTimeout(() => {
+            const greet = (window.ttsLang && /^zh-HK/i.test(window.ttsLang))
+              ? '你好，我係吸血鬼 🤖 你可以撳下面 🎤 試吓跟我傾偈，或者直接打字問我。'
+              : '你好，我是吸血鬼 AI 虛擬人。你可以撳 🎤 試語音輸入，或直接打字問我任何問題。';
+            showBubble(greet);
+          }, 600);
+        }
+      } catch (e) {}
+    
       model.anchor.set(0.5, 0.5);
       __pendingModel = model;
 
@@ -2215,6 +2251,22 @@
   }
   // Expose for embed.js or test scripts
   window.__openMinimaxKeyModal = openMinimaxKeyModal;
-  </script>
+  
+    // 2026-06-13 v3: unhandled error capture during boot
+    window.addEventListener('error', function (e) {
+      try {
+        const __err = {ts: Date.now(), msg: e.message, src: e.filename, line: e.lineno, col: e.colno, stack: (e.error && e.error.stack) ? String(e.error.stack).slice(0, 500) : null};
+        console.error('[boot-error]', JSON.stringify(__err, null, 2));
+        try { localStorage.setItem('xiaob_boot_diag', JSON.stringify(__err)); } catch (er) {}
+      } catch (er) {}
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      try {
+        const __err = {ts: Date.now(), reason: String(e.reason), stack: (e.reason && e.reason.stack) ? String(e.reason.stack).slice(0, 500) : null};
+        console.error('[boot-rejection]', JSON.stringify(__err, null, 2));
+        try { localStorage.setItem('xiaob_boot_diag', JSON.stringify(__err)); } catch (er) {}
+      } catch (er) {}
+    });
+</script>
 </body>
 </html>
