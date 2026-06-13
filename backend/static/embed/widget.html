@@ -1109,7 +1109,13 @@
     }
     if (listening && recognition) { recognition.stop(); return; }
     try { recognition = new SR(); } catch (e) { speak('語音辨識啟動失敗：' + e.message); return; }
-    recognition.lang = 'zh-TW'; recognition.interimResults = true;
+    // 2026-06-13 v12: per user #17287 static analysis — 'zh-TW' (Taiwan Mandarin)
+// hardcoded 觸發 phonetic rejection for Cantonese speakers (廣東話 yue).
+// User 嘅實際語言係 zh-HK, 改 primary lang + 加 fallback chain: zh-HK → zh-CN → en-US.
+// Fallback 透過 onerror 'no-speech' 嗰陣 try next lang.
+window.SR_LANG_CHAIN = ['zh-HK', 'zh-CN', 'en-US'];
+window.SR_LANG_INDEX = 0;
+recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
     recognition.continuous = false; recognition.maxAlternatives = 1;
     recognition.onstart  = () => { listening = true; setMic(true); showBubble('聆聽中…請說話 🎙️'); };
     recognition.onresult = (e) => {
@@ -1141,6 +1147,9 @@
           has_webkitSR: !!window.webkitSpeechRecognition,
           has_mediaDevices: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
           is_embedded: window.self !== window.top,
+          recognition_lang: (typeof recognition !== 'undefined' && recognition.lang) ? recognition.lang : '(unset)',
+          sr_lang_chain: window.SR_LANG_CHAIN || null,
+          sr_lang_index: window.SR_LANG_INDEX || 0,
         };
         // Async permission check (best effort)
         if (navigator.permissions && navigator.permissions.query) {
@@ -1178,7 +1187,20 @@
         } else if (e.error === 'service-not-allowed') {
           hint = '沒聽到聲音 🔇 請再試一次，並靠近一點麥克風 💬';
         } else if (e.error === 'no-speech') {
-          hint = '語音辨識出錯 (' + e.error + ')，再試一次 💬';
+          // 2026-06-13 v12: per user #17287 — no-speech 通常係 lang mismatch
+          // 嘅症狀 (e.g. widget 用 zh-TW 但 user 講 Cantonese). Try next lang
+          // 喺 SR_LANG_CHAIN, if all 失敗, 提示 user 改用中文(香港) 輸入語音.
+          const idx = (window.SR_LANG_INDEX || 0) + 1;
+          if (idx < window.SR_LANG_CHAIN.length) {
+            window.SR_LANG_INDEX = idx;
+            recognition.lang = window.SR_LANG_CHAIN[idx];
+            hint = '冇聽到 ' + window.SR_LANG_CHAIN[idx - 1] + ' 嘅語音 🎙️ 試下用 ' + window.SR_LANG_CHAIN[idx] + ' 講，或靠近麥克風';
+            try { recognition.start(); } catch (er) {}
+          } else {
+            hint = '冇收到語音輸入 🔇 請確認 mic 已經 unmute, 對住 mic 大聲啲講嘢. 如果用廣東話, 請去 Settings → System → Languages → Offline speech recognition → 下載 中文 (香港) language pack.';
+            window.SR_LANG_INDEX = 0;
+            recognition.lang = window.SR_LANG_CHAIN[0];
+          }
         } else {
           hint = '';
         }
