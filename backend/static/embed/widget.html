@@ -1163,13 +1163,13 @@
           console.error('[mic-diagnostic]', JSON.stringify(_diag, null, 2));
           try { localStorage.setItem('xiaob_mic_diag', JSON.stringify(_diag)); } catch (er) {}
         }
-        let hint = '';
+        let hint = '瀏覽器不支援語音辨識 😅 請改用 Google Chrome / Edge 桌面版，或直接打字 💬';
         if (e.error === 'not-allowed') {
-          hint = '未獲授權 🎙️;
+          hint = '未獲授權 🎙️ 請允許瀏覽器使用麥克風，或改用 Google Chrome 💬';
         } else if (e.error === 'service-not-allowed') {
-          hint = '';
+          hint = '沒聽到聲音 🔇 請再試一次，並靠近一點麥克風 💬';
         } else if (e.error === 'no-speech') {
-          hint = '';
+          hint = '語音辨識出錯 (' + e.error + ')，再試一次 💬';
         } else {
           hint = '';
         }
