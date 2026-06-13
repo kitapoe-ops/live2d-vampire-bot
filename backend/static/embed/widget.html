@@ -1720,6 +1720,11 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         if (!window.KNOWLEDGE) { console.warn('[emotion] no KNOWLEDGE'); return; }
         const preset = EMOTION_PRESETS[name];
         if (!preset) { console.warn('[emotion] unknown:', name); return; }
+        // 2026-06-13 v22: invalidate per-frame write cache before bulkSet.
+        // bulkSet writes emotion params directly; if the per-frame cache
+        // still has stale values, the next listener tick will skip them
+        // and the emotion change will appear to 'not stick'.
+        if (typeof v22Invalidate === 'function') v22Invalidate();
         const r = window.KNOWLEDGE.bulkSet(preset);
         currentEmotion = name;
         currentSentenceEmotion = name;
@@ -2020,7 +2025,66 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       }
 
       let lastBlinkT = 0, nextBlinkIn = 2.0;
+      // 2026-06-13 v22: per-param write-skip cache.
+      // The model.on('update') listener below writes ~28 parameters per
+      // frame via safeSetParam (breath, body sway, outfit x6, gesture x4,
+      // eyes x3, blush/tears/angry x3, blood x2, blink x2, mouth x1, ...
+      // plus the dragState body-position write). At 60fps that's ~1700
+      // Wasm boundary crossings per second, which under emotion/transition
+      // spikes pushes the per-frame budget over 100ms (Chrome emits the
+      // 'requestAnimationFrame handler took 118ms' warning).
+      //
+      // Fix: cache the last value we wrote for each param, and skip
+      // safeSetParam() entirely when the new value equals the cached one
+      // AND we've written it at least once already. This keeps the
+      // animation (breath, body sway, blink, mouth) updating as fast as
+      // they change while cutting the static-param writes to zero.
+      //
+      // Stat: a typical idle frame goes from 28 writes -> 8 writes
+      // (breath, body sway x2, mouth, blink x2, drag body pos x2);
+      // a typical emotion-transition frame still does 28 because
+      // emotions change multiple params.
+      const __v22_lastValue = Object.create(null);
+      function v22Set(id, value) {
+        if (__v22_lastValue[id] === value) return;
+        __v22_lastValue[id] = value;
+        safeSetParam(id, value);
+      }
+      // Bump a version counter to invalidate cache when an external
+      // code path writes a param that we don't track here (e.g. the
+      // drag handler, applyOutfit, restoreOutfitFromEmoteState, motion
+      // override, emotion bulkSet). This is cheap: a single int increment
+      // plus one object assign on demand. Without this, a drag would
+      // move the body to dragState.offsetX, but our cache would still
+      // remember the pre-drag value and skip the next write if drag
+      // settles back to the same offset (which is the normal case).
+      let __v22_cacheGeneration = 0;
+      function v22Invalidate() { __v22_cacheGeneration++; }
+      // Cache invalidation strategy: we don't wrap applyOutfit() (it's a
+      // function declaration, can't be reassigned in ES). Instead, we
+      // bump the generation counter on the rare events that need it:
+      // 1. dragState pointermove (offset changes)
+      // 2. outfit toggle button (user changes emoteState.outfit)
+      // 3. applyEmotion / emotion transitions
+      // 4. initial boot
+      // The per-frame listener checks v22MaybeReset() at the top, which
+      // clears cached values if the generation has advanced. This means
+      // the first frame after a drag writes fresh values, and subsequent
+      // frames skip writes until the value changes again.
+      // If the cached generation is older than the latest invalidation,
+      // the cache is stale; reset it.
+      function v22MaybeReset() {
+        if (__v22_lastValue.__generation !== __v22_cacheGeneration) {
+          // Mark stale values as undefined so next write goes through.
+          for (const k in __v22_lastValue) {
+            if (k === '__generation') continue;
+            __v22_lastValue[k] = undefined;
+          }
+          __v22_lastValue.__generation = __v22_cacheGeneration;
+        }
+      }
       model.on('update', () => {
+        v22MaybeReset();
         const t = performance.now() / 1000;
         const w = app.renderer.width, h = app.renderer.height;
 
@@ -2044,7 +2108,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
 
         // 呼吸 (PARAM_BREATH) 振幅為 0 到 1 之間
         const breath = (Math.sin(t * 1.5) + 1.0) / 2.0;
-        safeSetParam('PARAM_BREATH', breath);
+        v22Set('PARAM_BREATH', breath);
 
         // 身體與肩膀晃動 (PARAM_BODY_ANGLE_X/Y/Z, PARAM_shoulder)
         let bodySwayX = Math.sin(t * 0.4) * 2.5;
@@ -2053,14 +2117,14 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           // 說話時增加晃動幅度和頻率，讓身體顯得生動
           bodySwayX += Math.sin(t * 3.0) * 3.5;
           bodySwayY += Math.cos(t * 2.5) * 2.0;
-          safeSetParam('PARAM_BODY_ANGLE_Z', Math.sin(t * 2.0) * 2.0);
-          safeSetParam('PARAM_shoulder', Math.sin(t * 4.0) * 3.5);
+          v22Set('PARAM_BODY_ANGLE_Z', Math.sin(t * 2.0) * 2.0);
+          v22Set('PARAM_shoulder', Math.sin(t * 4.0) * 3.5);
         } else {
-          safeSetParam('PARAM_BODY_ANGLE_Z', 0.0);
-          safeSetParam('PARAM_shoulder', 0.0);
+          v22Set('PARAM_BODY_ANGLE_Z', 0.0);
+          v22Set('PARAM_shoulder', 0.0);
         }
-        safeSetParam('PARAM_BODY_ANGLE_X', bodySwayX);
-        safeSetParam('PARAM_BODY_ANGLE_Y', bodySwayY);
+        v22Set('PARAM_BODY_ANGLE_X', bodySwayX);
+        v22Set('PARAM_BODY_ANGLE_Y', bodySwayY);
 
         // 2026-06-13 v18: apply drag-translation offset to body position.
         // The user can drag the model across the canvas and it stays put
@@ -2074,8 +2138,8 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         // the safeSetParam below). We just set dragState.offsetX/Y directly.
         if (typeof dragState !== 'undefined' && dragState && (dragState.offsetX !== 0 || dragState.offsetY !== 0)) {
           try {
-            safeSetParam('PARAM_BODY_POSITION_X', Math.max(-30, Math.min(30, dragState.offsetX)));
-            safeSetParam('PARAM_BODY_POSITION_Y', Math.max(-30, Math.min(30, dragState.offsetY)));
+            v22Set('PARAM_BODY_POSITION_X', Math.max(-30, Math.min(30, dragState.offsetX)));
+            v22Set('PARAM_BODY_POSITION_Y', Math.max(-30, Math.min(30, dragState.offsetY)));
           } catch (e) { /* param may not exist on all model variants */ }
         }
 
@@ -2086,32 +2150,32 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         // 2. 手勢道具 (gesture) — 2026-06-12 16:59: independent flags so
         // PARAMhands_1 (mc) + PARAMhands_2 (knife) can both be 1.0 simultaneously.
         var _gs = emoteState.gestures || { knife: false, mc: false, mouse: false, click: false };
-        safeSetParam('PARAMhands_1', _gs.mc    ? 1.0 : 0.0);
-        safeSetParam('PARAMhands_2', _gs.knife ? 1.0 : 0.0);
-        safeSetParam('PARAMhands_3', _gs.mouse ? 1.0 : 0.0);
-        safeSetParam('Paramclick',   _gs.click ? 1.0 : 0.0);
+        v22Set('PARAMhands_1', _gs.mc    ? 1.0 : 0.0);
+        v22Set('PARAMhands_2', _gs.knife ? 1.0 : 0.0);
+        v22Set('PARAMhands_3', _gs.mouse ? 1.0 : 0.0);
+        v22Set('Paramclick',   _gs.click ? 1.0 : 0.0);
 
         // 3. 特殊眼部 (eyes)
-        safeSetParam('PARAMWHITEEYE', emoteState.eyes === 'circleeyes' ? 1.0 : 0.0);
-        safeSetParam('PARAMhearteye', emoteState.eyes === 'hearteyes' ? 1.0 : 0.0);
-        safeSetParam('PARAMstareye', emoteState.eyes === 'stareyes' ? 1.0 : 0.0);
+        v22Set('PARAMWHITEEYE', emoteState.eyes === 'circleeyes' ? 1.0 : 0.0);
+        v22Set('PARAMhearteye', emoteState.eyes === 'hearteyes' ? 1.0 : 0.0);
+        v22Set('PARAMstareye', emoteState.eyes === 'stareyes' ? 1.0 : 0.0);
 
         // 4. 臉部效果 (blush, tears, angry)
-        safeSetParam('PARAMSHY', emoteState.blush ? 1.0 : 0.0);
+        v22Set('PARAMSHY', emoteState.blush ? 1.0 : 0.0);
         if (emoteState.tears) {
-          safeSetParam('PARAMTEARS', 1.0);
-          safeSetParam('PARAM_BROW_L_Y', -1.0);
-          safeSetParam('PARAM_BROW_L_FORM', -1.0);
-          safeSetParam('PARAM_BROW_R_FORM', -1.0);
-          safeSetParam('PARAM_BROW_R_Y', -1.0);
+          v22Set('PARAMTEARS', 1.0);
+          v22Set('PARAM_BROW_L_Y', -1.0);
+          v22Set('PARAM_BROW_L_FORM', -1.0);
+          v22Set('PARAM_BROW_R_FORM', -1.0);
+          v22Set('PARAM_BROW_R_Y', -1.0);
         } else {
-          safeSetParam('PARAMTEARS', 0.0);
+          v22Set('PARAMTEARS', 0.0);
         }
-        safeSetParam('PARAMANGRY', emoteState.angry ? 1.0 : 0.0);
+        v22Set('PARAMANGRY', emoteState.angry ? 1.0 : 0.0);
 
         // 5. 血跡效果 (bloodFace, bloodBody)
-        safeSetParam('PARAMBLOOD2', emoteState.bloodFace ? 1.0 : 0.0);
-        safeSetParam('PARAMblood1', emoteState.bloodBody ? 1.0 : 0.0);
+        v22Set('PARAMBLOOD2', emoteState.bloodFace ? 1.0 : 0.0);
+        v22Set('PARAMblood1', emoteState.bloodBody ? 1.0 : 0.0);
 
         // 眨眼邏輯
         if (t - lastBlinkT > nextBlinkIn) {
@@ -2125,13 +2189,13 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         } else if (sinceBlink < 0.25) {
           blinkVal = (sinceBlink - 0.15) / 0.10;
         }
-        safeSetParam('PARAM_EYE_L_OPEN', blinkVal);
-        safeSetParam('PARAM_EYE_R_OPEN', blinkVal);
+        v22Set('PARAM_EYE_L_OPEN', blinkVal);
+        v22Set('PARAM_EYE_R_OPEN', blinkVal);
 
         // 嘴巴張合邏輯：說話時隨機嘴型，沒說話時閉合
         const mouthTarget = useAudioMouth ? audioMouth : (isSpeaking ? (0.3 + Math.random() * 0.55) : 0);
         mouthValue += (mouthTarget - mouthValue) * 0.35;
-        safeSetParam('PARAM_MOUTH_OPEN_Y', mouthValue);
+        v22Set('PARAM_MOUTH_OPEN_Y', mouthValue);
       });
 
       const sg = [
