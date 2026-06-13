@@ -1545,10 +1545,9 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             // handler above will fire for all of them.)
             // Register in model.internalModel.motionGroups (Map)
             const im = model.internalModel;
-            // Register in model.internalModel.motionGroups (Map).
-            // This is the legacy path that some other code in this file
-            // (e.g. playIdle's debug log) reads, so keep it for back-compat.
-            const im = model.internalModel;
+            // 2026-06-13 v27: use the `im` binding that v20 already declared
+            // earlier in this block (line ~1547). Re-declaring `const im`
+            // in the same scope throws SyntaxError and breaks boot.
             if (!im.motionGroups) im.motionGroups = new Map();
             im.motionGroups.set(mf.name, cubismMotion);
 
