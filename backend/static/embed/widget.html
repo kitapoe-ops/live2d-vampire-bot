@@ -1187,19 +1187,38 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         } else if (e.error === 'service-not-allowed') {
           hint = '沒聽到聲音 🔇 請再試一次，並靠近一點麥克風 💬';
         } else if (e.error === 'no-speech') {
-          // 2026-06-13 v12: per user #17287 — no-speech 通常係 lang mismatch
-          // 嘅症狀 (e.g. widget 用 zh-TW 但 user 講 Cantonese). Try next lang
-          // 喺 SR_LANG_CHAIN, if all 失敗, 提示 user 改用中文(香港) 輸入語音.
+          // 2026-06-13 v13: fix v12 recursive error loop. User #17321
+          // console log 顯示 'error' handler took 60463ms (60s blocking!)
+          // 因為 v12 喺 onerror 內直接 call recognition.start(), 但 SR
+          // 內部 state 仲 transitioning, onerror 觸發後再 start() 會
+          // queue 喺錯誤 stack 60s timeout. Fix: 用 setTimeout delay 200ms
+          // 等 onend 完成, 加 abort flag 避免無限 loop, 限制 fallback
+          // 最多 1 次 (避免 3 個 lang 連環 no-speech).
+          if (window.SR_FALLBACK_IN_PROGRESS) {
+            // 已經有 fallback 進行中, 唔再 trigger (避免 recursive)
+            return;
+          }
+          window.SR_FALLBACK_IN_PROGRESS = true;
           const idx = (window.SR_LANG_INDEX || 0) + 1;
-          if (idx < window.SR_LANG_CHAIN.length) {
+          if (idx < window.SR_LANG_CHAIN.length && idx <= 1) {
+            // 限制 fallback 最多 1 次 (從 zh-HK → zh-CN, 唔 try en-US)
             window.SR_LANG_INDEX = idx;
-            recognition.lang = window.SR_LANG_CHAIN[idx];
             hint = '冇聽到 ' + window.SR_LANG_CHAIN[idx - 1] + ' 嘅語音 🎙️ 試下用 ' + window.SR_LANG_CHAIN[idx] + ' 講，或靠近麥克風';
-            try { recognition.start(); } catch (er) {}
+            setTimeout(() => {
+              try {
+                recognition.lang = window.SR_LANG_CHAIN[idx];
+                recognition.start();
+              } catch (er) {
+                console.warn('[mic-fallback-failed]', er);
+              } finally {
+                window.SR_FALLBACK_IN_PROGRESS = false;
+              }
+            }, 200);
           } else {
             hint = '冇收到語音輸入 🔇 請確認 mic 已經 unmute, 對住 mic 大聲啲講嘢. 如果用廣東話, 請去 Settings → System → Languages → Offline speech recognition → 下載 中文 (香港) language pack.';
             window.SR_LANG_INDEX = 0;
             recognition.lang = window.SR_LANG_CHAIN[0];
+            window.SR_FALLBACK_IN_PROGRESS = false;
           }
         } else {
           hint = '';
