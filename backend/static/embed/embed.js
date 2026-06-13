@@ -90,16 +90,16 @@
   var iframe = document.createElement('iframe');
   iframe.src = iframeSrc;
   iframe.title = 'AI 虛擬人助理';
-  // Mobile mic fix (2026-06-13): speech-recognition must be declared in iframe `allow`
-  // for cross-origin embeds; bare `microphone` covers getUserMedia but not
-  // SpeechRecognition on Android Chrome / iOS Safari. Wildcards (*) let any
-  // descendant origin use these features — fine since the iframe loads our
-  // own widget.html on the same domain.
-  // 2026-06-13 v2: drop `*` wildcards from speech-recognition token. Chrome
-  // console warning: "Unrecognized feature: 'speech-recognition'". Use plain
-  // tokens (no wildcard) for spec compliance; leave `*` for mic/camera so
-  // 3rd-party embeds on vampire.kitahim.uk still get permission delegation.
-  iframe.setAttribute('allow', 'microphone *; camera *; autoplay *; speech-recognition');
+  // Mobile mic fix (2026-06-13): bare `microphone` covers BOTH getUserMedia
+  // AND SpeechRecognition per W3C spec. The original code only listed
+  // `microphone; autoplay` which was incomplete for cross-origin embeds on
+  // Android Chrome. Wildcards (*) let any descendant origin use these
+  // features — fine since the iframe loads our own widget.html on the same
+  // domain, and 3rd-party embed sites also need mic delegation.
+  // 2026-06-13 v2: drop `speech-recognition` token. Chrome console warning
+  // "Unrecognized feature: 'speech-recognition'" — it's not in W3C's
+  // policy-controlled features list; the `microphone` feature covers SR.
+  iframe.setAttribute('allow', 'microphone *; camera *; autoplay *');
   iframe.setAttribute('allowtransparency', 'true');
   iframe.style.cssText = 'width:100%;height:100%;border:0;background:transparent;color-scheme:normal;';
 
