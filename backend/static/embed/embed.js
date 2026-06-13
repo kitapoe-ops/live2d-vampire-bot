@@ -95,7 +95,11 @@
   // SpeechRecognition on Android Chrome / iOS Safari. Wildcards (*) let any
   // descendant origin use these features — fine since the iframe loads our
   // own widget.html on the same domain.
-  iframe.setAttribute('allow', 'microphone *; camera *; autoplay *; speech-recognition *');
+  // 2026-06-13 v2: drop `*` wildcards from speech-recognition token. Chrome
+  // console warning: "Unrecognized feature: 'speech-recognition'". Use plain
+  // tokens (no wildcard) for spec compliance; leave `*` for mic/camera so
+  // 3rd-party embeds on vampire.kitahim.uk still get permission delegation.
+  iframe.setAttribute('allow', 'microphone *; camera *; autoplay *; speech-recognition');
   iframe.setAttribute('allowtransparency', 'true');
   iframe.style.cssText = 'width:100%;height:100%;border:0;background:transparent;color-scheme:normal;';
 
