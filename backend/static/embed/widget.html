@@ -188,6 +188,46 @@
     </div>
     <div id="debug-hud-body"></div>
   </div>
+  <!-- 2026-06-13 v28: strip Cloudflare Web Analytics beacon script if CF Pages
+       auto-injected it. Some networks (Pixel 9 Android 15, China ROM,
+       ad-blockers, corporate firewalls) return ERR_ADDRESS_INVALID for
+       static.cloudflareinsights.com, polluting DevTools Network with an
+       unfixable error. The wrangler.toml web_analytics = false flag is
+       supposed to suppress this, but the live HTML still shows the
+       injected <script> tag, so we clean it up client-side. -->
+  <script>
+    (function stripCfBeacon() {
+      function removeBeacons() {
+        try {
+          var scripts = document.querySelectorAll('script[src*="cloudflareinsights.com"], script[data-cf-beacon]');
+          for (var i = 0; i < scripts.length; i++) {
+            scripts[i].parentNode.removeChild(scripts[i]);
+          }
+        } catch (e) { /* defensive: don't break boot if DOM access fails */ }
+      }
+      // Run on DOMContentLoaded (when CF has likely already injected)
+      // and as a fallback MutationObserver for late injections.
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', removeBeacons);
+      } else {
+        removeBeacons();
+      }
+      try {
+        var mo = new MutationObserver(function(muts) {
+          for (var i = 0; i < muts.length; i++) {
+            var added = muts[i].addedNodes;
+            for (var j = 0; j < added.length; j++) {
+              var n = added[j];
+              if (n && n.tagName === 'SCRIPT' && n.src && n.src.indexOf('cloudflareinsights.com') !== -1) {
+                n.parentNode.removeChild(n);
+              }
+            }
+          }
+        });
+        mo.observe(document.documentElement, { childList: true, subtree: true });
+      } catch (e) { /* MutationObserver unavailable in some embedded contexts */ }
+    })();
+  </script>
   <script>
     (function() {
       var body = null;
