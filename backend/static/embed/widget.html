@@ -390,7 +390,11 @@
       // - iOS Chrome: technically exposes SR but iOS limits WebKit speech to short
       //   phrases and it's unreliable. Treat as unsupported.
       // - iOS Safari: not supported.
-      srSupported: (isChrome && !isIOS) || (isEdge && !isIOS)
+      // 2026-06-13 v11: any browser with SR API gets to try (per user #17226 evidence
+      // that hard-blocking Brave/Edge silently returns 'non-Chrome' hint but user
+      // never sees the hint and thinks mic is broken). Real failure path is
+      // captured by onerror → 'not-allowed' / 'service-not-allowed'.
+      srSupported: !!SR
     };
   })();
   // Expose for debugging
@@ -1075,24 +1079,16 @@
       // 2026-06-13 v6: browser support check — gate mic on Chrome/Edge desktop,
       // Chrome Android, Edge desktop. Bail out early on Edge Android, Firefox,
       // Brave, Samsung Internet (all have webkitSpeechRecognition but no Google backend).
-      if (!BROWSER.srSupported) {
-        const tip = BROWSER.isIOS
-          ? 'iOS Safari / 非 Chrome 瀏覽器不支援語音辨識 😅 請改用 Google Chrome 桌面版，或直接打字 💬'
-          : BROWSER.isAndroid
-            ? 'Android 非 Chrome 瀏覽器 (Edge / Firefox / Brave / Samsung) 嘅 Speech API 缺少 Google 語音後端，會出 not-allowed。請改用 Google Chrome 🛠 或直接打字 💬'
-            : '你嘅瀏覽器暫不支援 Web Speech API。請用 Google Chrome 桌面版，或直接打字 💬';
-        showBubble(tip);
-        speak(tip);  // also TTS the tip for audio-only users
-        // Log to diagnostic for evidence
-        try {
-          console.warn('[mic-blocked-browser]', JSON.stringify(BROWSER, null, 2));
-          const prev = JSON.parse(localStorage.getItem('xiaob_mic_diag') || '{}');
-          prev.blocked_browser = true;
-          prev.browser = BROWSER;
-          localStorage.setItem('xiaob_mic_diag', JSON.stringify(prev));
-        } catch (e) {}
-        return;
-      }
+      // 2026-06-13 v11: per user #17226 — drop hard browser block, let SR try
+      // on any browser. Real failure mode (not-allowed) flows through onerror
+      // below with browser-specific hint. We still log BROWSER info to localStorage
+      // for diagnostic but don't short-circuit return.
+      try {
+        const prev = JSON.parse(localStorage.getItem('xiaob_mic_diag') || '{}');
+        prev.attempt_browser = BROWSER;
+        prev.attempt_ts = new Date().toISOString();
+        localStorage.setItem('xiaob_mic_diag', JSON.stringify(prev));
+      } catch (e) {}
       if (!SR) {
       // Mobile mic fix (2026-06-13): explain why mic fails on common mobile browsers.
       // - iOS Safari: 沒有 SpeechRecognition API (webkit prefix 都不支援) — 用戶必須用 Chrome / Edge
@@ -1163,7 +1159,22 @@
         }
         let hint = '瀏覽器不支援語音辨識 😅 請改用 Google Chrome / Edge 桌面版，或直接打字 💬';
         if (e.error === 'not-allowed') {
-          hint = '未獲授權 🎙️ 請允許瀏覽器使用麥克風，或改用 Google Chrome 💬';
+          // 2026-06-13 v11: per-browser specific hint (Brave/Edge/Firefox all
+          // expose SR API but lack Google speech backend → 'not-allowed' is the
+          // expected result. We tell the user exactly which browser they used
+          // and that Chrome is the only Chromium-based browser with working
+          // speech backend on Android).
+          let browserName = '你嘅瀏覽器';
+          if (BROWSER.isBrave) browserName = 'Brave';
+          else if (BROWSER.isEdge) browserName = 'Microsoft Edge';
+          else if (BROWSER.isFirefox) browserName = 'Firefox';
+          else if (BROWSER.isSamsung) browserName = 'Samsung Internet';
+          else if (BROWSER.isOpera) browserName = 'Opera';
+          else if (BROWSER.isChrome) browserName = 'Google Chrome';
+          const chromeOnly = (BROWSER.isBrave || BROWSER.isEdge || BROWSER.isFirefox || BROWSER.isSamsung || BROWSER.isOpera);
+          hint = chromeOnly
+            ? browserName + ' 缺少 Google 語音後端 🎙️ 請改用 Google Chrome 桌面版或 Android 版 💬'
+            : '未獲授權 🎙️ 請允許瀏覽器使用麥克風，或改用 Google Chrome 🔍';
         } else if (e.error === 'service-not-allowed') {
           hint = '沒聽到聲音 🔇 請再試一次，並靠近一點麥克風 💬';
         } else if (e.error === 'no-speech') {
