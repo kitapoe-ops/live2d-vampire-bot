@@ -317,7 +317,7 @@
   const isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   const DEFAULT_MODEL = isLocal
     ? '/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json'
-    : 'https://vampire.kitahim.uk/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json';
+    : './live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json';
   const MODEL_URL = CFG.get('model') || DEFAULT_MODEL;
   // TTS_ENDPOINT: legacy BAZOOKA proxy path, kept for self-hosted deployments.
   // Cloudflare Pages deployment uses MINIMAX_TTS_DIRECT (browser → api.minimax.chat).
@@ -1295,25 +1295,40 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       model = await Live2DModel.from(MODEL_URL);
       app.stage.addChild(model);
 
+      // 2026-06-13 v16: SINGLE SOURCE OF TRUTH for outfit params.
+      // Per user report: different emotions (especially hearteyes / sad /
+      // mad) were incidentally re-applying outfit color via the Live2D
+      // native expression system, which made the outfit toggle button
+      // appear to be "dead" - the user would click black/white, then the
+      // next emotion would snap the outfit back to its embedded color.
+      // Solution: outfit is now fully independent of the emotion system.
+      // - 6 outfit params (PARAMoutfit1_2, PARAMhariWB, PARAMhariWB2,
+      //   PARAMhari_7, PARAMhari_8, PARAMhari_3) are written only by
+      //   applyOutfit(outfitName).
+      // - applyOutfit() is called from (a) the outfit toggle button,
+      //   (b) the per-frame model.update override, (c) the motion-end
+      //   restoreOutfitFromEmoteState() callback, and (d) the main
+      //   animation loop. All paths use the same emoteState.outfit value.
+      // - applyEmotion() never touches outfit params, and no path calls
+      //   model.expression('vampire'/'vampire2') anymore (those .exp3.json
+      //   files mix outfit + facial params, which is the source of the
+      //   cross-contamination).
+      const OUTFIT_PARAMS = {
+        vampire:  { PARAMoutfit1_2: 1.0, PARAMhariWB: 1.0, PARAMhariWB2: 0.0, PARAMhari_7: 1.0, PARAMhari_8: 1.0, PARAMhari_3: 1.0 },
+        vampire2: { PARAMoutfit1_2: 0.0, PARAMhariWB: 0.0, PARAMhariWB2: 1.0, PARAMhari_7: 1.0, PARAMhari_8: 1.0, PARAMhari_3: 0.0 },
+      };
+      function applyOutfit(outfitName) {
+        const map = OUTFIT_PARAMS[outfitName] || OUTFIT_PARAMS.vampire;
+        for (const id in map) {
+          try { safeSetParam(id, map[id]); } catch (e) { /* param may be missing on some model variants */ }
+        }
+      }
+
       // 重寫 model.update 以確保在 Motion/Expression 計算完畢後強制套用衣裝參數
       const originalUpdate = model.update;
       model.update = function(dt) {
         originalUpdate.call(this, dt);
-        if (emoteState.outfit === 'vampire') {
-          safeSetParam('PARAMoutfit1_2', 1.0);
-          safeSetParam('PARAMhariWB', 1.0);
-          safeSetParam('PARAMhariWB2', 0.0);
-          safeSetParam('PARAMhari_7', 1.0);
-          safeSetParam('PARAMhari_8', 1.0);
-          safeSetParam('PARAMhari_3', 1.0);
-        } else if (emoteState.outfit === 'vampire2') {
-          safeSetParam('PARAMoutfit1_2', 0.0);
-          safeSetParam('PARAMhariWB', 0.0);
-          safeSetParam('PARAMhariWB2', 1.0);
-          safeSetParam('PARAMhari_7', 1.0);
-          safeSetParam('PARAMhari_8', 1.0);
-          safeSetParam('PARAMhari_3', 0.0);
-        }
+        applyOutfit(emoteState.outfit);
       };
       // 2026-06-13 v3: dump boot success to console + localStorage
       try {
@@ -1449,22 +1464,9 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       // 2026-06-12: Helper to restore outfit params after any motion finishes.
       // Called by the onAnimationEnd callback added to each CubismMotion in injectMotions().
       // This is the definitive fix for the "select black → motion resets to white" bug.
+      // 2026-06-13 v16: simplified to delegate to applyOutfit() (single source of truth).
       function restoreOutfitFromEmoteState() {
-        if (emoteState.outfit === 'vampire2') {
-          safeSetParam('PARAMoutfit1_2', 0.0);
-          safeSetParam('PARAMhariWB',   0.0);
-          safeSetParam('PARAMhariWB2',   1.0);
-          safeSetParam('PARAMhari_7',    1.0);
-          safeSetParam('PARAMhari_8',    1.0);
-          safeSetParam('PARAMhari_3',    0.0);
-        } else {
-          safeSetParam('PARAMoutfit1_2', 1.0);
-          safeSetParam('PARAMhariWB',   1.0);
-          safeSetParam('PARAMhariWB2',   0.0);
-          safeSetParam('PARAMhari_7',    1.0);
-          safeSetParam('PARAMhari_8',    1.0);
-          safeSetParam('PARAMhari_3',    1.0);
-        }
+        applyOutfit(emoteState.outfit);
       }
 
       async function injectMotions() {
@@ -1723,13 +1725,17 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
 
         // 呼叫 Live2D 原生表情系統播放對應的 exp3.json (可作為 fallback)
         if (typeof model !== 'undefined' && model && typeof model.expression === 'function') {
+          // 2026-06-13 v16: 'neutral' no longer maps to 'vampire'/'vampire2'.
+          // Those .exp3.json files include outfit color params, which would
+          // overwrite the current outfit every time the user picked neutral.
+          // Use 'stareyes' (basic forward-gaze expression) as a safe fallback.
           const expMap = {
             sad: 'sad',
             shy: 'shy',
             angry: 'mad',
             happy: 'hearteyes',
             surprised: 'circleeyes',
-            neutral: emoteState.outfit === 'vampire2' ? 'vampire2' : 'vampire'
+            neutral: 'stareyes',
           };
           const expName = expMap[name];
           if (expName) {
@@ -1766,18 +1772,16 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           const nextOutfit = isBlack ? 'vampire2' : 'vampire';
           emoteState.outfit = nextOutfit;
 
-          if (model && typeof model.expression === 'function') {
-            try {
-              // 2026-06-12 BUG FIX: vampire.exp3.json does NOT exist.
-              // The black outfit file is named 吸血鬼.exp3.json (Chinese).
-              // When model.expression('vampire') was called, Live2D threw
-              // because the .exp3.json file was not found.
-              const expName = (nextOutfit === 'vampire2') ? 'vampire2' : 'vampire';
-              model.expression(expName);
-              console.log('[Live2D] Outfit toggled to:', nextOutfit, '-> expression:', expName);
-            } catch (err) {
-              console.warn('[Live2D] Failed to toggle outfit expression:', err);
-            }
+          // 2026-06-13 v16: removed model.expression('vampire'/'vampire2') call.
+          // The .exp3.json files for those names mix outfit + facial params,
+          // which caused the next applyEmotion() to overwrite the outfit color.
+          // Outfit is now applied via applyOutfit() (which writes the 6 outfit
+          // params directly), and is also reinforced by the per-frame
+          // model.update override below. Outfit is now fully independent of
+          // the emotion system.
+          if (typeof applyOutfit === 'function') {
+            applyOutfit(emoteState.outfit);
+            console.log('[Live2D] Outfit toggled to:', nextOutfit);
           }
 
           showBubble('已切換衣裝：' + (nextOutfit === 'vampire2' ? '白色衣裝' : '黑色衣裝'));
@@ -1919,22 +1923,8 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         safeSetParam('PARAM_BODY_ANGLE_Y', bodySwayY);
 
         // ─── 寫入全域 emoteState 外觀與表情參數 ───
-        // 1. 服裝型態 (outfit)
-        if (emoteState.outfit === 'vampire') {
-          safeSetParam('PARAMoutfit1_2', 1.0);
-          safeSetParam('PARAMhariWB', 1.0);
-          safeSetParam('PARAMhariWB2', 0.0);
-          safeSetParam('PARAMhari_7', 1.0);
-          safeSetParam('PARAMhari_8', 1.0);
-          safeSetParam('PARAMhari_3', 1.0);
-        } else if (emoteState.outfit === 'vampire2') {
-          safeSetParam('PARAMoutfit1_2', 0.0);
-          safeSetParam('PARAMhariWB', 0.0);
-          safeSetParam('PARAMhariWB2', 1.0);
-          safeSetParam('PARAMhari_7', 1.0);
-          safeSetParam('PARAMhari_8', 1.0);
-          safeSetParam('PARAMhari_3', 0.0);
-        }
+        // 1. 服裝型態 (outfit) — 2026-06-13 v16: delegated to applyOutfit() (single source of truth)
+        applyOutfit(emoteState.outfit);
 
         // 2. 手勢道具 (gesture) — 2026-06-12 16:59: independent flags so
         // PARAMhands_1 (mc) + PARAMhands_2 (knife) can both be 1.0 simultaneously.
