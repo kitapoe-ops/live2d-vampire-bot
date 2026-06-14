@@ -703,3 +703,64 @@ document.getElementById('reset-btn').addEventListener('click', () => {
 - **跨 origin localStorage**: 父頁 reset 只可以清自己嘅 key。
   Widget 內部嘅 key 要靠 widget 自己嘅 Settings → 診斷 → 清除。
   Phase 2 可以加 `postMessage 'reset'` type，widget 自己清。
+
+---
+
+## 13. v36 Implementation (2026-06-14)
+
+**User feedback 觸發：**
+- Widget 遮住輸入框（v35 部署後 smoke test textarea 被擋）
+- Debounce 1.5s 太短，「我在」兩字就 react
+
+**已交付：**
+
+1. **Widget drag-to-reposition**（v36 核心）
+   - Widget 頂部加 #widget-drag-handle（藍色幼線, cursor: move）
+   - Drag → window.parent.postMessage `{ type: 'reposition_delta', dx, dy }`
+   - embed.js listen 'reposition_delta' → 累積 + clamp to viewport + persist localStorage
+   - 加 `window.AvatarWidget.setPosition(x, y)` + `resetPosition()` public API
+   - Init 讀 `localStorage.xiaob_widget_pos` 恢復位置
+
+2. **Diary input 改進**（v36 修 1.5s 太短問題）
+   - 加「📤 送出」button
+   - Enter 鍵送出（Shift+Enter = 換行）
+   - Debounce 1.5s → **3s**（多 1.5s buffer 畀思考停頓）
+   - Status 文字即時反饋（已送出 / 等緊）
+
+3. **加「↺ 重置 widget 位置」button**
+   - Smoke test 第三 section
+   - 調 `window.AvatarWidget.resetPosition()` API
+
+**改動範圍：**
+```
+backend/static/embed/embed.js    +30 lines (reposition handler + setPosition API)
+backend/static/embed/widget.html +50 lines (drag handle CSS + installWidgetDrag IIFE)
+backend/static/embed/index.html  +50 lines (send button + Enter + 3s debounce + reset pos)
+plans/external-events-lite.md    this section
+```
+
+**Known limitations（v36）：**
+- **位置 persist 每個 mousemove 都寫 localStorage**：成本低（~100 bytes/setItem），
+  但如果用戶快速 drag 會有 60+ writes/s。Phase 2 可以 throttle 100ms。
+- **Widget 拖拽時 cursor 唔跟手**：widget iframe cursor 唔會跟住 drag 個 mouse。
+  預期行為：用戶 drag 個 handle，個 iframe 跟住郁，但 cursor 視覺上停留喺 mouse。
+  要完美就要改用 absolute coord 模式。
+- **iFrame sandbox 限制**：widget iframe 喺 sandbox 模式下 mousemove event
+  只會 fire 喺 iframe 範圍。如果用戶 drag 好快飛出去，event 會 lost。
+  現有 fix 喺 window 而唔係 iframe 加 mousemove listener，咁可以 catch 全部。
+
+**Smoke test 結果：**
+- ✅ 3 個 files syntax OK
+- ✅ embed.js: 199 → 230 lines (+31)
+- ✅ widget.html: 218846 → ~219600 bytes (drag handle + JS)
+- ✅ index.html: 11738 → ~13000 bytes (send button + reset pos)
+- ✅ byte-perfect deploy (0 diff)
+
+**User 點試：**
+```
+1. 撳 widget 頂部藍色幼線拖去其他位置
+2. 喺日記 textarea 寫「今日被老細鬧咗好慘」
+3. 撳 Enter (或等 3s)
+4. 吸血鬼會 react (sad + 安慰)
+5. 撳 reset 位置掣返回右下角
+```

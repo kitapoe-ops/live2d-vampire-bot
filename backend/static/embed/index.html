@@ -84,12 +84,17 @@
            3. Reset  - reload iframe + clear parent's localStorage copy
          See: plans/external-events-lite.md -->
     <div class="card" id="react-smoke-test" style="border-left:4px solid #5b54e8; background:#f5f3ff;">
-      <h2>🧪 Reactive API Smoke Test (v35)</h2>
-      <p class="note" style="margin:0 0 16px 0;">下邊三個 control 會 postMessage 到吸血鬼 widget（右下角）試 <code>type: 'react'</code>。睇下 widget 嘅表情 + 動作 + 語音反應。</p>
+      <h2>🧪 Reactive API Smoke Test (v36)</h2>
+      <p class="note" style="margin:0 0 8px 0;">下邊三個 control 會 postMessage 到吸血鬼 widget（右下角）試 <code>type: 'react'</code>。睇下 widget 嘅表情 + 動作 + 語音反應。</p>
+      <p class="note" style="margin:0 0 16px 0; color:#5b54e8; font-weight:600;">💡 吸血鬼 widget 擋住輸入框? 拖拽 widget 頂部 (藍色幼線) 去其他位置, 位置會記住。</p>
 
       <h3 style="font-size:15px; color:var(--ink); margin:0 0 8px;">📓 1. 日記模擬</h3>
-      <textarea id="react-diary-input" rows="3" placeholder="寫低你今日嘅心情... 停寫 1.5s 後 widget 會自動反應"
+      <textarea id="react-diary-input" rows="3" placeholder="寫低你今日嘅心情... 撳 Enter 或「送出」掣 / 停寫 3s 後 widget 會自動反應"
                 style="width:100%; padding:8px 10px; border:1px solid #d0d6e0; border-radius:8px; font-size:14px; font-family:inherit; resize:vertical;"></textarea>
+      <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
+        <button id="react-diary-send" style="padding:8px 18px; background:#5b54e8; color:#fff; border:0; border-radius:8px; font-size:14px; cursor:pointer; font-weight:600;">📤 送出</button>
+        <span class="note" id="react-diary-status" style="flex:1; font-size:12px;">Enter = 送出 / Shift+Enter = 換行 / 停寫 3s = 自動送出</span>
+      </div>
       <p class="note" style="margin:6px 0 0 0;">Tip: 試打「今日好慘」、「我答啱咗」、「好嬲」等。冇 DeepSeek key 嘅話會用 keyword fallback。</p>
 
       <h3 style="font-size:15px; color:var(--ink); margin:20px 0 8px;">✅ 2. Yes/No 答題模擬</h3>
@@ -102,7 +107,10 @@
 
       <h3 style="font-size:15px; color:var(--ink); margin:20px 0 8px;">🔄 3. Reset</h3>
       <p class="note" style="margin:0 0 8px 0;">重設 widget iframe 並清除 parent page 嘅 xiaob_* / deepseek_key 等 localStorage。</p>
-      <button id="react-reset" style="padding:10px 18px; background:#5b54e8; color:#fff; border:0; border-radius:8px; font-size:14px; cursor:pointer; font-weight:600;">🔄 清除並重設</button>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <button id="react-reset" style="padding:10px 18px; background:#5b54e8; color:#fff; border:0; border-radius:8px; font-size:14px; cursor:pointer; font-weight:600;">🔄 清除並重設</button>
+        <button id="react-reset-pos" style="padding:10px 14px; background:#fff; color:#5b54e8; border:1px solid #5b54e8; border-radius:8px; font-size:14px; cursor:pointer; font-weight:600;">↺ 重置 widget 位置</button>
+      </div>
     </div>
   </div>
 
@@ -127,23 +135,55 @@
       console.log('[react-test] sent:', payload);
     }
 
-    // 1. Diary: debounce 1.5s on text input
-    var diary = document.getElementById('react-diary-input');
-    var diaryTimer = null;
+    // 1. Diary: 3 ways to send — Send button, Enter key, 3s debounce
+    // 2026-06-14 v36 fix: 1.5s debounce was too aggressive (reacted to
+    // partial text like "我在" mid-thought). Now 3s gives more buffer,
+    // plus explicit Enter / Send button for instant commit.
+    var diary       = document.getElementById('react-diary-input');
+    var sendBtn     = document.getElementById('react-diary-send');
+    var diaryStatus = document.getElementById('react-diary-status');
+    var diaryTimer  = null;
     var lastDiaryText = '';
+    function doSendDiary() {
+      var text = diary.value.trim();
+      if (text.length < 3 || text === lastDiaryText) return;
+      lastDiaryText = text;
+      sendReact({
+        type: 'react',
+        text: text.slice(-500),
+        context: { source: 'diary' },
+      });
+      // Visual feedback
+      if (sendBtn) {
+        var origBg = sendBtn.style.background;
+        sendBtn.style.background = '#27ae60';
+        sendBtn.textContent = '✓ 已送出';
+        if (diaryStatus) diaryStatus.textContent = '已送出: ' + text.slice(0, 30) + (text.length > 30 ? '...' : '');
+        setTimeout(function () {
+          sendBtn.style.background = origBg;
+          sendBtn.textContent = '📤 送出';
+          if (diaryStatus) diaryStatus.textContent = 'Enter = 送出 / Shift+Enter = 換行 / 停寫 3s = 自動送出';
+        }, 1500);
+      }
+    }
     if (diary) {
       diary.addEventListener('input', function () {
         clearTimeout(diaryTimer);
-        diaryTimer = setTimeout(function () {
-          var text = diary.value.trim();
-          if (text.length < 3 || text === lastDiaryText) return;
-          lastDiaryText = text;
-          sendReact({
-            type: 'react',
-            text: text.slice(-500),
-            context: { source: 'diary' },
-          });
-        }, 1500);
+        diaryTimer = setTimeout(doSendDiary, 3000);
+      });
+      diary.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          clearTimeout(diaryTimer);
+          doSendDiary();
+        }
+        // Shift+Enter falls through to default (insert newline)
+      });
+    }
+    if (sendBtn) {
+      sendBtn.addEventListener('click', function () {
+        clearTimeout(diaryTimer);
+        doSendDiary();
       });
     }
 
@@ -188,6 +228,23 @@
         alert('Widget iframe 已重新載入。parent localStorage 已清除 xiaob_*/minimax_*/deepseek_key。');
       } catch (e) {
         alert('Reset 失敗: ' + e.message);
+      }
+    });
+    // 3b. Reset widget position only (move back to default bottom-right)
+    var resetPosBtn = document.getElementById('react-reset-pos');
+    if (resetPosBtn) resetPosBtn.addEventListener('click', function () {
+      if (window.AvatarWidget && typeof window.AvatarWidget.resetPosition === 'function') {
+        window.AvatarWidget.resetPosition();
+        alert('Widget 位置已重置 (右下方)');
+      } else {
+        // Fallback: clear localStorage + reload
+        try { localStorage.removeItem('xiaob_widget_pos'); } catch (e) {}
+        var iframe = document.querySelector('iframe');
+        if (iframe) {
+          var src = iframe.getAttribute('src');
+          iframe.setAttribute('src', src.split('?')[0] + '?pos-reset=' + Date.now());
+        }
+        alert('Widget 位置已重置 (reload iframe)');
       }
     });
   })();

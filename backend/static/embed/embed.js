@@ -185,7 +185,65 @@
     if (d.ns !== NS_IN) return;
     if (d.type === 'close' || d.type === 'collapse') { setOpen(false); }
     if (d.type === 'open') { setOpen(true); }
+    // 2026-06-14 v36: widget drag-to-reposition. The widget posts
+    // incremental deltas { type: 'reposition_delta', dx, dy } while
+    // user drags, and host accumulates + clamps to viewport.
+    if (d.type === 'reposition_delta' && typeof d.dx === 'number' && typeof d.dy === 'number') {
+      // Get current position. If right/bottom is set (default), resolve to left/top first.
+      var curLeft = root.style.left;
+      var curTop  = root.style.top;
+      if (!curLeft || curLeft === 'auto' || !curTop || curTop === 'auto') {
+        // First move: capture current rect and convert from right/bottom anchor
+        var rect0 = root.getBoundingClientRect();
+        curLeft = rect0.left;
+        curTop  = rect0.top;
+        root.style.right  = 'auto';
+        root.style.bottom = 'auto';
+      } else {
+        curLeft = parseFloat(curLeft);
+        curTop  = parseFloat(curTop);
+      }
+      var w = parseInt(root.style.width, 10) || EXPANDED.w;
+      var h = parseInt(root.style.height, 10) || EXPANDED.h;
+      var nx = Math.max(0, Math.min(window.innerWidth  - w, curLeft + d.dx));
+      var ny = Math.max(0, Math.min(window.innerHeight - h, curTop  + d.dy));
+      root.style.left = nx + 'px';
+      root.style.top  = ny + 'px';
+      // Persist on every move (cheap, no debounce needed for string setItem)
+      try { localStorage.setItem('xiaob_widget_pos', JSON.stringify({ x: nx, y: ny })); } catch (eP) { /* ignore */ }
+    }
+    // 2026-06-14 v36: absolute reposition (used by AvatarWidget.setPosition API)
+    if (d.type === 'reposition' && typeof d.x === 'number' && typeof d.y === 'number') {
+      var w2 = parseInt(root.style.width, 10) || EXPANDED.w;
+      var h2 = parseInt(root.style.height, 10) || EXPANDED.h;
+      var nx2 = Math.max(0, Math.min(window.innerWidth  - w2, d.x));
+      var ny2 = Math.max(0, Math.min(window.innerHeight - h2, d.y));
+      root.style.left   = nx2 + 'px';
+      root.style.top    = ny2 + 'px';
+      root.style.right  = 'auto';
+      root.style.bottom = 'auto';
+      try { localStorage.setItem('xiaob_widget_pos', JSON.stringify({ x: nx2, y: ny2 })); } catch (eP) { /* ignore */ }
+    }
   });
+
+  // 2026-06-14 v36: restore saved widget position on init.
+  // If user has dragged before, position is persisted in localStorage.
+  // Otherwise, default to bottom-right (set via root.style.cssText above).
+  try {
+    var posRaw = localStorage.getItem('xiaob_widget_pos');
+    if (posRaw) {
+      var pos = JSON.parse(posRaw);
+      if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+        var w2 = EXPANDED.w, h2 = EXPANDED.h;
+        var px = Math.max(0, Math.min(window.innerWidth  - w2, pos.x));
+        var py = Math.max(0, Math.min(window.innerHeight - h2, pos.y));
+        root.style.left   = px + 'px';
+        root.style.top    = py + 'px';
+        root.style.right  = 'auto';
+        root.style.bottom = 'auto';
+      }
+    }
+  } catch (ePos) { /* ignore, use default */ }
 
   // Public API
   window.AvatarWidget = {
@@ -205,6 +263,28 @@
         // restriction), fall back to queue. The load handler will retry.
         messageQueue.push(payload);
       }
+    },
+    // 2026-06-14 v36: programmatic position control. Useful for parent
+    // pages that want to position the widget relative to a specific
+    // element or anchor.
+    setPosition: function (x, y) {
+      if (typeof x !== 'number' || typeof y !== 'number') return;
+      var w = parseInt(root.style.width, 10) || EXPANDED.w;
+      var h = parseInt(root.style.height, 10) || EXPANDED.h;
+      var nx = Math.max(0, Math.min(window.innerWidth  - w, x));
+      var ny = Math.max(0, Math.min(window.innerHeight - h, y));
+      root.style.left   = nx + 'px';
+      root.style.top    = ny + 'px';
+      root.style.right  = 'auto';
+      root.style.bottom = 'auto';
+      try { localStorage.setItem('xiaob_widget_pos', JSON.stringify({ x: nx, y: ny })); } catch (eP) { /* ignore */ }
+    },
+    resetPosition: function () {
+      try { localStorage.removeItem('xiaob_widget_pos'); } catch (eR) { /* ignore */ }
+      root.style.right  = '16px';
+      root.style.bottom = '16px';
+      root.style.left   = 'auto';
+      root.style.top    = 'auto';
     }
   };
 })();
