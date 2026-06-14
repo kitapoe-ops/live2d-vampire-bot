@@ -1,7 +1,19 @@
-# 吸血鬼 Widget — 外部事件觸發系統 (Hooks & YAML Actions)
+# 吸血鬼 Widget — 外部事件觸發系統 (Hooks & YAML Actions) — ADVANCED / SUPERSEDED
 
-> 設計文件 v0.1 — 2026-06-14
-> Status: **Proposal**，未實作，等用戶 review
+> 設計文件 v0.1 — 2026-06-14 (已 superseded)
+> Status: **Superseded by `external-events-lite.md` v0.2**
+>
+> 留低做 power user advanced add-on，**唔係 MVP**。
+> 一般用戶請睇新文件：`plans/external-events-lite.md`
+>
+> 對比：
+> - v0.1 (本文件): YAML rules engine, 5 trigger types, 5-9 hr / 4 commits
+> - v0.2 (新): 1 個 postMessage type 'react', LLM auto-judge, 1-2 hr / 1 commit
+>
+> 用戶 2026-06-14 feedback：「要保持輕量，穩定及通用性」
+> → lite v0.2 先做，YAML v0.1 排喺 advanced optional
+
+---
 
 ---
 
