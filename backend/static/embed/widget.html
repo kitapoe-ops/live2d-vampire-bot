@@ -139,8 +139,8 @@
      bar is now just the type-input + send row. Two floating buttons sit
      in the bottom-right corner: a settings button and the close button. */
   #corner-actions {
-    position:absolute; right:8px; bottom:60px;
-    display:flex; flex-direction:row; gap:6px; padding:0; z-index:5;
+    position:absolute; right:8px; bottom:8px;
+    display:flex; flex-direction:column; gap:6px; padding:0; z-index:5;
   }
   .corner-btn {
     background:var(--dock);
@@ -317,6 +317,28 @@
   #debug-hud.collapsed { height:auto; min-height:22px; }
   #debug-hud.collapsed #debug-hud-body { display:none; }
 
+  /* ===== Settings Modal Tab Bar ===== */
+  .settings-tabs {
+    display:flex; gap:2px; padding:8px 16px 0;
+    border-bottom:1px solid rgba(0,0,0,.08);
+    background:var(--surface);
+  }
+  .settings-tab {
+    appearance:none; border:none; background:transparent;
+    padding:7px 12px; font-size:12px; font-weight:600;
+    color:#888; cursor:pointer; border-radius:8px 8px 0 0;
+    transition:background .15s, color .15s;
+    border-bottom:2px solid transparent;
+    margin-bottom:-1px;
+  }
+  .settings-tab:hover { color:var(--ink); background:rgba(91,84,232,.06); }
+  .settings-tab.active {
+    color:var(--brand); background:rgba(91,84,232,.1);
+    border-bottom-color:var(--brand);
+  }
+  .settings-tab-content { display:none; padding:12px 16px; }
+  .settings-tab-content.active { display:block; }
+
   /* ===== Voice list popover (anchored to btn-voice) ===== */
   #voice-list, #emote-list {
     position:absolute; left:8px; right:8px; bottom:calc(100% + 8px);
@@ -378,8 +400,15 @@
          voice select, TTS mode, mic permission, outfit toggle, mute) move
          into the settings modal so the in-frame UI stays minimal. -->
     <div id="corner-actions" role="toolbar" aria-label="虛擬人快速動作">
-      <button class="ctrl corner-btn" id="btn-settings" aria-label="開啟設定面板" title="設定" aria-haspopup="dialog" aria-expanded="false"><span aria-hidden="true">⚙️</span> 設定</button>
+      <!-- 2026-06-13 v31: mic/settings/close moved here + action buttons -->
+      <!-- Visible when stage is shown: -->
+      <button class="ctrl corner-btn" id="btn-mic" data-mic-btn="1" aria-label="開始語音對話" title="開始語音對話"><span aria-hidden="true">🎤</span></button>
+      <button class="ctrl corner-btn" id="btn-actions" aria-label="動作列表" title="動作列表"><span aria-hidden="true">📋</span></button>
+      <button class="ctrl corner-btn" id="btn-emote-corner" aria-label="切換衣裝" title="切換衣裝"><span aria-hidden="true">🧥</span></button>
+      <button class="ctrl corner-btn" id="btn-settings" aria-label="開啟設定面板" title="設定" aria-haspopup="dialog" aria-expanded="false"><span aria-hidden="true">⚙️</span></button>
       <button class="ctrl corner-btn" id="btn-close" aria-label="收起助理" title="收起助理"><span aria-hidden="true">✕</span></button>
+      <!-- Visible when stage is hidden (restore button): -->
+      <button class="ctrl corner-btn" id="btn-restore" aria-label="顯示助理" title="顯示助理" style="display:none;"><span aria-hidden="true">💬</span></button>
     </div>
     <!-- Global settings modal (hidden by default). Populated by the
          settings renderer below; v30 moved every per-feature toggle out
@@ -392,53 +421,150 @@
           <h2 id="settings-title">⚙️ 設定</h2>
           <button class="ctrl settings-close" id="btn-settings-close" aria-label="關閉設定面板" title="關閉"><span aria-hidden="true">✕</span></button>
         </header>
+        <!-- 2026-06-13 v31: Tab Bar Navigation -->
+        <div class="settings-tabs" role="tablist" aria-label="設定分類">
+          <button class="settings-tab active" data-tab="general" role="tab" aria-selected="true">一般</button>
+          <button class="settings-tab" data-tab="model" role="tab" aria-selected="false">模型</button>
+          <button class="settings-tab" data-tab="chat" role="tab" aria-selected="false">對話</button>
+          <button class="settings-tab" data-tab="debug" role="tab" aria-selected="false">診斷</button>
+        </div>
         <div class="settings-body">
-          <section class="settings-section" data-section="llm">
-            <h3>🧠 AI 大腦 (DeepSeek)</h3>
-            <label class="settings-field">
-              <span>API Key</span>
-              <input id="settings-ds-key" type="password" placeholder="sk-..." autocomplete="off" />
-            </label>
-            <label class="settings-field">
-              <span>API Endpoint (選擇性)</span>
-              <input id="settings-ds-api" type="text" placeholder="https://api.deepseek.com/v1/chat/completions" />
-            </label>
-            <p class="settings-hint">Key 儲存喺 localStorage（base64 + obfuscation），唔會上傳任何 server。</p>
-          </section>
-          <section class="settings-section" data-section="tts">
-            <h3>🗣️ 語音合成 (TTS)</h3>
-            <label class="settings-field">
-              <span>TTS 路線</span>
-              <select id="settings-tts-mode">
-                <option value="browser">瀏覽器 (免費，Web Speech API)</option>
-                <option value="neural">MiniMax 神經語音 (高質素，需 API Key)</option>
-              </select>
-            </label>
-            <label class="settings-field">
-              <span>語音</span>
-              <select id="settings-voice"></select>
-            </label>
-            <label class="settings-field settings-row">
-              <span>語速 <span id="settings-tts-rate-val">1.0</span>×</span>
-              <input id="settings-tts-rate" type="range" min="0.5" max="2.0" step="0.1" />
-            </label>
-            <label class="settings-field settings-row">
-              <span>靜音</span>
-              <input id="settings-mute" type="checkbox" />
-            </label>
-          </section>
-          <section class="settings-section" data-section="voice-input">
-            <h3>🎤 語音輸入</h3>
-            <button class="ctrl" id="btn-mic" data-mic-btn="1" aria-label="開始語音對話" title="開始語音對話"><span aria-hidden="true">🎤</span> 撳住說話</button>
-            <p class="settings-hint">Android Chrome 需裝 Google speech backend 先 work（見 bubble 提示）。</p>
-          </section>
-          <section class="settings-section" data-section="emote">
-            <h3>🧥 衣裝 / 表情</h3>
-            <div class="settings-row">
-              <button class="ctrl" id="btn-emote" aria-label="切換衣裝形態" aria-pressed="false" title="切換衣裝形態 (黑色/白色)"><span aria-hidden="true">🧥</span> 衣裝</button>
-              <select id="emote-select" aria-label="表情"></select>
+          <!-- Tab: 一般 (General) -->
+          <div class="settings-tab-content active" data-tab-content="general">
+            <section class="settings-section">
+              <h3>🧠 AI 大腦 (DeepSeek)</h3>
+              <label class="settings-field">
+                <span>API Key</span>
+                <input id="settings-ds-key" type="password" placeholder="sk-..." autocomplete="off" />
+              </label>
+              <label class="settings-field">
+                <span>API Endpoint (選擇性)</span>
+                <input id="settings-ds-api" type="text" placeholder="https://api.deepseek.com/v1/chat/completions" />
+              </label>
+              <p class="settings-hint">Key 儲存喺 localStorage，唔會上傳任何 server。</p>
+            </section>
+            <section class="settings-section">
+              <h3>💎 MiniMax 神經語音</h3>
+              <label class="settings-field">
+                <span>API Key</span>
+                <input id="settings-minimax-key" type="password" placeholder="eyJhbGciOi..." autocomplete="off" />
+              </label>
+              <label class="settings-field">
+                <span>Group ID</span>
+                <input id="settings-minimax-group" type="text" placeholder="123456789012345678" />
+              </label>
+              <p class="settings-hint">金鑰只會儲存喺您嘅瀏覽器 localStorage。</p>
+            </section>
+            <section class="settings-section">
+              <h3>🗣️ 語音合成 (TTS)</h3>
+              <label class="settings-field">
+                <span>TTS 路線</span>
+                <select id="settings-tts-mode">
+                  <option value="browser">瀏覽器 (免費，Web Speech API)</option>
+                  <option value="neural">MiniMax 神經語音 (高質素，需 API Key)</option>
+                </select>
+              </label>
+              <label class="settings-field">
+                <span>語音</span>
+                <select id="settings-voice"></select>
+              </label>
+              <label class="settings-field settings-row">
+                <span>語速 <span id="settings-tts-rate-val">1.0</span>×</span>
+                <input id="settings-tts-rate" type="range" min="0.5" max="2.0" step="0.1" />
+              </label>
+              <label class="settings-field settings-row">
+                <span>靜音</span>
+                <input id="settings-mute" type="checkbox" />
+              </label>
+            </section>
             </div>
-          </section>
+          <!-- Tab: 模型 (Model) -->
+          <div class="settings-tab-content" data-tab-content="model">
+            <section class="settings-section">
+              <h3>🎭 動畫參數</h3>
+              <label class="settings-field settings-row">
+                <span>呼吸幅度 <span id="dev-breath-val">0.50</span></span>
+                <input id="dev-breath" type="range" min="0" max="1" step="0.05" value="0.5" />
+              </label>
+              <label class="settings-field settings-row">
+                <span>身體晃動 <span id="dev-body-sway-val">2.5</span></span>
+                <input id="dev-body-sway" type="range" min="0" max="5" step="0.1" value="2.5" />
+              </label>
+              <label class="settings-field settings-row">
+                <span>說話晃動 <span id="dev-speaking-sway-val">3.5</span></span>
+                <input id="dev-speaking-sway" type="range" min="0" max="6" step="0.1" value="3.5" />
+              </label>
+              <label class="settings-field settings-row">
+                <span>眼球追蹤 <span id="dev-eye-track-val">1.0</span>×</span>
+                <input id="dev-eye-track" type="range" min="0.5" max="2.0" step="0.05" value="1.0" />
+              </label>
+              <label class="settings-field settings-row">
+                <span>Idle 動畫間隔 <span id="dev-idle-val">30</span>秒</span>
+                <input id="dev-idle" type="range" min="10" max="120" step="5" value="30" />
+              </label>
+              <p class="settings-hint">調整 Live2D 動畫行為。改動即時生效。</p>
+            </section>
+          </div>
+          <!-- Tab: 對話 (Chat) -->
+          <div class="settings-tab-content" data-tab-content="chat">
+            <section class="settings-section">
+              <h3>🤖 AI 回應參數</h3>
+              <label class="settings-field settings-row">
+                <span>情緒標籤前綴</span>
+                <input id="dev-emotion-prefix" type="checkbox" checked />
+              </label>
+              <label class="settings-field settings-row">
+                <span>關鍵詞表情觸發</span>
+                <input id="dev-keyword-emote" type="checkbox" checked />
+              </label>
+              <label class="settings-field settings-row">
+                <span>Max Tokens <span id="dev-max-tokens-val">200</span></span>
+                <input id="dev-max-tokens" type="range" min="50" max="300" step="10" value="200" />
+              </label>
+              <label class="settings-field settings-row">
+                <span>Temperature <span id="dev-temp-val">0.7</span></span>
+                <input id="dev-temp" type="range" min="0.3" max="1.2" step="0.1" value="0.7" />
+              </label>
+              <label class="settings-field settings-row">
+                <span>TTS 文字上限 <span id="dev-tts-cap-val">120</span>字</span>
+                <input id="dev-tts-cap" type="range" min="80" max="200" step="10" value="120" />
+              </label>
+              <p class="settings-hint">AI 回應與語音合成參數。</p>
+            </section>
+          </div>
+          <!-- Tab: 診斷 (Debug) -->
+          <div class="settings-tab-content" data-tab-content="debug">
+            <section class="settings-section">
+              <h3>🔧 診斷工具</h3>
+              <label class="settings-field settings-row">
+                <span>Debug HUD</span>
+                <input id="dev-debug-hud" type="checkbox" />
+              </label>
+              <label class="settings-field settings-row">
+                <span>日誌等級</span>
+                <select id="dev-log-level">
+                  <option value="verbose">Verbose</option>
+                  <option value="info" selected>Info</option>
+                  <option value="warn">Warn</option>
+                  <option value="error">Error</option>
+                </select>
+              </label>
+              <div class="settings-row" style="gap:8px;margin-top:8px;">
+                <button class="ctrl" id="dev-introspect">參數 introspection</button>
+                <button class="ctrl" id="dev-boot-diag">Boot 記錄</button>
+              </div>
+              <p class="settings-hint">introspection 會在 console 輸出所有 Live2D 參數。</p>
+            </section>
+            <section class="settings-section">
+              <h3>💾 資料管理</h3>
+              <div class="settings-row" style="gap:8px;margin-top:8px;">
+                <button class="ctrl" id="dev-export">匯出設定</button>
+                <button class="ctrl" id="dev-import">導入設定</button>
+              </div>
+              <input id="dev-import-file" type="file" accept=".json" style="display:none;" />
+              <button class="ctrl" id="dev-reset" style="margin-top:8px;background:#e74c3c;color:#fff;">清除所有 localStorage</button>
+            </section>
+          </div>
         </div>
         <footer class="settings-footer">
           <button class="ctrl" id="btn-settings-reset" title="清除所有 localStorage 設定">重設</button>
@@ -647,7 +773,29 @@
   let DEEPSEEK_KEY = localStorage.getItem('deepseek_key') || CFG.get('ds_key') || ''; // 透過 URL 參數或 localStorage 讀取 DeepSeek API Key
   const DEEPSEEK_API = CFG.get('ds_api') || 'https://api.deepseek.com/v1/chat/completions';
 
-  console.log('[FRESH-BUILD] widget.html loaded at', new Date().toISOString(), 'with micro-movement v2');
+  // 2026-06-13 v31: Developer mode parameters (localStorage-persisted)
+  let __dev_breath_amp = parseFloat((function(){try{return localStorage.getItem('xiaob_dev_breath')||''}catch(e){return''}}())||'0.5')||0.5;
+  let __dev_body_sway = parseFloat((function(){try{return localStorage.getItem('xiaob_dev_body_sway')||''}catch(e){return''}}())||'2.5')||2.5;
+  let __dev_speaking_sway = parseFloat((function(){try{return localStorage.getItem('xiaob_dev_speaking_sway')||''}catch(e){return''}}())||'3.5')||3.5;
+  let __dev_eye_track = parseFloat((function(){try{return localStorage.getItem('xiaob_dev_eye_track')||''}catch(e){return''}}())||'1.0')||1.0;
+  let __dev_idle_interval = parseFloat((function(){try{return localStorage.getItem('xiaob_dev_idle_interval')||''}catch(e){return''}}())||'30')||30;
+  let __dev_emotion_prefix = (function(){try{return localStorage.getItem('xiaob_dev_emotion_prefix')!=='false'}catch(e){return true}}());
+  let __dev_keyword_emote = (function(){try{return localStorage.getItem('xiaob_dev_keyword_emote')!=='false'}catch(e){return true}}());
+  let __dev_max_tokens = parseInt((function(){try{return localStorage.getItem('xiaob_dev_max_tokens')||''}catch(e){return''}}())||'200')||200;
+  let __dev_temperature = parseFloat((function(){try{return localStorage.getItem('xiaob_dev_temperature')||''}catch(e){return''}}())||'0.7')||0.7;
+  let __dev_tts_cap = parseInt((function(){try{return localStorage.getItem('xiaob_dev_tts_cap')||''}catch(e){return''}}())||'120')||120;
+  let __dev_debug_hud = false;
+  let __dev_log_level = 'info';
+  const __DEV_KEYS = ['xiaob_dev_breath','xiaob_dev_body_sway','xiaob_dev_speaking_sway','xiaob_dev_eye_track','xiaob_dev_idle_interval','xiaob_dev_emotion_prefix','xiaob_dev_keyword_emote','xiaob_dev_max_tokens','xiaob_dev_temperature','xiaob_dev_tts_cap'];
+
+  console.log('[FRESH-BUILD] widget.html loaded at', new Date().toISOString(), 'with dev mode v31');
+  // 2026-06-13 v31: log dev mode params on boot for diagnostics
+  console.log('[v31 dev-mode] params:', JSON.stringify({
+    breath: __dev_breath_amp, bodySway: __dev_body_sway, speakingSway: __dev_speaking_sway,
+    eyeTrack: __dev_eye_track, idleInterval: __dev_idle_interval,
+    emotionPrefix: __dev_emotion_prefix, keywordEmote: __dev_keyword_emote,
+    maxTokens: __dev_max_tokens, temperature: __dev_temperature, ttsCap: __dev_tts_cap
+  }));
 
   let model = null, app = null;
   let isSpeaking = false, mouthValue = 0, mouthTarget = 0.7;
@@ -811,6 +959,8 @@
 
   function applyKeywordsTrigger(text) {
     if (!text) return;
+    // 2026-06-13 v31: respect __dev_keyword_emote flag (dev mode toggle)
+    if (!__dev_keyword_emote) return;
     const base = currentSentenceEmotion || 'neutral';
     // 2026-06-12 16:59: gestures now use independent Set-style tracking so multiple
     // gestures (e.g. 刀+唱 → knife + mc) can be active simultaneously. Previously
@@ -915,7 +1065,8 @@
     if (!stripped) return;
     applyKeywordsTrigger(stripped);
     // TTS-bound copy is smart-truncated; bubble can show the full stripped text.
-    var ttsText = _ttsTruncate(stripped, 120);
+    // 2026-06-13 v31: cap driven by __dev_tts_cap (dev mode slider)
+    var ttsText = _ttsTruncate(stripped, __dev_tts_cap);
     const myseq = ++speakSeq;
     showBubble(stripped);
     postToParent('speaking', { text: stripped });
@@ -1290,12 +1441,18 @@
         },
         body: JSON.stringify({
           model: 'deepseek-chat',
-          // Hard cap on output tokens (~150 Chinese chars). DeepSeek default is 8192.
-          max_tokens: 200,
-          // Lower temperature for more deterministic, less garbled output.
-          temperature: 0.7,
+          // 2026-06-13 v31: driven by dev mode sliders (__dev_max_tokens, __dev_temperature)
+          max_tokens: __dev_max_tokens,
+          temperature: __dev_temperature,
           messages: [
-            { role: 'system', content: '你是網頁右下角的吸血鬼少女助手。你傲嬌、毒舌但內心體貼。\n回應規則（請嚴格遵守）：\n1. 繁體中文，台灣用語。\n2. 字數 80–120 個字以內，最多三句。\n3. 句首內聯情感標籤，每段回應最少 1 個：<happy> <sad> <angry> <surprised> <shy> <thinking> <neutral>。\n4. 只用一個標籤在開頭。不要在句子中間切換情緒。\n5. 不要用英文、不要用簡體字、不要使用 Markdown、表情符號或代碼區塊。\n範例：<angry>哈？這種簡單的事情你竟然都不懂！<shy>真拿你沒辦法...' },
+            { role: 'system', content: (function() {
+              var base = '你是網頁右下角的吸血鬼少女助手。你傲嬌、毒舌但內心體貼。\n回應規則（請嚴格遵守）：\n1. 繁體中文，台灣用語。\n2. 字數 80–120 個字以內，最多三句。\n3. 不要用英文、不要用簡體字、不要使用 Markdown、表情符號或代碼區塊。';
+              // 2026-06-13 v31: emotion tag instruction driven by __dev_emotion_prefix (dev mode toggle)
+              if (__dev_emotion_prefix) {
+                return base + '\n3. 句首內聯情感標籤，每段回應最少 1 個：<happy> <sad> <angry> <surprised> <shy> <thinking> <neutral>。\n4. 只用一個標籤在開頭。不要在句子中間切換情緒。\n範例：<angry>哈？這種簡單的事情你竟然都不懂！<shy>真拿你沒辦法...';
+              }
+              return base;
+            })() },
             { role: 'user', content: text }
           ],
           stream: true
@@ -1606,6 +1763,10 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
 
       model = await Live2DModel.from(MODEL_URL);
       app.stage.addChild(model);
+      // Expose model and emoteState globally so external functions like renderActionList can access them
+      window.model = model;
+      window.emoteState = emoteState;
+      console.log('[Live2D] model and emoteState exposed to window');
 
       // 2026-06-13 v16: SINGLE SOURCE OF TRUTH for outfit params.
       // Per user report: different emotions (especially hearteyes / sad /
@@ -1951,9 +2112,11 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           if (currentModel === _watchedModelId && _timer) return;
           disarm();
           if (_hasMotions(currentModel)) {
-            _timer = setInterval(playIdle, 30000);
+            // 2026-06-13 v31: interval driven by __dev_idle_interval (dev mode slider, in seconds)
+            const intervalMs = Math.round(__dev_idle_interval) * 1000;
+            _timer = setInterval(playIdle, intervalMs);
             _watchedModelId = currentModel;
-            console.log('[Live2D] playIdle watchdog ARMED (30s interval)');
+            console.log('[Live2D] playIdle watchdog ARMED (' + __dev_idle_interval + 's interval)');
           } else {
             console.log('[Live2D] playIdle watchdog DISARMED (no motion groups)');
           }
@@ -2440,6 +2603,26 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       // settles back to the same offset (which is the normal case).
       let __v22_cacheGeneration = 0;
       function v22Invalidate() { __v22_cacheGeneration++; }
+      // Expose v22Set, v22Invalidate, and __v22_cacheGeneration globally
+      window.v22Set = v22Set;
+      window.v22Invalidate = v22Invalidate;
+      window.__v22_cacheGeneration = function() { return __v22_cacheGeneration; };
+      // Debug: log model parameters on load
+      console.log('[DEBUG] model internalModel:', typeof model.internalModel);
+      if (model.internalModel) {
+        console.log('[DEBUG] coreModel:', typeof model.internalModel.coreModel);
+        const cm = model.internalModel.coreModel;
+        if (cm) {
+          console.log('[DEBUG] Parameter count:', cm.getParameterCount ? cm.getParameterCount() : 'N/A');
+          // Log first 20 parameters
+          const count = cm.getParameterCount ? cm.getParameterCount() : 0;
+          for (let i = 0; i < Math.min(count, 20); i++) {
+            const id = cm.getParameterId ? cm.getParameterId(i) : 'N/A';
+            const val = cm.getParameterValue ? cm.getParameterValue(i) : 'N/A';
+            console.log('[DEBUG] param', i, ':', id, '=', val);
+          }
+        }
+      }
       // Cache invalidation strategy: we don't wrap applyOutfit() (it's a
       // function declaration, can't be reassigned in ES). Instead, we
       // bump the generation counter on the rare events that need it:
@@ -2482,23 +2665,29 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         }
 
         // 使用 model.track 追蹤目標（會寫入 PARAM_ANGLE_X/Y 及 PARAM_EYE_BALL_X/Y）
+        // 2026-06-13 v31: sensitivity driven by __dev_eye_track (dev mode slider)
         if (model && typeof model.track === 'function') {
-          model.track(targetX, targetY);
+          // Scale target by eye tracking sensitivity (1.0 = default, 0.5 = less responsive, 2.0 = more responsive)
+          const trackX = w / 2 + (targetX - w / 2) * __dev_eye_track;
+          const trackY = h / 2 + (targetY - h / 2) * __dev_eye_track;
+          model.track(trackX, trackY);
         }
 
         // 呼吸 (PARAM_BREATH) 振幅為 0 到 1 之間
-        const breath = (Math.sin(t * 1.5) + 1.0) / 2.0;
+        // 2026-06-13 v31: amplitude driven by __dev_breath_amp (dev mode slider)
+        const breath = (Math.sin(t * 1.5) + 1.0) / 2.0 * __dev_breath_amp;
         v22Set('PARAM_BREATH', breath);
 
         // 身體與肩膀晃動 (PARAM_BODY_ANGLE_X/Y/Z, PARAM_shoulder)
-        let bodySwayX = Math.sin(t * 0.4) * 2.5;
-        let bodySwayY = Math.cos(t * 0.3) * 1.5;
+        // 2026-06-13 v31: driven by __dev_body_sway / __dev_speaking_sway (dev mode sliders)
+        let bodySwayX = Math.sin(t * 0.4) * __dev_body_sway;
+        let bodySwayY = Math.cos(t * 0.3) * (__dev_body_sway * 0.6);
         if (isSpeaking) {
           // 說話時增加晃動幅度和頻率，讓身體顯得生動
-          bodySwayX += Math.sin(t * 3.0) * 3.5;
-          bodySwayY += Math.cos(t * 2.5) * 2.0;
-          v22Set('PARAM_BODY_ANGLE_Z', Math.sin(t * 2.0) * 2.0);
-          v22Set('PARAM_shoulder', Math.sin(t * 4.0) * 3.5);
+          bodySwayX += Math.sin(t * 3.0) * __dev_speaking_sway;
+          bodySwayY += Math.cos(t * 2.5) * (__dev_speaking_sway * 0.6);
+          v22Set('PARAM_BODY_ANGLE_Z', Math.sin(t * 2.0) * (__dev_speaking_sway * 0.6));
+          v22Set('PARAM_shoulder', Math.sin(t * 4.0) * __dev_speaking_sway);
         } else {
           v22Set('PARAM_BODY_ANGLE_Z', 0.0);
           v22Set('PARAM_shoulder', 0.0);
@@ -2902,12 +3091,8 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     });
   })();
 
-  // 2026-06-13 v30: settings modal open/close + bindings.
-  // The seven buttons (mic / llm / emote / mute / voice / tts-mode / close)
-  // used to live in the control bar. They've been moved to a global
-  // settings modal that's invoked from a single ⚙️ corner button. The
-  // close button is the only one that stayed in the chrome (top of
-  // corner-actions).
+  // 2026-06-13 v31: settings modal open/close + tabbed dev mode bindings.
+  // Settings modal now uses a 4-tab structure: 一般 / 模型 / 對話 / 診斷.
   (function initSettingsModal() {
     const modal = document.getElementById('settings-modal');
     const openBtn = document.getElementById('btn-settings');
@@ -2915,7 +3100,46 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     const resetBtn = document.getElementById('btn-settings-reset');
     if (!modal || !openBtn) return;
 
+    // Tab switching
+    function switchTab(tabName) {
+      try {
+        const tabs = modal.querySelectorAll('.settings-tab');
+        const contents = modal.querySelectorAll('.settings-tab-content');
+        tabs.forEach(t => {
+          const isActive = t.dataset.tab === tabName;
+          t.classList.toggle('active', isActive);
+          t.setAttribute('aria-selected', String(isActive));
+        });
+        contents.forEach(c => {
+          c.classList.toggle('active', c.dataset.tabContent === tabName);
+        });
+        // Persist last tab
+        try { localStorage.setItem('xiaob_settings_tab', tabName); } catch (e) {}
+      } catch (eTab) {}
+    }
+    // Bind tab buttons
+    modal.querySelectorAll('.settings-tab').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+    // Keyboard nav: arrow keys switch tabs when modal is open
+    document.addEventListener('keydown', (e) => {
+      if (modal.hidden) return;
+      const tabs = Array.from(modal.querySelectorAll('.settings-tab'));
+      const activeTab = modal.querySelector('.settings-tab.active');
+      const idx = tabs.indexOf(activeTab);
+      if (e.key === 'ArrowRight' && idx >= 0) {
+        switchTab(tabs[(idx + 1) % tabs.length].dataset.tab);
+      } else if (e.key === 'ArrowLeft' && idx >= 0) {
+        switchTab(tabs[(idx - 1 + tabs.length) % tabs.length].dataset.tab);
+      }
+    });
+
     function open() {
+      // Restore last tab
+      try {
+        const lastTab = localStorage.getItem('xiaob_settings_tab') || 'general';
+        switchTab(lastTab);
+      } catch (e) {}
       // Populate fields from current state every time the modal opens so
       // the user always sees fresh values, even after hot updates.
       try {
@@ -2923,11 +3147,15 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         const dsApi = document.getElementById('settings-ds-api');
         if (dsKey) dsKey.value = (DEEPSEEK_KEY || '').replace(/.(?=.{4})/g, '*');
         if (dsApi) dsApi.value = DEEPSEEK_API || '';
+        // MiniMax keys
+        const mmKey = document.getElementById('settings-minimax-key');
+        const mmGroup = document.getElementById('settings-minimax-group');
+        if (mmKey) mmKey.value = MINIMAX_TTS_KEY ? '••••••••' : '';
+        if (mmGroup) mmGroup.value = MINIMAX_GROUP_ID || '';
         const ttsSel = document.getElementById('settings-tts-mode');
         if (ttsSel) ttsSel.value = ttsMode;
         const voiceSel = document.getElementById('settings-voice');
         if (voiceSel) {
-          // repopulate voice options from serverVoicesCatalog
           voiceSel.innerHTML = '';
           const opt0 = document.createElement('option');
           opt0.value = ''; opt0.textContent = '— 請選擇語音 —';
@@ -2947,27 +3175,12 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         if (rateEl) {
           rateEl.value = ttsRate;
           if (rateValEl) rateValEl.textContent = Number(ttsRate).toFixed(1);
-          rateEl.addEventListener('input', () => {
-            ttsRate = Number(rateEl.value);
-            if (rateValEl) rateValEl.textContent = ttsRate.toFixed(1);
-            try { localStorage.setItem('xiaob_tts_rate', String(ttsRate)); } catch (e) {}
-          });
         }
         const muteEl = document.getElementById('settings-mute');
-        if (muteEl) {
-          muteEl.checked = ttsMuted;
-          muteEl.addEventListener('change', () => {
-            ttsMuted = muteEl.checked;
-            if (ttsMuted) stopSpeaking();
-            try { localStorage.setItem('xiaob_tts_muted', String(ttsMuted)); } catch (e) {}
-          });
-        }
+        if (muteEl) muteEl.checked = ttsMuted;
         const emoteSel = document.getElementById('emote-select');
         if (emoteSel) {
           emoteSel.innerHTML = '';
-          // 2026-06-13 v30: EMOTION_KEYS lives in a closure IIFE; the
-          // settings-modal code runs at script-level and can't see it
-          // directly. Use the window-exposed alias populated at boot.
           const EMOTION_KEYS = window.__EMOTION_KEYS || [];
           const EMOTION_LABELS = window.__EMOTION_LABELS || {};
           EMOTION_KEYS.forEach(k => {
@@ -2977,15 +3190,46 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             emoteSel.appendChild(o);
           });
           emoteSel.value = (window.currentEmotion || 'neutral');
-          emoteSel.addEventListener('change', () => {
-            try { applyEmotion(emoteSel.value); } catch (e) {}
-          });
         }
+        // Model params
+        const devBreath = document.getElementById('dev-breath');
+        const devBreathVal = document.getElementById('dev-breath-val');
+        if (devBreath) { devBreath.value = __dev_breath_amp; if (devBreathVal) devBreathVal.textContent = __dev_breath_amp.toFixed(2); }
+        const devBodySway = document.getElementById('dev-body-sway');
+        const devBodySwayVal = document.getElementById('dev-body-sway-val');
+        if (devBodySway) { devBodySway.value = __dev_body_sway; if (devBodySwayVal) devBodySwayVal.textContent = __dev_body_sway.toFixed(1); }
+        const devSpeakingSway = document.getElementById('dev-speaking-sway');
+        const devSpeakingSwayVal = document.getElementById('dev-speaking-sway-val');
+        if (devSpeakingSway) { devSpeakingSway.value = __dev_speaking_sway; if (devSpeakingSwayVal) devSpeakingSwayVal.textContent = __dev_speaking_sway.toFixed(1); }
+        const devEyeTrack = document.getElementById('dev-eye-track');
+        const devEyeTrackVal = document.getElementById('dev-eye-track-val');
+        if (devEyeTrack) { devEyeTrack.value = __dev_eye_track; if (devEyeTrackVal) devEyeTrackVal.textContent = __dev_eye_track.toFixed(1); }
+        const devIdle = document.getElementById('dev-idle');
+        const devIdleVal = document.getElementById('dev-idle-val');
+        if (devIdle) { devIdle.value = __dev_idle_interval; if (devIdleVal) devIdleVal.textContent = Math.round(__dev_idle_interval); }
+        // Chat params
+        const devEmotionPrefix = document.getElementById('dev-emotion-prefix');
+        if (devEmotionPrefix) devEmotionPrefix.checked = __dev_emotion_prefix;
+        const devKeywordEmote = document.getElementById('dev-keyword-emote');
+        if (devKeywordEmote) devKeywordEmote.checked = __dev_keyword_emote;
+        const devMaxTokens = document.getElementById('dev-max-tokens');
+        const devMaxTokensVal = document.getElementById('dev-max-tokens-val');
+        if (devMaxTokens) { devMaxTokens.value = __dev_max_tokens; if (devMaxTokensVal) devMaxTokensVal.textContent = __dev_max_tokens; }
+        const devTemp = document.getElementById('dev-temp');
+        const devTempVal = document.getElementById('dev-temp-val');
+        if (devTemp) { devTemp.value = __dev_temperature; if (devTempVal) devTempVal.textContent = __dev_temperature.toFixed(1); }
+        const devTtsCap = document.getElementById('dev-tts-cap');
+        const devTtsCapVal = document.getElementById('dev-tts-cap-val');
+        if (devTtsCap) { devTtsCap.value = __dev_tts_cap; if (devTtsCapVal) devTtsCapVal.textContent = __dev_tts_cap; }
+        // Debug params
+        const devDebugHud = document.getElementById('dev-debug-hud');
+        if (devDebugHud) devDebugHud.checked = __dev_debug_hud;
+        const devLogLevel = document.getElementById('dev-log-level');
+        if (devLogLevel) devLogLevel.value = __dev_log_level;
       } catch (ePop) { /* defensive: any one field failing should not block modal */ }
       modal.hidden = false;
       openBtn.setAttribute('aria-expanded', 'true');
-      // Focus first field for keyboard users
-      try { (modal.querySelector('input, select, button') || {}).focus && modal.querySelector('input, select, button').focus(); } catch (e) {}
+      try { (modal.querySelector('.settings-tab.active, input, select, button') || {}).focus && modal.querySelector('.settings-tab.active, input, select, button').focus(); } catch (e) {}
     }
     function close() {
       modal.hidden = true;
@@ -2993,21 +3237,20 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     }
     openBtn.addEventListener('click', open);
     if (closeBtn) closeBtn.addEventListener('click', close);
-    // Backdrop click closes
     modal.addEventListener('click', (e) => {
       if (e.target && e.target.getAttribute && e.target.getAttribute('data-settings-close') === '1') close();
     });
-    // ESC closes
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !modal.hidden) close();
     });
-    // Reset button
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
-        if (!confirm('重設會清除所有 localStorage 設定 (DeepSeek Key, 語音, TTS 模式, 靜音)，繼續？')) return;
+        if (!confirm('重設會清除所有 localStorage 設定，繼續？')) return;
         try {
+          __DEV_KEYS.forEach(k => localStorage.removeItem(k));
           ['deepseek_key', 'xiaob_tts_mode', 'xiaob_voice_id', 'xiaob_browser_voice_uri',
-           'xiaob_tts_rate', 'xiaob_tts_muted', 'minimax_key', 'minimax_group_id'].forEach(k => localStorage.removeItem(k));
+           'xiaob_tts_rate', 'xiaob_tts_muted', 'minimax_key', 'minimax_group_id',
+           'xiaob_settings_tab'].forEach(k => localStorage.removeItem(k));
         } catch (e) {}
         location.reload();
       });
@@ -3028,13 +3271,33 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         }
       });
     }
-    // DeepSeek API endpoint
     const dsApiEl = document.getElementById('settings-ds-api');
     if (dsApiEl) {
       dsApiEl.addEventListener('change', () => {
         DEEPSEEK_API = dsApiEl.value.trim() || 'https://api.deepseek.com/v1/chat/completions';
         try { localStorage.setItem('xiaob_ds_api', DEEPSEEK_API); } catch (e) {}
         showBubble('DeepSeek API endpoint 已更新');
+      });
+    }
+    // MiniMax key apply
+    const mmKeyEl = document.getElementById('settings-minimax-key');
+    if (mmKeyEl) {
+      mmKeyEl.addEventListener('change', () => {
+        const v = mmKeyEl.value.trim();
+        if (v && !v.startsWith('*')) {
+          MINIMAX_TTS_KEY = v;
+          try { localStorage.setItem('minimax_tts_key', v); } catch (e) {}
+          showBubble('MiniMax API Key 已儲存');
+        }
+      });
+    }
+    const mmGroupEl = document.getElementById('settings-minimax-group');
+    if (mmGroupEl) {
+      mmGroupEl.addEventListener('change', () => {
+        const v = mmGroupEl.value.trim();
+        MINIMAX_GROUP_ID = v;
+        try { localStorage.setItem('minimax_group_id', v); } catch (e) {}
+        showBubble('MiniMax Group ID 已更新');
       });
     }
     // TTS mode
@@ -3058,10 +3321,394 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         showBubble('已切換語音: ' + (voiceSel.selectedOptions[0]?.textContent || NEURAL_VOICE));
       });
     }
+    // TTS rate slider
+    const rateEl = document.getElementById('settings-tts-rate');
+    const rateValEl = document.getElementById('settings-tts-rate-val');
+    if (rateEl) {
+      rateEl.addEventListener('input', () => {
+        ttsRate = Number(rateEl.value);
+        if (rateValEl) rateValEl.textContent = ttsRate.toFixed(1);
+        try { localStorage.setItem('xiaob_tts_rate', String(ttsRate)); } catch (e) {}
+      });
+    }
+    // Mute checkbox
+    const muteEl = document.getElementById('settings-mute');
+    if (muteEl) {
+      muteEl.addEventListener('change', () => {
+        ttsMuted = muteEl.checked;
+        if (ttsMuted) stopSpeaking();
+        try { localStorage.setItem('xiaob_tts_muted', String(ttsMuted)); } catch (e) {}
+      });
+    }
+    // Emote select
+    const emoteSel = document.getElementById('emote-select');
+    if (emoteSel) {
+      emoteSel.addEventListener('change', () => {
+        try { applyEmotion(emoteSel.value); } catch (e) {}
+      });
+    }
+    // Model param sliders
+    function bindDevSlider(id, valId, key, setter, localKey) {
+      const el = document.getElementById(id);
+      const valEl = document.getElementById(valId);
+      if (!el) return;
+      el.addEventListener('input', () => {
+        const v = Number(el.value);
+        setter(v);
+        if (valEl) valEl.textContent = typeof v === 'number' && v < 1 ? v.toFixed(2) : Math.round(v);
+        try { localStorage.setItem(localKey, String(v)); } catch (e) {}
+      });
+    }
+    bindDevSlider('dev-breath', 'dev-breath-val', 'breath', v => __dev_breath_amp = v, 'xiaob_dev_breath');
+    bindDevSlider('dev-body-sway', 'dev-body-sway-val', 'bodySway', v => __dev_body_sway = v, 'xiaob_dev_body_sway');
+    bindDevSlider('dev-speaking-sway', 'dev-speaking-sway-val', 'speakingSway', v => __dev_speaking_sway = v, 'xiaob_dev_speaking_sway');
+    bindDevSlider('dev-eye-track', 'dev-eye-track-val', 'eyeTrack', v => __dev_eye_track = v, 'xiaob_dev_eye_track');
+    bindDevSlider('dev-idle', 'dev-idle-val', 'idleInterval', v => __dev_idle_interval = v, 'xiaob_dev_idle_interval');
+    // Chat param controls
+    const devEmotionPrefix = document.getElementById('dev-emotion-prefix');
+    if (devEmotionPrefix) {
+      devEmotionPrefix.addEventListener('change', () => {
+        __dev_emotion_prefix = devEmotionPrefix.checked;
+        try { localStorage.setItem('xiaob_dev_emotion_prefix', String(__dev_emotion_prefix)); } catch (e) {}
+      });
+    }
+    const devKeywordEmote = document.getElementById('dev-keyword-emote');
+    if (devKeywordEmote) {
+      devKeywordEmote.addEventListener('change', () => {
+        __dev_keyword_emote = devKeywordEmote.checked;
+        try { localStorage.setItem('xiaob_dev_keyword_emote', String(__dev_keyword_emote)); } catch (e) {}
+      });
+    }
+    bindDevSlider('dev-max-tokens', 'dev-max-tokens-val', 'maxTokens', v => __dev_max_tokens = v, 'xiaob_dev_max_tokens');
+    bindDevSlider('dev-temp', 'dev-temp-val', 'temperature', v => __dev_temperature = v, 'xiaob_dev_temperature');
+    bindDevSlider('dev-tts-cap', 'dev-tts-cap-val', 'ttsCap', v => __dev_tts_cap = v, 'xiaob_dev_tts_cap');
+    // Debug controls
+    const devDebugHud = document.getElementById('dev-debug-hud');
+    if (devDebugHud) {
+      devDebugHud.addEventListener('change', () => {
+        __dev_debug_hud = devDebugHud.checked;
+        const hud = document.getElementById('debug-hud');
+        if (hud) hud.style.display = __dev_debug_hud ? 'block' : 'none';
+        try { localStorage.setItem('xiaob_dev_debug_hud', String(__dev_debug_hud)); } catch (e) {}
+      });
+    }
+    const devLogLevel = document.getElementById('dev-log-level');
+    if (devLogLevel) {
+      devLogLevel.addEventListener('change', () => {
+        __dev_log_level = devLogLevel.value;
+        try { localStorage.setItem('xiaob_dev_log_level', __dev_log_level); } catch (e) {}
+      });
+    }
+    const devIntrospect = document.getElementById('dev-introspect');
+    if (devIntrospect) {
+      devIntrospect.addEventListener('click', () => {
+        try {
+          const cm = model && model.internalModel && model.internalModel.coreModel;
+          if (cm && cm._parameterIds && Array.isArray(cm._parameterIds)) {
+            const dump = cm._parameterIds.slice();
+            console.log('[v31 introspection] ' + dump.length + ' parameters:');
+            dump.forEach(id => console.log('  ' + id));
+            showBubble('introspection 完成：' + dump.length + ' 個參數已輸出至 console');
+          } else {
+            showBubble('introspection 失敗：coreModel 不可用');
+          }
+        } catch (eIntrospect) {
+          showBubble('introspection 失敗：' + eIntrospect.message);
+        }
+      });
+    }
+    const devBootDiag = document.getElementById('dev-boot-diag');
+    if (devBootDiag) {
+      devBootDiag.addEventListener('click', () => {
+        try {
+          const bootDiag = JSON.parse(localStorage.getItem('xiaob_boot_diag') || '{}');
+          const micDiag = JSON.parse(localStorage.getItem('xiaob_mic_diag') || '{}');
+          const info = {
+            boot: bootDiag,
+            mic: micDiag,
+            url: location.href,
+            ua: navigator.userAgent,
+            ts: new Date().toISOString()
+          };
+          console.log('[v31 boot-diagnostic]', JSON.stringify(info, null, 2));
+          showBubble('Boot 記錄已輸出至 console');
+        } catch (eDiag) {
+          showBubble('讀取失敗：' + eDiag.message);
+        }
+      });
+    }
+    // Export settings
+    const devExport = document.getElementById('dev-export');
+    if (devExport) {
+      devExport.addEventListener('click', () => {
+        try {
+          const settings = {
+            deepseek_key: DEEPSEEK_KEY ? '***' : '',
+            deepseek_api: DEEPSEEK_API,
+            tts_mode: ttsMode,
+            tts_rate: ttsRate,
+            tts_muted: ttsMuted,
+            neural_voice: NEURAL_VOICE,
+            minimax_tts_key: MINIMAX_TTS_KEY ? '***' : '',
+            minimax_group_id: MINIMAX_GROUP_ID,
+            dev_breath: __dev_breath_amp,
+            dev_body_sway: __dev_body_sway,
+            dev_speaking_sway: __dev_speaking_sway,
+            dev_eye_track: __dev_eye_track,
+            dev_idle_interval: __dev_idle_interval,
+            dev_emotion_prefix: __dev_emotion_prefix,
+            dev_keyword_emote: __dev_keyword_emote,
+            dev_max_tokens: __dev_max_tokens,
+            dev_temperature: __dev_temperature,
+            dev_tts_cap: __dev_tts_cap,
+            dev_log_level: __dev_log_level,
+            exported_at: new Date().toISOString()
+          };
+          const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'xiaob_settings_' + Date.now() + '.json';
+          a.click(); URL.revokeObjectURL(url);
+          showBubble('設定已匯出');
+        } catch (eExport) {
+          showBubble('匯出失敗：' + eExport.message);
+        }
+      });
+    }
+    // Import settings
+    const devImport = document.getElementById('dev-import');
+    const devImportFile = document.getElementById('dev-import-file');
+    if (devImport && devImportFile) {
+      devImport.addEventListener('click', () => devImportFile.click());
+      devImportFile.addEventListener('change', () => {
+        const file = devImportFile.files && devImportFile.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = JSON.parse(e.target.result);
+            if (data.tts_mode) { ttsMode = data.tts_mode; try { localStorage.setItem('xiaob_tts_mode', ttsMode); } catch (e) {} }
+            if (data.tts_rate) { ttsRate = data.tts_rate; try { localStorage.setItem('xiaob_tts_rate', String(ttsRate)); } catch (e) {} }
+            if (data.tts_muted !== undefined) { ttsMuted = data.tts_muted; try { localStorage.setItem('xiaob_tts_muted', String(ttsMuted)); } catch (e) {} }
+            if (data.neural_voice) { NEURAL_VOICE = data.neural_voice; try { localStorage.setItem('xiaob_voice_id', NEURAL_VOICE); } catch (e) {} }
+            if (data.dev_breath) { __dev_breath_amp = data.dev_breath; try { localStorage.setItem('xiaob_dev_breath', String(__dev_breath_amp)); } catch (e) {} }
+            if (data.dev_body_sway) { __dev_body_sway = data.dev_body_sway; try { localStorage.setItem('xiaob_dev_body_sway', String(__dev_body_sway)); } catch (e) {} }
+            if (data.dev_speaking_sway) { __dev_speaking_sway = data.dev_speaking_sway; try { localStorage.setItem('xiaob_dev_speaking_sway', String(__dev_speaking_sway)); } catch (e) {} }
+            if (data.dev_eye_track) { __dev_eye_track = data.dev_eye_track; try { localStorage.setItem('xiaob_dev_eye_track', String(__dev_eye_track)); } catch (e) {} }
+            if (data.dev_idle_interval) { __dev_idle_interval = data.dev_idle_interval; try { localStorage.setItem('xiaob_dev_idle_interval', String(__dev_idle_interval)); } catch (e) {} }
+            if (data.dev_max_tokens) { __dev_max_tokens = data.dev_max_tokens; try { localStorage.setItem('xiaob_dev_max_tokens', String(__dev_max_tokens)); } catch (e) {} }
+            if (data.dev_temperature) { __dev_temperature = data.dev_temperature; try { localStorage.setItem('xiaob_dev_temperature', String(__dev_temperature)); } catch (e) {} }
+            if (data.dev_tts_cap) { __dev_tts_cap = data.dev_tts_cap; try { localStorage.setItem('xiaob_dev_tts_cap', String(__dev_tts_cap)); } catch (e) {} }
+            showBubble('設定已導入，需要重新整理才能完全生效');
+          } catch (eImport) {
+            showBubble('導入失敗：' + eImport.message);
+          }
+        };
+        reader.readAsText(file);
+        devImportFile.value = '';
+      });
+    }
+    // Dev reset (clear all localStorage)
+    const devReset = document.getElementById('dev-reset');
+    if (devReset) {
+      devReset.addEventListener('click', () => {
+        if (!confirm('確定要清除所有 localStorage 設定嗎？此操作無法撤銷。')) return;
+        try {
+          __DEV_KEYS.forEach(k => localStorage.removeItem(k));
+          ['deepseek_key', 'xiaob_tts_mode', 'xiaob_voice_id', 'xiaob_browser_voice_uri',
+           'xiaob_tts_rate', 'xiaob_tts_muted', 'minimax_tts_key', 'minimax_group_id',
+           'xiaob_settings_tab', 'xiaob_dev_debug_hud', 'xiaob_dev_log_level'].forEach(k => localStorage.removeItem(k));
+        } catch (e) {}
+        location.reload();
+      });
+    }
   })();
   document.getElementById('btn-close').addEventListener('click', () => {
     try { window.parent.postMessage({ ns: 'avatar-widget', type: 'close' }, '*'); } catch (e) {}
+    // 2026-06-13 v31: when opened directly (no parent), hide stage and show restore btn
+    if (window.self === window.top) {
+      const stage = document.getElementById('stage');
+      if (stage) stage.style.display = 'none';
+      const bubble = document.getElementById('bubble');
+      if (bubble) bubble.classList.remove('show');
+      const cornerActions = document.getElementById('corner-actions');
+      if (cornerActions) cornerActions.style.display = 'none';
+      const btnRestore = document.getElementById('btn-restore');
+      if (btnRestore) btnRestore.style.display = 'flex';
+    }
   });
+  // 2026-06-13 v31: restore button to show stage again
+  document.getElementById('btn-restore').addEventListener('click', () => {
+    const stage = document.getElementById('stage');
+    if (stage) stage.style.display = '';
+    const cornerActions = document.getElementById('corner-actions');
+    if (cornerActions) cornerActions.style.display = 'flex';
+    const btnRestore = document.getElementById('btn-restore');
+    if (btnRestore) btnRestore.style.display = 'none';
+  });
+  // 2026-06-13 v31: actions button - show popover with action buttons
+  document.getElementById('btn-actions').addEventListener('click', (e) => {
+    e.stopPropagation();
+    // Toggle the existing emote-list popover as the actions list
+    const popover = document.getElementById('emote-list');
+    if (popover) {
+      popover.classList.toggle('open');
+      if (popover.classList.contains('open')) {
+        renderActionList(popover);
+      }
+    }
+  });
+  // 2026-06-13 v31: outfit toggle button in corner
+  document.getElementById('btn-emote-corner').addEventListener('click', (e) => {
+    e.stopPropagation();
+    try { toggleOutfit && toggleOutfit(); } catch (eToggle) {}
+  });
+  // 2026-06-13 v31: render action list in emote-list popover
+  function renderActionList(popover) {
+    console.log('[ActionList] renderActionList called, window.model=', typeof window.model, 'window.applyEmotion=', typeof window.applyEmotion);
+    popover.innerHTML = '';
+    const header = document.createElement('div');
+    header.className = 'vl-header';
+    header.innerHTML = '<span>📋 動作列表</span><span style="font-size:11px;opacity:.7;">測試</span>';
+    popover.appendChild(header);
+    // Add Scene1 action
+    const scene1Item = document.createElement('div');
+    scene1Item.className = 'vl-item';
+    scene1Item.innerHTML = '<div class="vl-name">🎬 播放 Scene1 動畫</div>';
+    scene1Item.addEventListener('click', () => {
+      console.log('[ActionList] Scene1 clicked, model=', typeof window.model);
+      try { 
+        const m = window.model;
+        if (m) {
+          // pixi-live2d-display: motion is on motionManager
+          const mm = m.motionManager;
+          if (mm && mm.motion) {
+            mm.motion('Scene1').then(() => console.log('[ActionList] Scene1 motion completed')).catch(e => console.error('[ActionList] Scene1 motion error:', e));
+          } else if (m.motion) {
+            m.motion('Scene1').then(() => console.log('[ActionList] Scene1 motion completed')).catch(e => console.error('[ActionList] Scene1 motion error:', e));
+          } else {
+            console.warn('[ActionList] no motion method found');
+          }
+          if (typeof restoreOutfitFromEmoteState === 'function') restoreOutfitFromEmoteState();
+        }
+      } catch (eAct) { console.error('[ActionList] Scene1 error:', eAct); }
+      popover.classList.remove('open');
+    });
+    popover.appendChild(scene1Item);
+    // Add Idle action
+    const idleItem = document.createElement('div');
+    idleItem.className = 'vl-item';
+    idleItem.innerHTML = '<div class="vl-name">⏸️ 播放 Idle 動畫</div>';
+    idleItem.addEventListener('click', () => {
+      console.log('[ActionList] Idle clicked');
+      try { 
+        const m = window.model;
+        if (m) {
+          const mm = m.motionManager;
+          if (mm && mm.motion) {
+            mm.motion('Idle').then(() => console.log('[ActionList] Idle motion completed')).catch(e => console.error('[ActionList] Idle motion error:', e));
+          } else if (m.motion) {
+            m.motion('Idle').then(() => console.log('[ActionList] Idle motion completed')).catch(e => console.error('[ActionList] Idle motion error:', e));
+          }
+          if (typeof restoreOutfitFromEmoteState === 'function') restoreOutfitFromEmoteState();
+        }
+      } catch (eAct) { console.error('[ActionList] Idle error:', eAct); }
+      popover.classList.remove('open');
+    });
+    popover.appendChild(idleItem);
+    // Add emotion actions
+    const emotions = [
+      { key: 'happy', label: '😊 開心' },
+      { key: 'sad', label: '😢 傷心' },
+      { key: 'angry', label: '😠 生氣' },
+      { key: 'shy', label: '😳 害羞' },
+      { key: 'surprised', label: '😲 驚訝' },
+      { key: 'thinking', label: '🤔 思考' }
+    ];
+    emotions.forEach(emo => {
+      const item = document.createElement('div');
+      item.className = 'vl-item';
+      item.innerHTML = '<div class="vl-name">' + emo.label + '</div>';
+      item.addEventListener('click', () => {
+        console.log('[ActionList] Emotion clicked:', emo.key);
+        try {
+          // Use model.expression() to trigger built-in expressions
+          const m = window.model;
+          if (m && typeof m.expression === 'function') {
+            const expMap = {
+              happy: 'happy',
+              sad: 'sad',
+              angry: 'mad',   // 'mad' is the expression name in the model
+              surprised: 'sad', // No surprised expression, use sad as fallback
+              shy: 'shy',
+              thinking: 'sad'  // No thinking expression, use sad as fallback
+            };
+            const expName = expMap[emo.key];
+            if (expName) {
+              console.log('[ActionList] calling model.expression("' + expName + '")');
+              m.expression(expName).then(() => console.log('[ActionList] expression completed')).catch(e => console.error('[ActionList] expression error:', e));
+            }
+          } else {
+            console.warn('[ActionList] model.expression not available');
+          }
+        } catch (eEmo) { console.error('[ActionList] Emotion error:', eEmo); }
+        popover.classList.remove('open');
+      });
+      popover.appendChild(item);
+    });
+    // Add gesture props section
+    const gestureHeader = document.createElement('div');
+    gestureHeader.className = 'vl-header';
+    gestureHeader.style.marginTop = '8px';
+    gestureHeader.innerHTML = '<span>🎭 道具</span>';
+    popover.appendChild(gestureHeader);
+    const gestures = [
+      { key: 'knife', label: '🔪 揸刀', flag: 'knife' },
+      { key: 'mc', label: '🎤 麥克風', flag: 'mc' },
+      { key: 'mouse', label: '🖱️ 滑鼠', flag: 'mouse' },
+      { key: 'click', label: '👆 點擊', flag: 'click' },
+      { key: 'bloodFace', label: '🩸 臉部血跡', flag: 'bloodFace' },
+      { key: 'bloodBody', label: '🩸 胸口血跡', flag: 'bloodBody' }
+    ];
+    gestures.forEach(gs => {
+      const item = document.createElement('div');
+      item.className = 'vl-item';
+      item.innerHTML = '<div class="vl-name">' + gs.label + '</div>';
+      item.addEventListener('click', () => {
+        console.log('[ActionList] Gesture clicked:', gs.key);
+        try {
+          const m = window.model;
+          if (m && typeof m.expression === 'function') {
+            const expMap = {
+              knife: 'knife',
+              mc: 'mc',
+              mouse: 'mouse',
+              click: 'click',
+              bloodFace: 'blood-face',
+              bloodBody: 'blood-body'
+            };
+            const expName = expMap[gs.flag];
+            if (expName) {
+              console.log('[ActionList] calling model.expression("' + expName + '")');
+              m.expression(expName).then(() => console.log('[ActionList] expression completed')).catch(e => console.error('[ActionList] expression error:', e));
+            }
+          } else {
+            console.warn('[ActionList] model.expression not available');
+          }
+        } catch (eGs) { console.error('[ActionList] Gesture error:', eGs); }
+        popover.classList.remove('open');
+      });
+      popover.appendChild(item);
+    });
+    // Add click-outside-to-close
+    const closeHandler = (ev) => {
+      if (!popover.contains(ev.target) && !document.getElementById('btn-actions').contains(ev.target)) {
+        popover.classList.remove('open');
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 0);
+  }
   // 初始化時檢查是否有金鑰，有的話高亮大腦按鈕
   const btnLlm = document.getElementById('btn-llm');
   if (btnLlm) {
