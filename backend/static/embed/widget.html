@@ -381,9 +381,59 @@
     .ctrl.mic-unsupported:hover {
       background: inherit;
     }
+    /* 2026-06-14 v32: WebView guard banner. Shown when widget detects it's
+       running inside an Android in-app browser (Telegram/WhatsApp/WeChat/
+       Instagram/Line/Twitter/LinkedIn/GSA), where webkitSpeechRecognition
+       fails on Xiaomi MiBrain 1.6.0 + other GMS-less devices with not-allowed. */
+    .webview-guard {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 999999;
+      background: linear-gradient(180deg, #fff3cd 0%, #ffe69c 100%);
+      border-bottom: 2px solid #f0ad4e;
+      padding: 10px 14px;
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #533f03;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+    .webview-guard[hidden] { display: none !important; }
+    .webview-guard p { margin: 0; }
+    .webview-guard strong { color: #8a6d3b; }
+    .webview-guard-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    .webview-guard-cta {
+      padding: 7px 14px; border-radius: 7px; border: 0; cursor: pointer;
+      font: 500 12.5px/1 "Noto Sans TC", system-ui, sans-serif; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .webview-guard-cta.chrome { background: #5b54e8; color: #fff; }
+    .webview-guard-cta.copy   { background: #fff; color: #5b54e8; border: 1px solid #5b54e8; }
+    .webview-guard-cta.dismiss { background: transparent; color: #533f03; font-size: 18px; line-height: 1; padding: 0 6px; }
 </style>
 </head>
 <body>
+  <!-- 2026-06-14 v32: WebView guard banner. Shown when widget detects Android
+       in-app browser (Telegram/WhatsApp/WeChat/Instagram/Line/Twitter/LinkedIn/GSA).
+       webkitSpeechRecognition in these envs fails on Xiaomi MiBrain 1.6.0
+       and other GMS-less devices. Banner offers one-tap jump to Chrome via
+       Android intent, plus a copy-URL fallback for environments where intent
+       is intercepted. JS in the BROWSER init block below toggles `hidden`. -->
+  <div id="webview-guard" class="webview-guard" hidden role="alert" aria-live="polite">
+    <p>🚫 <strong>App 內建瀏覽器不支援語音功能</strong></p>
+    <p>請點下方按鈕用 Google Chrome 開啟，或複製網址貼到 Chrome 🌐</p>
+    <div class="webview-guard-actions">
+      <a href="intent://vampire.kitahim.uk/widget#Intent;scheme=https;package=com.android.chrome;end"
+         class="webview-guard-cta chrome" id="webview-chrome-link">在 Chrome 中開啟</a>
+      <button type="button" class="webview-guard-cta copy" id="webview-copy-btn">複製網址</button>
+      <button type="button" class="webview-guard-cta dismiss" id="webview-dismiss-btn" aria-label="關閉提示">×</button>
+    </div>
+  </div>
+
   <div id="stage">
     <div id="bubble"></div>
     <canvas id="avatar-canvas"></canvas>
@@ -820,6 +870,25 @@
   let recognition = null, listening = false;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+  // 2026-06-14 v32: WebView (Android in-app browser) detection patterns.
+  // These environments wrap the page in a hardened WebView that does not expose
+  // a working webkitSpeechRecognition backend on Xiaomi MiBrain 1.6.0+ (and
+  // other GMS-less devices) — calls to recognition.start() resolve with
+  // 'not-allowed' before any audio capture. We detect via UA and surface a
+  // fallback banner with one-tap jump to Google Chrome via Android intent.
+  const WEBVIEW_PATTERNS = [
+    /\bwv\b/,             // Generic Android WebView (Telegram in-app, others)
+    /MicroMessenger/,     // WeChat
+    /Instagram/,          // Instagram in-app browser
+    /FBAV\/|FBAN\//,      // Facebook in-app browser
+    /Line\//,             // Line
+    /Telegram/,           // Telegram (also catches tg:// mini apps)
+    /Twitter/,            // Twitter / X
+    /LinkedInApp/,        // LinkedIn
+    /GSA\//               // Google Search App
+  ];
+  const WIDGET_PUBLIC_URL = 'https://vampire.kitahim.uk/widget';
+
 
   // 2026-06-13 v6: Browser detection for SpeechRecognition support.
   // Per user report #17072: Microsoft Edge for Android (com.microsoft.emmx) exposes
@@ -854,11 +923,88 @@
       // that hard-blocking Brave/Edge silently returns 'non-Chrome' hint but user
       // never sees the hint and thinks mic is broken). Real failure path is
       // captured by onerror → 'not-allowed' / 'service-not-allowed'.
-      srSupported: !!SR
+      srSupported: !!SR,
+      // 2026-06-14 v32: WebView detection (true on Telegram/WeChat/Instagram/Facebook/
+      // Line/Twitter/LinkedIn/GSA in-app browsers on Android).
+      isWebView: isAndroid && WEBVIEW_PATTERNS.some(p => p.test(ua))
     };
   })();
   // Expose for debugging
   try { window.__BROWSER = BROWSER; } catch (e) {}
+
+  // 2026-06-14 v32: WebView guard activation. Runs synchronously after BROWSER
+  // detection so the banner shows on the first paint and the mic button is
+  // disabled before any user interaction. Text input / LLM / TTS still work —
+  // we only block the STT path which is the broken one on these WebView envs.
+  (function activateWebViewGuard() {
+    if (!BROWSER.isWebView) return;
+    try {
+      const banner = document.getElementById('webview-guard');
+      if (banner) banner.hidden = false;
+
+      // Disable mic button visually + functionally. We add the existing
+      // .mic-unsupported class so the dimmed look matches the other
+      // 'mic-broken' states (no SR API, denied permission, etc).
+      const micBtn = document.getElementById('btn-mic');
+      if (micBtn) {
+        micBtn.classList.add('mic-unsupported');
+        micBtn.setAttribute('data-webview-blocked', '1');
+        micBtn.title = 'App 內建瀏覽器不支援語音功能，請用 Chrome 開啟';
+        micBtn.setAttribute('aria-label', '語音功能在此環境不可用');
+      }
+
+      // Wire up copy-URL fallback (works on iOS WebView + any env where
+      // intent:// is intercepted). Uses Clipboard API; falls back to a
+      // hidden <textarea>+execCommand for very old WebViews.
+      const copyBtn = document.getElementById('webview-copy-btn');
+      copyBtn && copyBtn.addEventListener('click', () => {
+        const ok = () => {
+          const orig = copyBtn.textContent;
+          copyBtn.textContent = '已複製 ✓';
+          setTimeout(() => { copyBtn.textContent = orig; }, 1800);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(WIDGET_PUBLIC_URL).then(ok).catch(() => fallbackCopy(WIDGET_PUBLIC_URL, ok));
+        } else {
+          fallbackCopy(WIDGET_PUBLIC_URL, ok);
+        }
+      });
+
+      // Dismiss button - hide banner but keep mic button disabled.
+      const dismissBtn = document.getElementById('webview-dismiss-btn');
+      dismissBtn && dismissBtn.addEventListener('click', () => {
+        if (banner) banner.hidden = true;
+      });
+
+      // Keep the Intent link's URL current even if the page is served from
+      // a non-default host (e.g. embed.js set a custom data-base-url).
+      const chromeLink = document.getElementById('webview-chrome-link');
+      if (chromeLink) {
+        try {
+          const u = new URL(chromeLink.getAttribute('href'));
+          u.pathname = location.pathname.replace(/index\.html?$/i, '') + 'widget';
+          chromeLink.setAttribute('href', u.toString());
+        } catch (e) { /* leave default */ }
+      }
+
+      // Diagnostic: log so production triage can see the guard fired.
+      console.log('[v32] WebView guard active. UA matches:', WEBVIEW_PATTERNS.filter(p => p.test(navigator.userAgent)).map(p => p.toString()));
+    } catch (e) {
+      console.warn('[v32] WebView guard failed to activate:', e);
+    }
+  })();
+
+  // Tiny fallback for clipboard on ancient WebViews that lack the modern API.
+  function fallbackCopy(text, onSuccess) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      const ok = document.execCommand && document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok && onSuccess) onSuccess();
+    } catch (e) { /* swallow */ }
+  }
   const isEmbedded = window.self !== window.top;
   const devBypass  = new URLSearchParams(location.search).has('dev');
   if (!isEmbedded && !devBypass) {

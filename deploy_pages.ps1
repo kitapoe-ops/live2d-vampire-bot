@@ -20,7 +20,15 @@ $env:CLOUDFLARE_ACCOUNT_ID = $accountId
 
 # Use --commit-dirty=true since dist-pages/ is gitignored
 # 2026-06-13 v14: use --config wrangler.toml to apply web_analytics = false
-wrangler pages deploy dist-pages --project-name vampire-widget --config wrangler.toml --commit-dirty=true --commit-message "fix(mobile-mic): iframe allow speech-recognition + iOS/Android fallback hints" 2>&1
+# 2026-06-14: wrangler 4.99 rejects --config for Pages deploy ("Pages does not
+# support custom paths for the Wrangler configuration file"). The web_analytics
+# key is also not yet honoured by Pages platform — widget.html v28 strips the
+# beacon client-side as belt-and-suspenders. Project name passed inline.
+# 2026-06-14: dynamically pull latest commit subject for the Pages deploy message
+$commitMsg = (git log -1 --format=%s).Trim()
+if (-not $commitMsg) { $commitMsg = "manual deploy" }
+Write-Host "Deploy message: $commitMsg" -ForegroundColor Yellow
+wrangler pages deploy dist-pages --project-name vampire-widget --commit-dirty=true --commit-message "$commitMsg" 2>&1
 
 Write-Host ""
 Write-Host "=== Deploy complete ===" -ForegroundColor Green
