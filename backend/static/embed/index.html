@@ -106,9 +106,10 @@
            3. Reset  - reload iframe + clear parent's localStorage copy
          See: plans/external-events-lite.md -->
     <div class="card" id="react-smoke-test" style="border-left:4px solid #5b54e8; background:#f5f3ff;">
-      <h2>🧪 Reactive API Smoke Test (v36)</h2>
+      <h2>🧪 Reactive API Smoke Test (v38)</h2>
       <p class="note" style="margin:0 0 8px 0;">下邊三個 control 會 postMessage 到吸血鬼 widget（右下角）試 <code>type: 'react'</code>。睇下 widget 嘅表情 + 動作 + 語音反應。</p>
-      <p class="note" style="margin:0 0 16px 0; color:#5b54e8; font-weight:600;">💡 吸血鬼 widget 擋住輸入框? 拖拽 widget 頂部 (藍色幼線) 去其他位置, 位置會記住。</p>
+      <p class="note" style="margin:0 0 16px 0; color:#5b54e8; font-weight:600;">💡 吸血鬼 widget 擋住輸入框? 拖拽 widget 頂部藍色橫條 (cursor 會變 move) 去其他位置, 位置會記住。</p>
+      <p class="note" style="margin:0 0 16px 0; color:#c33; font-weight:600;">⚠️ 如果 drag/送出無反應: 按 <kbd>Ctrl+Shift+R</kbd> (Mac: <kbd>Cmd+Shift+R</kbd>) 強制 reload 清 cache。</p>
 
       <h3 style="font-size:15px; color:var(--ink); margin:0 0 8px;">📓 1. 日記模擬</h3>
       <textarea id="react-diary-input" rows="3" placeholder="寫低你今日嘅心情... 撳 Enter 或「送出」掣 / 停寫 3s 後 widget 會自動反應"
@@ -137,7 +138,8 @@
   </div>
 
   <!-- ★ 一行嵌入吸血鬼虛擬人 ★ -->
-  <script src="embed.js?v=20260614v07" data-widget="widget.html"></script>
+  <!-- 2026-06-14 v38: bump to force fresh embed.js + widget.html fetch -->
+  <script src="embed.js?v=20260614v38" data-widget="widget.html"></script>
 
   <!-- 2026-06-14 v35: smoke test control script. Posts 'react' messages
        to the embedded widget iframe. Diary debounces 1.5s to avoid spam.
@@ -145,16 +147,25 @@
   <script>
   (function () {
     function sendReact(payload) {
+      // 2026-06-14 v38: more diagnostic + fallback if iframe not ready
       var iframe = document.querySelector('iframe');
-      if (!iframe || !iframe.contentWindow) {
-        console.warn('[react-test] no iframe found, widget not loaded yet');
+      if (!iframe) {
+        console.error('[react-test] no iframe found in DOM');
         return;
       }
-      iframe.contentWindow.postMessage(
-        Object.assign({ ns: 'avatar-widget-host' }, payload),
-        '*'
-      );
-      console.log('[react-test] sent:', payload);
+      if (!iframe.contentWindow) {
+        console.error('[react-test] iframe.contentWindow is null (cross-origin or not loaded yet)');
+        alert('Widget 仲未 load 好，請等等再試 (iframe.contentWindow = null)');
+        return;
+      }
+      var msg = Object.assign({ ns: 'avatar-widget-host' }, payload);
+      try {
+        iframe.contentWindow.postMessage(msg, '*');
+        console.log('[react-test] ✅ sent:', msg);
+      } catch (ePost) {
+        console.error('[react-test] postMessage threw:', ePost);
+        alert('postMessage 失敗: ' + ePost.message + '\n可能 widget 同 parent page 唔同 origin.');
+      }
     }
 
     // 1. Diary: 3 ways to send — Send button, Enter key, 3s debounce
