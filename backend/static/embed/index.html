@@ -25,11 +25,33 @@
   .note { font-size:13px; color:#6a7b8b; line-height:1.7; }
   kbd { background:#f1f4f7; border:1px solid #dde3e9; border-radius:5px; padding:1px 7px; font-size:13px; }
   a { color:#2f6d8f; }
+  /* 2026-06-14 v37: Buy Me a Coffee 撐腰掣 (header 右上角) */
+  .bmac-btn {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:9px 18px; border-radius:22px;
+    background:#FFDD00; color:#1a1a1a !important;
+    font-weight:600; font-size:14px; text-decoration:none !important;
+    box-shadow:0 2px 8px rgba(255,221,0,.4);
+    transition:transform .15s, box-shadow .15s;
+    white-space:nowrap;
+  }
+  .bmac-btn:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(255,221,0,.55); background:#ffe533; }
+  .bmac-btn:active { transform:translateY(0); }
 </style>
 </head>
 <body>
   <header>
-    <h1>🧛 吸血鬼 (Vampire) — AI 虛擬人 Widget</h1>
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; max-width:760px; margin:0 auto;">
+      <h1 style="margin:0;">🧛 吸血鬼 (Vampire) — AI 虛擬人 Widget</h1>
+      <!-- 2026-06-14 v37: Buy Me a Coffee 撐腰掣, 右上角當眼位置 -->
+      <a href="https://www.buymeacoffee.com/kitahim"
+         target="_blank" rel="noopener noreferrer"
+         class="bmac-btn"
+         title="覺得有用? 請我飲杯咖啡支持開發!">
+        <span style="font-size:18px;">☕</span>
+        <span>Buy me a coffee</span>
+      </a>
+    </div>
     <p>網頁右下角會出現一位語音 AI 虛擬人 — 你可以「跟她說話」，她會聽懂、回答、開口說話並即時對嘴。<br/>預設免費 Web Speech API；撳一下 <b>💎</b> 切換至 <b>MiniMax 神經語音</b> 享用粵語 HD。DeepSeek / WebLLM 兩個大腦任選。</p>
   </header>
 

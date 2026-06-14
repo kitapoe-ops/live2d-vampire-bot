@@ -5,6 +5,19 @@
 > website via a one-line `<script>` embed, with full control over TTS voice, LLM backend,
 > and motion library.
 
+## ☕ 撐腰一下 (Support)
+
+如果呢個 widget 對你有幫助，請我飲杯咖啡支持繼續開發：
+
+<a href="https://www.buymeacoffee.com/kitahim" target="_blank" rel="noopener noreferrer">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="180" />
+</a>
+
+👉 **[https://www.buymeacoffee.com/kitahim](https://www.buymeacoffee.com/kitahim)**
+
+所有捐款會用於 MiniMax TTS API、DeepSeek API、Cloudflare Pages 升級、Live2D 授權等開支。
+多謝支持！🧛‍♂️☕
+
 ## 🌙 與上游 (YuriCrystal/ai-avatar-bot) 嘅分別
 
 | | 上游 | BAZOOKA fork |
