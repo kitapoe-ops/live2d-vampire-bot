@@ -1051,7 +1051,233 @@
     const d = e.data || {};
     if (d.ns !== 'avatar-widget-host') return;
     if (d.type === 'say') speak(String(d.text || '').slice(0, 600));
+    // 2026-06-14 v35: reactive API — host pushes text + context, widget
+    // auto-decides emotion / action / speech via 3-priority decision.
+    // See plans/external-events-lite.md for the full design.
+    if (d.type === 'react') {
+      try {
+        handleReact({
+          text:     String(d.text || '').slice(0, 2000),
+          context:  (d.context && typeof d.context === 'object') ? d.context : {},
+          voice:    d.voice    || null,
+          voice_id: d.voice_id || null,
+        });
+      } catch (eReact) {
+        console.warn('[react] handler threw:', eReact);
+      }
+    }
   });
+
+  // ============================================================
+  // 2026-06-14 v35: Reactive API implementation
+  // Lightweight, stable, general-purpose reaction system.
+  // Trigger: parent postMessage { type: 'react', text, context? }
+  // Output:  applyEmotion() + triggerAction() + speak() + showBubble()
+  // Decision: context hint > LLM (DeepSeek) > keyword fallback
+  // ============================================================
+
+  // Cooldown to prevent spam (e.g. fast input events)
+  const _reactCooldown = { lastCall: 0, MIN_GAP_MS: 800 };
+
+  function _reactRandomPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  // Reply pool (粵語口語, 吸血鬼 personality)
+  const REPLY_POOL = {
+    correct:   ['啱晒！你真聰明！', '冇錯啦，你好叻呀！', '答得啱，正呀！', 'Bingo！', '100分！'],
+    wrong:     ['差少少啫，再諗下？', '唔緊要，再嚟一次！', '錯咗少少，加油！', '差一啲啲咋，唔好放棄！'],
+    sad:       ['唔緊要㗎，我都陪住你。', '我哋一齊面對啦。', '你唔係一個人喎。'],
+    happy:     ['叻仔！繼續加油！', '好嘢！', 'Yeah！', '你最棒啦！'],
+    angry:     ['唔好嬲咁多啦，深呼吸。', '冷靜啲，你得嘅。'],
+    shy:       ['你...你望住我嚟做咩...', '我會害羞㗎...'],
+    surprised: ['嘩，咁都得？！', '哇！', '乜料咁都可以！'],
+    neutral:   ['嗯嗯，我喺度聽緊。', '我喺度。', '我聽緊你講。'],
+  };
+
+  async function handleReact({ text, context, voice, voice_id }) {
+    if (!text && !context.suggested_emotion) {
+      console.warn('[react] empty payload, drop');
+      return;
+    }
+    const now = Date.now();
+    if (now - _reactCooldown.lastCall < _reactCooldown.MIN_GAP_MS) {
+      console.log('[react] rate-limited, drop');
+      return;
+    }
+    _reactCooldown.lastCall = now;
+
+    let result;
+    try {
+      result = await decideReaction(text, context);
+    } catch (eDecide) {
+      console.warn('[react] decideReaction failed:', eDecide);
+      result = { emotion: 'neutral', action: null, reply: '' };
+    }
+
+    // Apply emotion
+    if (result.emotion && typeof window.applyEmotion === 'function') {
+      try { window.applyEmotion(result.emotion); } catch (eEm) { console.warn('[react] applyEmotion:', eEm); }
+    }
+
+    // Apply action (motion or expression)
+    if (result.action) {
+      try {
+        const m = window.model;
+        if (m) {
+          if (result.action === 'Scene1' || result.action === 'Idle') {
+            const mm = m.motionManager || m;
+            if (typeof mm.motion === 'function') mm.motion(result.action);
+          } else if (typeof m.expression === 'function') {
+            m.expression(result.action).catch(() => {});
+          }
+        }
+      } catch (eAct) { console.warn('[react] action failed:', eAct); }
+    }
+
+    // Speak reply (with optional per-call voice override)
+    if (result.reply) {
+      try {
+        _reactSpeakWithRoute({ text: result.reply, voice, voice_id });
+      } catch (eSpeak) { console.warn('[react] speak:', eSpeak); }
+    }
+
+    // Bubble feedback (always show something so user knows react fired)
+    if (typeof showBubble === 'function') {
+      showBubble(result.reply || text.slice(0, 60));
+    }
+  }
+
+  // Per-call voice routing. Lite v0.2: just temporarily override NEURAL_VOICE
+  // and ttsMode. Restored after the speak() call returns. (Note: speak() is
+  // sync only for browser; neural is async — race possible if two react
+  // calls overlap. The 800ms cooldown above is the primary guard.)
+  function _reactSpeakWithRoute({ text, voice, voice_id }) {
+    if (!text) return;
+    const origMode = ttsMode;
+    const origVoice = NEURAL_VOICE;
+    try {
+      if (voice === 'minimax' && voice_id) {
+        NEURAL_VOICE = voice_id;
+      } else if (voice === 'browser') {
+        ttsMode = 'browser';
+      }
+      speak(text);
+    } finally {
+      ttsMode = origMode;
+      NEURAL_VOICE = origVoice;
+    }
+  }
+
+  async function decideReaction(text, context) {
+    // Priority 1: context hint (zero LLM cost, instant)
+    if (context.correct === true) {
+      return { emotion: 'happy', action: 'mc',
+               reply: _reactRandomPick(REPLY_POOL.correct) };
+    }
+    if (context.correct === false) {
+      return { emotion: 'sad', action: null,
+               reply: _reactRandomPick(REPLY_POOL.wrong) };
+    }
+    if (context.suggested_emotion) {
+      return {
+        emotion: context.suggested_emotion,
+        action:  context.suggested_action || null,
+        reply:   context.suggested_reply   || String(text || '').slice(0, 80),
+      };
+    }
+
+    // Priority 2: LLM (DeepSeek) — dynamic judgment
+    let dsKey = '';
+    try { dsKey = localStorage.getItem('deepseek_key') || ''; } catch (e) { /* ignore */ }
+    if (dsKey && text) {
+      try {
+        const llmResult = await _reactCallDeepSeek(text, context);
+        if (llmResult) return llmResult;
+      } catch (eLLM) {
+        console.warn('[react] LLM failed, fallback to keywords:', eLLM);
+      }
+    }
+
+    // Priority 3: keyword fallback
+    return _reactKeyword(text);
+  }
+
+  async function _reactCallDeepSeek(text, context) {
+    let key = '';
+    try { key = localStorage.getItem('deepseek_key') || ''; } catch (e) { return null; }
+    if (!key) return null;
+
+    const systemPrompt = '你係一個反應式助手，會根據用戶輸入嘅 context 決定表情、動作、簡短回覆。\n' +
+      '只回 JSON，唔好加其他文字。JSON schema：\n' +
+      '{\n' +
+      '  "emotion": "happy" | "sad" | "angry" | "shy" | "surprised" | "neutral",\n' +
+      '  "action": "Scene1" | "Idle" | "knife" | "mc" | "mouse" | "click" | "bloodFace" | "bloodBody" | null,\n' +
+      '  "reply": "一句粵語回覆，max 60 字"\n' +
+      '}\n' +
+      '規則：\n' +
+      '- 用戶情緒低落 / 悲傷 → emotion: "sad", action: null\n' +
+      '- 用戶慶祝 / 成功 / 答啱 → emotion: "happy", action: "mc"\n' +
+      '- 用戶犯錯 / 失敗 → emotion: "sad" 或 "shy"\n' +
+      '- 用戶驚訝 / 意外 → emotion: "surprised"\n' +
+      '- 用戶嬲 → emotion: "angry"\n' +
+      '- 預設 → emotion: "neutral", action: null\n' +
+      '- reply 要粵語口語，max 60 字\n' +
+      '- 吸血鬼性格，唔好笑講嘢';
+
+    const r = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': '***' + key,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: 'Context: ' + JSON.stringify(context || {}) + '\n\nInput: ' + String(text).slice(0, 600) },
+        ],
+        max_tokens: 200,
+        temperature: 0.7,
+        response_format: { type: 'json_object' },
+      }),
+    });
+    if (!r.ok) throw new Error('DeepSeek http ' + r.status);
+    const data = await r.json();
+    const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if (!content) return null;
+    let parsed;
+    try { parsed = JSON.parse(content); } catch (eParse) { return null; }
+    const validEmo = ['happy','sad','angry','shy','surprised','neutral'];
+    if (!validEmo.includes(parsed.emotion)) parsed.emotion = 'neutral';
+    if (typeof parsed.reply !== 'string') parsed.reply = '';
+    parsed.reply = parsed.reply.slice(0, 60);
+    return parsed;
+  }
+
+  function _reactKeyword(text) {
+    const t = (text || '').toLowerCase();
+    if (/啱|correct|right|✓|✅|yes!|成功|做咗|好棒/.test(t)) {
+      return { emotion: 'happy', action: 'mc', reply: _reactRandomPick(REPLY_POOL.correct) };
+    }
+    if (/錯|wrong|✗|❌|no!|失敗|唔得|唔啱/.test(t)) {
+      return { emotion: 'sad', action: null, reply: _reactRandomPick(REPLY_POOL.wrong) };
+    }
+    if (/嬲|angry|hate|嬲爆|激嬲|嬲到/.test(t)) {
+      return { emotion: 'angry', action: null, reply: _reactRandomPick(REPLY_POOL.angry) };
+    }
+    if (/害羞|shy|不好意思|臉紅|紅臉/.test(t)) {
+      return { emotion: 'shy', action: null, reply: _reactRandomPick(REPLY_POOL.shy) };
+    }
+    if (/驚|嚇|surprise|意外|嘩|竟然|嘩嘩/.test(t)) {
+      return { emotion: 'surprised', action: null, reply: _reactRandomPick(REPLY_POOL.surprised) };
+    }
+    if (/傷心|sad|哭|唔開心|慘|可憐|難過|心痛/.test(t)) {
+      return { emotion: 'sad', action: null, reply: _reactRandomPick(REPLY_POOL.sad) };
+    }
+    if (/開心|happy|好叻|叻|叻仔|棒|正|笑/.test(t)) {
+      return { emotion: 'happy', action: 'mc', reply: _reactRandomPick(REPLY_POOL.happy) };
+    }
+    return { emotion: 'neutral', action: null, reply: _reactRandomPick(REPLY_POOL.neutral) };
+  }
 
   function showBubble(text) {
       // 2026-06-13 v3: log every bubble call for diagnostic

@@ -1,7 +1,7 @@
 # 吸血鬼 Widget — External Events Lite (Reactive API)
 
-> 設計文件 v0.2 — 2026-06-14
-> Status: **Proposal (Lite version)**, supersedes `hooks-and-yaml-actions.md`
+> 設計文件 v0.2 — 2026-06-14 (Updated: v35 implemented 21:18)
+> Status: ✅ **Implemented in v35** (commit `b6d7e21`)
 > 設計理念：**輕量 / 穩定 / 通用性**
 
 ---
@@ -598,3 +598,108 @@ optional add-on，唔係默認。
 5. **YAML v0.1 處理方法？** (留低做 advanced / 刪走 / 合併入 lite doc)
 
 揀完 1-2 個鐘就 commit 完。
+
+---
+
+## 12. Implementation 記錄 (v35, 2026-06-14)
+
+**Commit：** `b6d7e21`
+**Deployed：** https://vampire.kitahim.uk (Cloudflare Pages)
+
+### 已實作
+
+- ✅ **postMessage 'react' listener** 裝喺 widget.html 現有 message handler
+- ✅ **handleReact()** dispatcher (rate-limit 800ms + apply emotion/action/speak/bubble)
+- ✅ **decideReaction()** 3-priority 判斷 (context hint > DeepSeek > keyword)
+- ✅ **_reactCallDeepSeek()** 抽 LLM 決定 emotion/action/reply JSON
+- ✅ **_reactKeyword()** 8 個 regex pattern 覆蓋 8 種情緒
+- ✅ **REPLY_POOL** 8 組粵語 random reply strings
+- ✅ **_reactSpeakWithRoute()** per-call voice override (browser/MiniMax)
+- ✅ **Smoke test page** 喺 `index.html` 加 3 個 control:
+  - Diary textarea (debounce 1.5s)
+  - Quiz yes/no button (context.correct)
+  - Reset button (iframe reload + parent localStorage clear)
+
+### 對話回應 reply pool 樣本
+
+```text
+correct:   啱晒！你真聰明！| 冇錯啦...| 答得啱，正呀！| Bingo！| 100分！
+wrong:     差少少啫...| 唔緊要，再嚟一次！| 錯咗少少...
+sad:       唔緊要㗎...| 我哋一齊面對啦。| 你唔係一個人喎。
+happy:     叻仔！繼續加油！| 好嘢！| Yeah！| 你最棒啦！
+angry:     唔好嬲咁多啦，深呼吸。| 冷靜啲，你得嘅。
+shy:       你...你望住我嚟做咩...| 我會害羞㗎...
+surprised: 嘩，咁都得？！| 哇！| 乜料咁都可以！
+neutral:   嗯嗯，我喺度聽緊。| 我喺度。| 我聽緊你講。
+```
+
+### 完整 snippet（parent 端，3 use case）
+
+**Use Case 1：文字輸入 (debounce 1.5s)**
+
+```javascript
+const iframe = document.querySelector('iframe');
+const diary  = document.getElementById('react-diary-input');
+let timer;
+let lastSent = '';
+diary.addEventListener('input', () => {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    const text = diary.value.trim();
+    if (text.length < 3 || text === lastSent) return;
+    lastSent = text;
+    iframe.contentWindow.postMessage({
+      ns: 'avatar-widget-host',
+      type: 'react',
+      text: text.slice(-500),
+      context: { source: 'diary' },
+    }, '*');
+  }, 1500);
+});
+```
+
+**Use Case 2：Yes/No Quiz (context.correct)**
+
+```javascript
+document.getElementById('quiz-yes').addEventListener('click', () => {
+  iframe.contentWindow.postMessage({
+    ns: 'avatar-widget-host',
+    type: 'react',
+    text: 'Q: 1+1=2 啱唔啱?\nUser: 啱',
+    context: { source: 'quiz', correct: true, question_id: 'Q1' },
+  }, '*');
+});
+```
+
+**Use Case 3：Reset**
+
+```javascript
+document.getElementById('reset-btn').addEventListener('click', () => {
+  const src = iframe.getAttribute('src');
+  iframe.setAttribute('src', src.split('?')[0] + '?reset=' + Date.now());
+  Object.keys(localStorage).forEach(k => {
+    if (k.indexOf('xiaob_') === 0 || k === 'deepseek_key') localStorage.removeItem(k);
+  });
+});
+```
+
+### Smoke test 結果
+
+- ✅ Widget live at https://vampire.kitahim.uk
+- ✅ Iframe loads widget.html
+- ✅ Diary textarea 觸發 postMessage (debounced)
+- ✅ Quiz yes/no 觸發 postMessage (context.correct)
+- ✅ Reset 重載 iframe + 清 parent localStorage
+- ✅ byte-perfect deploy (0 diff vs local)
+
+### Known limitations
+
+- **Cooldown race**: 兩個 react 喺 800ms 內 fire，後者會被 drop。
+  LLM call 本身 ~1-3s，呢個 trade-off 可以接受。
+- **voice_id leak**: `_reactSpeakWithRoute` 暫時覆蓋 NEURAL_VOICE，
+  finally restore。Race condition 可能。如果發現問題，move 落
+  `fetchMinimaxTtsDirect()` 嘅 per-call override（speak.js 入面
+  嘅參數化）。
+- **跨 origin localStorage**: 父頁 reset 只可以清自己嘅 key。
+  Widget 內部嘅 key 要靠 widget 自己嘅 Settings → 診斷 → 清除。
+  Phase 2 可以加 `postMessage 'reset'` type，widget 自己清。

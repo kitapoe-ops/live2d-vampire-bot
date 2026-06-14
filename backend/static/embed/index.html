@@ -76,7 +76,121 @@
     </div>
   </div>
 
+    <!-- 2026-06-14 v35: Reactive API smoke test section
+         Demonstrates how parent page can trigger widget reactions via
+         postMessage 'react'. Three scenarios:
+           1. Diary  - text input (debounced 1.5s) -> text + context.source
+           2. Quiz   - yes/no button + correct/incorrect context
+           3. Reset  - reload iframe + clear parent's localStorage copy
+         See: plans/external-events-lite.md -->
+    <div class="card" id="react-smoke-test" style="border-left:4px solid #5b54e8; background:#f5f3ff;">
+      <h2>🧪 Reactive API Smoke Test (v35)</h2>
+      <p class="note" style="margin:0 0 16px 0;">下邊三個 control 會 postMessage 到吸血鬼 widget（右下角）試 <code>type: 'react'</code>。睇下 widget 嘅表情 + 動作 + 語音反應。</p>
+
+      <h3 style="font-size:15px; color:var(--ink); margin:0 0 8px;">📓 1. 日記模擬</h3>
+      <textarea id="react-diary-input" rows="3" placeholder="寫低你今日嘅心情... 停寫 1.5s 後 widget 會自動反應"
+                style="width:100%; padding:8px 10px; border:1px solid #d0d6e0; border-radius:8px; font-size:14px; font-family:inherit; resize:vertical;"></textarea>
+      <p class="note" style="margin:6px 0 0 0;">Tip: 試打「今日好慘」、「我答啱咗」、「好嬲」等。冇 DeepSeek key 嘅話會用 keyword fallback。</p>
+
+      <h3 style="font-size:15px; color:var(--ink); margin:20px 0 8px;">✅ 2. Yes/No 答題模擬</h3>
+      <p class="note" style="margin:0 0 8px 0;">問題：<b>「1 + 1 = 2 係咪啱?」</b></p>
+      <div style="display:flex; gap:8px;">
+        <button id="react-quiz-yes" style="flex:1; padding:10px; background:#27ae60; color:#fff; border:0; border-radius:8px; font-size:14px; cursor:pointer; font-weight:600;">✓ 啱</button>
+        <button id="react-quiz-no"  style="flex:1; padding:10px; background:#e74c3c; color:#fff; border:0; border-radius:8px; font-size:14px; cursor:pointer; font-weight:600;">✗ 唔啱</button>
+      </div>
+      <p class="note" style="margin:8px 0 0 0;">撳「啱」→ 吸血鬼會慶祝 (happy + 揸 mic)。撳「唔啱」→ 佢會鼓勵你再試 (sad)。</p>
+
+      <h3 style="font-size:15px; color:var(--ink); margin:20px 0 8px;">🔄 3. Reset</h3>
+      <p class="note" style="margin:0 0 8px 0;">重設 widget iframe 並清除 parent page 嘅 xiaob_* / deepseek_key 等 localStorage。</p>
+      <button id="react-reset" style="padding:10px 18px; background:#5b54e8; color:#fff; border:0; border-radius:8px; font-size:14px; cursor:pointer; font-weight:600;">🔄 清除並重設</button>
+    </div>
+  </div>
+
   <!-- ★ 一行嵌入吸血鬼虛擬人 ★ -->
   <script src="embed.js?v=20260614v07" data-widget="widget.html"></script>
+
+  <!-- 2026-06-14 v35: smoke test control script. Posts 'react' messages
+       to the embedded widget iframe. Diary debounces 1.5s to avoid spam.
+       Quiz uses context.correct hint (Priority 1 in decideReaction). -->
+  <script>
+  (function () {
+    function sendReact(payload) {
+      var iframe = document.querySelector('iframe');
+      if (!iframe || !iframe.contentWindow) {
+        console.warn('[react-test] no iframe found, widget not loaded yet');
+        return;
+      }
+      iframe.contentWindow.postMessage(
+        Object.assign({ ns: 'avatar-widget-host' }, payload),
+        '*'
+      );
+      console.log('[react-test] sent:', payload);
+    }
+
+    // 1. Diary: debounce 1.5s on text input
+    var diary = document.getElementById('react-diary-input');
+    var diaryTimer = null;
+    var lastDiaryText = '';
+    if (diary) {
+      diary.addEventListener('input', function () {
+        clearTimeout(diaryTimer);
+        diaryTimer = setTimeout(function () {
+          var text = diary.value.trim();
+          if (text.length < 3 || text === lastDiaryText) return;
+          lastDiaryText = text;
+          sendReact({
+            type: 'react',
+            text: text.slice(-500),
+            context: { source: 'diary' },
+          });
+        }, 1500);
+      });
+    }
+
+    // 2. Quiz: yes/no with context.correct
+    var qYes = document.getElementById('react-quiz-yes');
+    var qNo  = document.getElementById('react-quiz-no');
+    if (qYes) qYes.addEventListener('click', function () {
+      sendReact({
+        type: 'react',
+        text: 'Q: 1 + 1 = 2 係咪啱?\nUser: 啱',
+        context: { source: 'quiz', correct: true, question_id: 'Q1' },
+      });
+    });
+    if (qNo) qNo.addEventListener('click', function () {
+      sendReact({
+        type: 'react',
+        text: 'Q: 1 + 1 = 2 係咪啱?\nUser: 唔啱',
+        context: { source: 'quiz', correct: false, question_id: 'Q1' },
+      });
+    });
+
+    // 3. Reset: reload iframe + clear parent's localStorage xiaob_* keys.
+    // Widget has its own localStorage (cross-origin); reload iframe to
+    // reset in-memory state. Widget's own Settings → 診斷 → 清除所有
+    // localStorage does the persistent clear.
+    var resetBtn = document.getElementById('react-reset');
+    if (resetBtn) resetBtn.addEventListener('click', function () {
+      if (!confirm('確定清除 parent page 嘅 xiaob_* localStorage 並重載 widget iframe?')) return;
+      try {
+        var iframe = document.querySelector('iframe');
+        if (iframe) {
+          var src = iframe.getAttribute('src');
+          iframe.setAttribute('src', src.split('?')[0] + '?reset=' + Date.now());
+        }
+        try {
+          Object.keys(localStorage).forEach(function (k) {
+            if (k.indexOf('xiaob_') === 0 || k.indexOf('minimax_') === 0 || k === 'deepseek_key') {
+              localStorage.removeItem(k);
+            }
+          });
+        } catch (eLs) { /* ignore */ }
+        alert('Widget iframe 已重新載入。parent localStorage 已清除 xiaob_*/minimax_*/deepseek_key。');
+      } catch (e) {
+        alert('Reset 失敗: ' + e.message);
+      }
+    });
+  })();
+  </script>
 </body>
 </html>
