@@ -439,7 +439,11 @@
     <canvas id="avatar-canvas"></canvas>
     <div id="suggestions"></div>
     <div id="control-bar">
-      <div class="dock-row">
+      <!-- 2026-06-14 v34: wrap dock-row in #chat-bar so we can hide it
+           when the user disables the chat input bar in settings.
+           Default hidden (postMessage 'react' is the primary input path
+           for embedded use cases). Toggle in Settings → 對話 tab. -->
+      <div class="dock-row" id="chat-bar">
         <input id="type-input" type="text" maxlength="200" placeholder="打字問我也可以…" aria-label="輸入文字問題" />
         <button class="ctrl primary" id="btn-send" aria-label="送出文字問題" title="送出文字問題"><span aria-hidden="true">➤</span></button>
       </div>
@@ -557,6 +561,19 @@
           </div>
           <!-- Tab: 對話 (Chat) -->
           <div class="settings-tab-content" data-tab-content="chat">
+            <!-- 2026-06-14 v34: chat input bar visibility toggle.
+                 Default hidden because most embedded use cases drive
+                 the widget via postMessage 'react' (parent pushes text).
+                 Enable if you want users to type directly into the
+                 widget itself. -->
+            <section class="settings-section">
+              <h3>💬 互動模式</h3>
+              <label class="settings-field settings-row">
+                <span>顯示文字輸入框</span>
+                <input id="setting-show-chatbar" type="checkbox" />
+              </label>
+              <p class="settings-hint">關閉後只接受外部 postMessage 觸發。內建輸入框隱藏，但 LLM 對話與語音功能仍然 work。</p>
+            </section>
             <section class="settings-section">
               <h3>🤖 AI 回應參數</h3>
               <label class="settings-field settings-row">
@@ -834,6 +851,19 @@
   let __dev_max_tokens = parseInt((function(){try{return localStorage.getItem('xiaob_dev_max_tokens')||''}catch(e){return''}}())||'200')||200;
   let __dev_temperature = parseFloat((function(){try{return localStorage.getItem('xiaob_dev_temperature')||''}catch(e){return''}}())||'0.7')||0.7;
   let __dev_tts_cap = parseInt((function(){try{return localStorage.getItem('xiaob_dev_tts_cap')||''}catch(e){return''}}())||'120')||120;
+  // 2026-06-14 v34: chat bar visibility. Default OFF (hidden) because
+  // the postMessage 'react' path is the primary input for embedded use.
+  // Users who want the old direct-typing experience can flip the
+  // toggle in Settings → 對話 → 互動模式.
+  let __xiaob_show_chatbar = (function(){try{return localStorage.getItem('xiaob_show_chatbar')==='true'}catch(e){return false}})();
+  // Apply on boot (before any settings modal is opened, so the user
+  // sees the chosen state immediately).
+  (function applyChatbarVisibility() {
+    try {
+      const bar = document.getElementById('chat-bar');
+      if (bar) bar.style.display = __xiaob_show_chatbar ? '' : 'none';
+    } catch (e) { /* defensive: don't break boot if DOM isn't ready */ }
+  })();
   let __dev_debug_hud = false;
   let __dev_log_level = 'info';
   const __DEV_KEYS = ['xiaob_dev_breath','xiaob_dev_body_sway','xiaob_dev_speaking_sway','xiaob_dev_eye_track','xiaob_dev_idle_interval','xiaob_dev_emotion_prefix','xiaob_dev_keyword_emote','xiaob_dev_max_tokens','xiaob_dev_temperature','xiaob_dev_tts_cap'];
@@ -3354,6 +3384,9 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         const devIdleVal = document.getElementById('dev-idle-val');
         if (devIdle) { devIdle.value = __dev_idle_interval; if (devIdleVal) devIdleVal.textContent = Math.round(__dev_idle_interval); }
         // Chat params
+        // 2026-06-14 v34: chat input bar visibility (default OFF).
+        const showChatbar = document.getElementById('setting-show-chatbar');
+        if (showChatbar) showChatbar.checked = __xiaob_show_chatbar;
         const devEmotionPrefix = document.getElementById('dev-emotion-prefix');
         if (devEmotionPrefix) devEmotionPrefix.checked = __dev_emotion_prefix;
         const devKeywordEmote = document.getElementById('dev-keyword-emote');
@@ -3518,6 +3551,19 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         try { localStorage.setItem('xiaob_dev_emotion_prefix', String(__dev_emotion_prefix)); } catch (e) {}
       });
     }
+    // 2026-06-14 v34: chat input bar visibility toggle handler.
+    // Immediate visual effect on change (no reload needed).
+    const showChatbar = document.getElementById('setting-show-chatbar');
+    if (showChatbar) {
+      showChatbar.addEventListener('change', () => {
+        __xiaob_show_chatbar = showChatbar.checked;
+        try { localStorage.setItem('xiaob_show_chatbar', String(__xiaob_show_chatbar)); } catch (e) {}
+        try {
+          const bar = document.getElementById('chat-bar');
+          if (bar) bar.style.display = __xiaob_show_chatbar ? '' : 'none';
+        } catch (eBar) { /* defensive */ }
+      });
+    }
     const devKeywordEmote = document.getElementById('dev-keyword-emote');
     if (devKeywordEmote) {
       devKeywordEmote.addEventListener('change', () => {
@@ -3608,6 +3654,8 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             dev_temperature: __dev_temperature,
             dev_tts_cap: __dev_tts_cap,
             dev_log_level: __dev_log_level,
+            // 2026-06-14 v34
+            show_chatbar: __xiaob_show_chatbar,
             exported_at: new Date().toISOString()
           };
           const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
@@ -3645,6 +3693,8 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             if (data.dev_max_tokens) { __dev_max_tokens = data.dev_max_tokens; try { localStorage.setItem('xiaob_dev_max_tokens', String(__dev_max_tokens)); } catch (e) {} }
             if (data.dev_temperature) { __dev_temperature = data.dev_temperature; try { localStorage.setItem('xiaob_dev_temperature', String(__dev_temperature)); } catch (e) {} }
             if (data.dev_tts_cap) { __dev_tts_cap = data.dev_tts_cap; try { localStorage.setItem('xiaob_dev_tts_cap', String(__dev_tts_cap)); } catch (e) {} }
+            // 2026-06-14 v34
+            if (data.show_chatbar !== undefined) { __xiaob_show_chatbar = !!data.show_chatbar; try { localStorage.setItem('xiaob_show_chatbar', String(__xiaob_show_chatbar)); } catch (e) {} }
             showBubble('設定已導入，需要重新整理才能完全生效');
           } catch (eImport) {
             showBubble('導入失敗：' + eImport.message);
@@ -3663,7 +3713,8 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
           __DEV_KEYS.forEach(k => localStorage.removeItem(k));
           ['deepseek_key', 'xiaob_tts_mode', 'xiaob_voice_id', 'xiaob_browser_voice_uri',
            'xiaob_tts_rate', 'xiaob_tts_muted', 'minimax_tts_key', 'minimax_group_id',
-           'xiaob_settings_tab', 'xiaob_dev_debug_hud', 'xiaob_dev_log_level'].forEach(k => localStorage.removeItem(k));
+           'xiaob_settings_tab', 'xiaob_dev_debug_hud', 'xiaob_dev_log_level',
+           'xiaob_show_chatbar'].forEach(k => localStorage.removeItem(k));
         } catch (e) {}
         location.reload();
       });
