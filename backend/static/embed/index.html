@@ -106,9 +106,10 @@
            3. Reset  - reload iframe + clear parent's localStorage copy
          See: plans/external-events-lite.md -->
     <div class="card" id="react-smoke-test" style="border-left:4px solid #5b54e8; background:#f5f3ff;">
-      <h2>🧪 Reactive API Smoke Test (v38)</h2>
+      <h2>🧪 Reactive API Smoke Test (v39)</h2>
       <p class="note" style="margin:0 0 8px 0;">下邊三個 control 會 postMessage 到吸血鬼 widget（右下角）試 <code>type: 'react'</code>。睇下 widget 嘅表情 + 動作 + 語音反應。</p>
       <p class="note" style="margin:0 0 16px 0; color:#5b54e8; font-weight:600;">💡 吸血鬼 widget 擋住輸入框? 拖拽 widget 頂部藍色橫條 (cursor 會變 move) 去其他位置, 位置會記住。</p>
+      <p class="note" style="margin:0 0 8px 0;">💡 <b>想更聰明嘅反應?</b> 撳 widget 右上角 ⚙️ → 「一般」tab → 貼 DeepSeek API key。咁吸血鬼會用 LLM 真正讀你寫嘅嘢 (依家 fallback 用 keyword + sentiment word list)。</p>
       <p class="note" style="margin:0 0 16px 0; color:#c33; font-weight:600;">⚠️ 如果 drag/送出無反應: 按 <kbd>Ctrl+Shift+R</kbd> (Mac: <kbd>Cmd+Shift+R</kbd>) 強制 reload 清 cache。</p>
 
       <h3 style="font-size:15px; color:var(--ink); margin:0 0 8px;">📓 1. 日記模擬</h3>

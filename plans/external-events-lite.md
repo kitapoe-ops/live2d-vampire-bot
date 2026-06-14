@@ -764,3 +764,90 @@ plans/external-events-lite.md    this section
 4. 吸血鬼會 react (sad + 安慰)
 5. 撳 reset 位置掣返回右下角
 ```
+
+
+---
+
+## 14. v37-v38 Implementation Summary (2026-06-14)
+
+**v37: Buy Me a Coffee 撐腰掣**
+- index.html header 右上角加 ☕ Buy me a coffee 黃色按鈕
+- README.md 頂部加 Support section + BMAC official yellow button
+- Commit 31e8bb3
+
+**v38: Cache-bust + drag handle 大 2x + diagnostic logs**
+- User 反饋 drag/送出 唔 work
+- Root cause: browser cache 食咗舊 widget.html（v33 era, 冇 react handler）
+- Fix 1: bump embed.js _buildV 20260612v09 → 20260614v38
+- Fix 1: bump index.html ?v= 20260614v07 → 20260614v38
+- Fix 2: drag handle 14px → 28px, 藍線 36x3 → 48x4, 永久可見
+- Fix 3: sendReact + react handler 都加 console.log
+- Commit ecbcf9f
+
+---
+
+## 15. v39 Implementation (2026-06-14) — Sentiment Analysis
+
+**User feedback 觸發：**
+- v38 部署後 user hard-reload 試
+- 「無論我打乜嘢佢都係講我喺度聽緊，HOOK唔到我輸入嘅文字」
+
+**Root cause：**
+- v38 嘅 _reactKeyword() 用 8 個 regex，每個只有 3-8 個關鍵詞
+- 例子: user 打「我今日好累」「不舒服」「Hello」呢啲 → 撞唔中任何 keyword
+- 跌入 eturn { emotion: 'neutral', reply: '我喺度聽緊' }
+- User 覺得 widget 完全唔 hook 到 text
+
+**v39 fix：Massively expanded sentiment analysis**
+
+1. **5 個 word lists**（每個 20-30 詞）取代舊 8 個 regex：
+   - HAPPY_KW: 開心/高興/笑/棒/完美/love/like/yay/great/amazing...
+   - SAD_KW: 慘/傷心/喊/累/灰心/寂寞/tired/depressed/lonely/awful...
+   - ANGRY_KW: 嬲/嬲爆/燥/angry/mad/furious/hate/pissed/rage...
+   - SHY_KW: 害羞/怕羞/紅臉/shy/embarrass/blush...
+   - SURPRISED_KW: 驚/嚇/嘩/竟然/wow/omg/shock/amazing...
+
+2. **Score-based decision**：
+   - 計每個 emotion 嘅 keyword hit 數
+   - Punctuation boost: !! → happy, ?? → surprised, ... → sad
+   - Pick highest scorer, tie break by priority order
+
+3. **Honest neutral fallback**：
+   - 冇任何 match 時用 3 個輪換 reply，唔再係永遠同一句
+
+4. **smoke test 加 DeepSeek key 提示**：
+   - User 想要更聰明反應可以貼 DeepSeek API key
+   - ⚙️ → 一般 → API Key
+
+**Test matrix（10+ case 過手動 trace）：**
+
+`
+"我答啱咗！"      → happy  (correct pool)
+"今日好慘呀"      → sad    (sad pool)
+"我好嬲呀"        → angry  (angry pool)
+"我害羞"          → shy    (shy pool)
+"嘩！"            → surprised (surprised pool)
+"Hello"           → neutral (輪換 3 個 reply)
+"我今日好累"      → sad    (累/攰 keyword)
+"我好開心！"      → happy  (! boost)
+"點解會咗????"   → surprised (?? boost)
+"唉..."           → sad (... boost)
+"我覺得不舒服"    → sad    (難受 keyword)
+"Hello world"     → neutral
+"我好興奮"        → happy  (興奮 keyword)
+"我討厭佢"        → angry  (討厭 keyword)
+"今天好難受"      → sad    (難受 keyword)
+`
+
+**改動範圍：**
+`
+backend/static/embed/widget.html  _reactKeyword() 重寫 (~120 lines)
+backend/static/embed/index.html   smoke test 加 DeepSeek hint
+plans/external-events-lite.md     this section
+`
+
+**Limitations（v39）：**
+- 冇 LLM 嘅情況下，sentiment 仍然係 heuristic，唔會真正理解文意
+- 反諷 "今日真係太開心啦"（其實嬲）會誤判 happy
+- 想真正理解必須加 DeepSeek key
+- Word list 仍然有限，罕見詞可能 miss（會跌入 honest neutral fallback）

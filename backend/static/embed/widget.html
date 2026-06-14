@@ -1339,29 +1339,86 @@
   }
 
   function _reactKeyword(text) {
+    // 2026-06-14 v39: massively expanded sentiment word lists + punctuation
+    // signals. v38's narrow patterns left most user text falling to neutral
+    // ("我喺度聽緊"), making the widget feel unresponsive.
     const t = (text || '').toLowerCase();
-    if (/啱|correct|right|✓|✅|yes!|成功|做咗|好棒/.test(t)) {
-      return { emotion: 'happy', action: 'mc', reply: _reactRandomPick(REPLY_POOL.correct) };
+    if (!t.trim()) return { emotion: 'neutral', action: null, reply: _reactRandomPick(REPLY_POOL.neutral) };
+
+    // Word lists (Cantonese/Chinese, plus common English).
+    // Match is substring (includes), so single chars like 慘/嬲 work too.
+    const HAPPY_KW = [
+      '啱', '啱嘅', '答啱', 'correct', 'right', '✓', '✅', 'yes', 'yes!',
+      '開心', '高興', '興奮', '快樂', '好嘢', '棒', '叻', '正', '爽', '甜',
+      '笑', '哈哈', '嘻嘻', '開心死', '完美', '成功', 'yeah', 'yay', 'happy',
+      'joy', 'great', 'good', 'wonderful', 'amazing', 'love', 'loved',
+      '鍾意', '中意', '喜歡', '太正', '勁', '犀利', 'like', '做咗',
+    ];
+    const SAD_KW = [
+      '錯', '唔啱', '答錯', 'wrong', '✗', '❌', 'no!', 'no', '失敗', '唔得',
+      '慘', '傷心', '痛', '哭', '喊', '心痛', '心碎', '心淡', '灰', '灰心',
+      '絕望', '失望', '累', '攰', '辛苦', '難過', '難受', '唔開心', '煩',
+      'sad', 'cry', 'tired', 'hurt', 'bad', 'terrible', 'awful', 'depressed',
+      'lonely', '寂寞', '孤獨', '無助', 'miserable', '失戀',
+      '不舒服', '唔舒服', '唔爽', '辛苦', '攰', '病', '病咗',
+    ];
+    const ANGRY_KW = [
+      '嬲', '嬲爆', '嬲死', '激嬲', '燥', '火大', '氣死', '激死', 'angry',
+      'mad', 'furious', 'hate', 'hated', 'pissed', 'rage', '討厭',
+    ];
+    const SHY_KW = [
+      '害羞', '怕羞', '紅臉', '臉紅', '紅晒', '不好意思', '唔好意思', 'shy',
+      'embarrass', 'blush',
+    ];
+    const SURPRISED_KW = [
+      '驚', '驚死', '怕', '嚇', '嘩', '哇', '竟然', '居然', '估唔到',
+      '諗唔到', 'surprise', 'wow', 'omg', 'shock', 'amazing',
+    ];
+
+    // Score each emotion by how many keywords appear.
+    function scoreOf(list) { let n = 0; for (const w of list) if (w && t.indexOf(w) !== -1) n++; return n; }
+    const scores = {
+      happy: scoreOf(HAPPY_KW),
+      sad: scoreOf(SAD_KW),
+      angry: scoreOf(ANGRY_KW),
+      shy: scoreOf(SHY_KW),
+      surprised: scoreOf(SURPRISED_KW),
+    };
+
+    // Punctuation signals (boost score)
+    if (/!{2,}/.test(t))      scores.happy     += 0.5;
+    if (/\?{2,}/.test(t))     scores.surprised += 0.5;
+    if (/\.{2,}|。{2,}|……|…/.test(t)) scores.sad += 0.5;
+    if (/!{1,}/.test(t) && scores.angry > 0)   scores.angry += 0.3;
+    if (/\?{1,}/.test(t) && scores.surprised > 0) scores.surprised += 0.2;
+
+    // Pick the highest scorer; ties broken by HAPPY > SAD > ANGRY > SURPRISED > SHY
+    const order = ['happy', 'sad', 'angry', 'surprised', 'shy'];
+    let best = null, bestScore = 0;
+    for (const k of order) {
+      if (scores[k] > bestScore) { bestScore = scores[k]; best = k; }
     }
-    if (/錯|wrong|✗|❌|no!|失敗|唔得|唔啱/.test(t)) {
-      return { emotion: 'sad', action: null, reply: _reactRandomPick(REPLY_POOL.wrong) };
+    if (!best) {
+      // Truly no match: fall back to neutral with a more honest reply.
+      return {
+        emotion: 'neutral',
+        action:  null,
+        reply:   _reactRandomPick([
+          '嗯嗯，我喺度聽緊。',
+          '我聽緊你講，你繼續。',
+          '收到，我喺度。',
+        ]),
+      };
     }
-    if (/嬲|angry|hate|嬲爆|激嬲|嬲到/.test(t)) {
-      return { emotion: 'angry', action: null, reply: _reactRandomPick(REPLY_POOL.angry) };
-    }
-    if (/害羞|shy|不好意思|臉紅|紅臉/.test(t)) {
-      return { emotion: 'shy', action: null, reply: _reactRandomPick(REPLY_POOL.shy) };
-    }
-    if (/驚|嚇|surprise|意外|嘩|竟然|嘩嘩/.test(t)) {
-      return { emotion: 'surprised', action: null, reply: _reactRandomPick(REPLY_POOL.surprised) };
-    }
-    if (/傷心|sad|哭|唔開心|慘|可憐|難過|心痛/.test(t)) {
-      return { emotion: 'sad', action: null, reply: _reactRandomPick(REPLY_POOL.sad) };
-    }
-    if (/開心|happy|好叻|叻|叻仔|棒|正|笑/.test(t)) {
-      return { emotion: 'happy', action: 'mc', reply: _reactRandomPick(REPLY_POOL.happy) };
-    }
-    return { emotion: 'neutral', action: null, reply: _reactRandomPick(REPLY_POOL.neutral) };
+    // Map winner to emotion + reply pool
+    const replyMap = {
+      happy:     { emotion: 'happy',     action: 'mc', reply: _reactRandomPick(REPLY_POOL.correct.concat(REPLY_POOL.happy)) },
+      sad:       { emotion: 'sad',       action: null, reply: _reactRandomPick(REPLY_POOL.sad.concat(REPLY_POOL.wrong)) },
+      angry:     { emotion: 'angry',     action: null, reply: _reactRandomPick(REPLY_POOL.angry) },
+      shy:       { emotion: 'shy',       action: null, reply: _reactRandomPick(REPLY_POOL.shy) },
+      surprised: { emotion: 'surprised', action: null, reply: _reactRandomPick(REPLY_POOL.surprised) },
+    };
+    return replyMap[best];
   }
 
   function showBubble(text) {
