@@ -2853,7 +2853,11 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       // 表情與外觀客製化選單已移除，此處改為衣裝轉換按鈕一鍵切換邏輯
       window.updateEmoteListActiveUI = function() {}; // 空函數相容性
       (function() {
-        const btn = document.getElementById('btn-emote');
+        // 2026-06-14 v40 fix: 改攞 #btn-emote-corner (line 500 HTML 真正有)
+        // 原本寫 #btn-emote → 攞到 null → IIFE 第一次 setAttribute 就 crash
+        // → toggleOutfit 永遠未定義 → line 4127 listener `toggleOutfit && toggleOutfit()` 因 undefined short-circuit 唔 trigger
+        const btn = document.getElementById('btn-emote-corner');
+        if (!btn) { console.error('[Outfit] btn-emote-corner not found, abort'); return; }
 
         // 修改按鈕的標示與屬性，以代表衣裝切換
         btn.setAttribute('aria-label', '切換衣裝形態 (黑色/白色)');
@@ -2914,10 +2918,10 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           btn.setAttribute('aria-pressed', String(nextOutfit === 'vampire2'));
         }
 
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          toggleOutfit();
-        });
+        // 2026-06-14 v40: expose toggleOutfit globally so line 4127 outer
+        // listener can call it. Also add a console.log on every click.
+        window.toggleOutfit = toggleOutfit;
+        console.log('[Outfit] toggleOutfit exposed to window; btn-emote-corner ready');
       })();
 
       document.addEventListener('keydown', (e) => {
@@ -4124,9 +4128,11 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     }
   });
   // 2026-06-13 v31: outfit toggle button in corner
+  // 2026-06-14 v40: add console.log to diagnose trigger path
   document.getElementById('btn-emote-corner').addEventListener('click', (e) => {
     e.stopPropagation();
-    try { toggleOutfit && toggleOutfit(); } catch (eToggle) {}
+    console.log('[Outfit] btn-emote-corner clicked; typeof toggleOutfit=', typeof window.toggleOutfit);
+    try { window.toggleOutfit && window.toggleOutfit(); } catch (eToggle) { console.error('[Outfit] toggle error:', eToggle); }
   });
   // 2026-06-13 v31: render action list in emote-list popover
   function renderActionList(popover) {
