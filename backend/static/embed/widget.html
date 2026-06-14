@@ -2961,7 +2961,48 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         // 2026-06-14 v40: expose toggleOutfit globally so line 4127 outer
         // listener can call it. Also add a console.log on every click.
         window.toggleOutfit = toggleOutfit;
-        console.log('[Outfit] toggleOutfit exposed to window; btn-emote-corner ready');
+
+        // 2026-06-15 v43: diagnostic helper to enumerate all parts and their
+        // current opacity. User reported body became naked in v42 because
+        // setPartOpacityById('Part26', 1.0) didn't take effect — but Part30
+        // (white) was correctly hidden. So the string ID 'Part26' may not
+        // match the actual part identifier in the loaded model.
+        // Call window.listParts() in devtools to see all part IDs.
+        window.listParts = function() {
+          const _m = (typeof model !== 'undefined' && model) ? model : window.model;
+          const _cm = _m && _m.internalModel && _m.internalModel.coreModel;
+          const out = { method: null, parts: null, error: null };
+          if (!_cm) { out.error = 'no coreModel'; console.warn('[listParts]', out); return out; }
+          // Method A: getPartId(index) loop
+          if (typeof _cm.getPartCount === 'function') {
+            try {
+              const count = _cm.getPartCount();
+              const arr = [];
+              for (let i = 0; i < count; i++) {
+                const id = (typeof _cm.getPartId === 'function') ? _cm.getPartId(i) : '?';
+                const op = (typeof _cm.getPartOpacity === 'function') ? _cm.getPartOpacity(i) : (typeof _cm.getPartOpacityById === 'function' && id !== '?' ? _cm.getPartOpacityById(id) : null);
+                arr.push({ index: i, id: id, opacity: op });
+              }
+              out.method = 'getPartCount+getPartId';
+              out.parts = arr;
+              console.log('[listParts]', arr);
+              return out;
+            } catch (eA) { out.error = 'method A failed: ' + eA.message; }
+          }
+          // Method B: internal settings
+          try {
+            const settings = _m.internalModel && _m.internalModel.settings;
+            if (settings && settings.getPartDefinitions) {
+              out.method = 'settings.getPartDefinitions';
+              out.parts = settings.getPartDefinitions();
+              console.log('[listParts]', out.parts);
+              return out;
+            }
+          } catch (eB) { out.error = (out.error||'') + ' | method B failed: ' + eB.message; }
+          console.warn('[listParts] could not enumerate parts:', out);
+          return out;
+        };
+        console.log('[Outfit] toggleOutfit + listParts() exposed; call listParts() in devtools to enumerate model parts');
       })();
 
       document.addEventListener('keydown', (e) => {
