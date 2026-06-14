@@ -2869,22 +2869,24 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           const nextOutfit = isBlack ? 'vampire2' : 'vampire';
           emoteState.outfit = nextOutfit;
 
-          // 2026-06-15 v41: use model.expression() like the gesture pattern
-          // (renderActionList line ~4256 calls m.expression('knife') etc).
-          // Previous applyOutfit() relied on KNOWLEDGE.setParam which can
-          // silently fail (returns {ok:false} then falls back to coreModel
-          // which may also fail), with no log to indicate the failure path.
-          // The native 'vampire' / 'vampire2' .exp3.json expressions
-          // (defined in 吸血鬼.model3.json + 吸血鬼.exp3.json / vampire2.exp3.json)
-          // set the same 6 outfit params with the same values as OUTFIT_PARAMS,
-          // so going through the Cubism pipeline is equivalent AND more reliable
-          // (uses internal motion-manager state, survives cache invalidation).
+          // 2026-06-15 v42: triple path to ensure visual flip actually happens.
+          // User feedback after v41: head changes (hair params) but body stays
+          // the same color. Root cause: the model uses Part IDs (Part26 黑色衣服
+          // / Part30 白色衣服) to control the body color, NOT just PARAMoutfit1_2.
+          // The .exp3.json expression sets PARAMoutfit1_2=1.0, but the
+          // MOC3 binary may not actually bind that param to the body part
+          // visibility in the user's model variant. Direct Part opacity is
+          // the authoritative path for the body color flip.
           const m = (typeof model !== 'undefined' && model) ? model : window.model;
+          const cm = m && m.internalModel && m.internalModel.coreModel;
+
+          // Path 1: native model.expression() — sets hair params reliably
+          //         (verified by v41: head changes correctly).
           let usedExpression = false;
           if (m && typeof m.expression === 'function') {
             try {
               m.expression(nextOutfit);
-              console.log('[Outfit] native expression(\'' + nextOutfit + '\') triggered');
+              console.log('[Outfit] native expression(\'' + nextOutfit + '\') triggered (hair)');
               usedExpression = true;
             } catch (eExp) {
               console.warn('[Outfit] native expression failed:', eExp.message);
@@ -2893,15 +2895,31 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             console.warn('[Outfit] m.expression not available; typeof m =', typeof m);
           }
 
-          // Belt-and-suspenders: also call applyOutfit() so the per-frame
-          // render loop and any other consumer of emoteState.outfit stays
-          // in sync. applyOutfit() values match the .exp3.json values exactly
-          // (verified by comparing OUTFIT_PARAMS table to 吸血鬼.exp3.json).
+          // Path 2: direct Part opacity for body color (v42 fix).
+          // Part26 = 黑色衣服, Part30 = 白色衣服 (from 吸血鬼.cdi3.json).
+          // For black outfit: Part26.opacity=1, Part30.opacity=0.
+          // For white outfit: Part26.opacity=0, Part30.opacity=1.
+          let partOk = false;
+          if (cm && typeof cm.setPartOpacityById === 'function') {
+            try {
+              const blackOpacity = (nextOutfit === 'vampire') ? 1.0 : 0.0;
+              const whiteOpacity = (nextOutfit === 'vampire') ? 0.0 : 1.0;
+              cm.setPartOpacityById('Part26', blackOpacity);
+              cm.setPartOpacityById('Part30', whiteOpacity);
+              console.log('[Outfit] part opacity set: Part26(black)=' + blackOpacity + ', Part30(white)=' + whiteOpacity);
+              partOk = true;
+            } catch (ePart) {
+              console.warn('[Outfit] setPartOpacityById failed:', ePart.message);
+            }
+          } else {
+            console.warn('[Outfit] setPartOpacityById not available on coreModel');
+          }
+
+          // Path 3: applyOutfit() so the per-frame render loop and any
+          // other consumer of emoteState.outfit stays in sync.
           if (typeof applyOutfit === 'function') {
             try {
               applyOutfit(emoteState.outfit);
-              // v22 cache invalidation: next per-frame listener will rebuild
-              // the cache for outfit params (it sees fresh values).
               if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
                 for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
                   __v22_lastValue[k] = undefined;
@@ -2913,11 +2931,30 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             }
           }
 
+          // Diagnostic: read back param + part opacity values
+          if (cm) {
+            try {
+              const readBack = {};
+              for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
+                if (typeof cm.getParameterValueById === 'function') {
+                  readBack[k] = cm.getParameterValueById(k);
+                }
+              }
+              if (typeof cm.getPartOpacityById === 'function') {
+                readBack['Part26(black)'] = cm.getPartOpacityById('Part26');
+                readBack['Part30(white)'] = cm.getPartOpacityById('Part30');
+              }
+              console.log('[Outfit] readback after toggle:', JSON.stringify(readBack));
+            } catch (eRb) {
+              console.warn('[Outfit] readback failed:', eRb.message);
+            }
+          }
+
           showBubble('已切換衣裝：' + (nextOutfit === 'vampire2' ? '白色衣裝' : '黑色衣裝'));
           btn.setAttribute('aria-pressed', String(nextOutfit === 'vampire2'));
 
-          if (!usedExpression) {
-            console.warn('[Outfit] Only applyOutfit() path was used; visual flip depends on per-frame loop. If still no visual change, check coreModel.setParameterValueById reachability.');
+          if (!usedExpression && !partOk) {
+            console.error('[Outfit] All paths failed; outfit toggle had no effect.');
           }
         }
 
@@ -3296,6 +3333,24 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         // 5. 血跡效果 (bloodFace, bloodBody)
         v22Set('PARAMBLOOD2', emoteState.bloodFace ? 1.0 : 0.0);
         v22Set('PARAMblood1', emoteState.bloodBody ? 1.0 : 0.0);
+
+        // 5b. 2026-06-15 v42: 衣裝 Part opacity 同步 (Part26 黑/Part30 白)。
+        // 上一個 frame 嘅 model.expression() 唔會倒轉之前嘅 Part opacity set，
+        // 但要防 idle 期間有 motion / gesture call 改動 Part opacity。
+        if (model && model.internalModel && model.internalModel.coreModel) {
+          const cm2 = model.internalModel.coreModel;
+          if (typeof cm2.setPartOpacityById === 'function') {
+            try {
+              if (emoteState.outfit === 'vampire') {
+                cm2.setPartOpacityById('Part26', 1.0);
+                cm2.setPartOpacityById('Part30', 0.0);
+              } else {
+                cm2.setPartOpacityById('Part26', 0.0);
+                cm2.setPartOpacityById('Part30', 1.0);
+              }
+            } catch (ePartLoop) { /* swallow per-frame */ }
+          }
+        }
 
         // 眨眼邏輯
         if (t - lastBlinkT > nextBlinkIn) {
