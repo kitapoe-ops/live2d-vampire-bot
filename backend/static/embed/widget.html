@@ -2391,6 +2391,31 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             console.log('[Live2D] KNOWLEDGE.setIdIndexMap(deferred inject) complete');
           }
           console.log('[Live2D] KNOWLEDGE.setModel(injected) — 140 active + 12 bonus + 14 expression channels registered');
+          // 2026-06-15 v44: auto-enumerate outfit-related parts on load.
+          // The user reported v42 still shows transparent body. List the
+          // relevant parts on init so the diagnostic data is captured
+          // automatically without requiring manual listParts() call.
+          if (model && model.internalModel && model.internalModel.coreModel) {
+            setTimeout(() => {
+              try {
+                const _cm = model.internalModel.coreModel;
+                if (typeof _cm.getPartCount === 'function' && typeof _cm.getPartId === 'function') {
+                  const cnt = _cm.getPartCount();
+                  const relevant = ['Part18', 'Part22', 'Part26', 'Part30', 'Part49', 'Part54', 'Part59'];
+                  const log = { totalParts: cnt, relevant: {} };
+                  for (let i = 0; i < cnt; i++) {
+                    const id = _cm.getPartId(i);
+                    if (relevant.indexOf(id) >= 0) {
+                      const op = (typeof _cm.getPartOpacity === 'function') ? _cm.getPartOpacity(i) : null;
+                      const mul = (typeof _cm.getPartMultiplyBlend === 'function') ? _cm.getPartMultiplyBlend(i) : null;
+                      log.relevant[id] = { idx: i, op: op, mul: mul };
+                    }
+                  }
+                  console.log('[v44-auto-parts] initial state:', JSON.stringify(log));
+                }
+              } catch (e) { console.warn('[v44-auto-parts] failed:', e.message); }
+            }, 2000);
+          }
           return true;
         }
         return false;
@@ -2869,19 +2894,17 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           const nextOutfit = isBlack ? 'vampire2' : 'vampire';
           emoteState.outfit = nextOutfit;
 
-          // 2026-06-15 v42: triple path to ensure visual flip actually happens.
-          // User feedback after v41: head changes (hair params) but body stays
-          // the same color. Root cause: the model uses Part IDs (Part26 黑色衣服
-          // / Part30 白色衣服) to control the body color, NOT just PARAMoutfit1_2.
-          // The .exp3.json expression sets PARAMoutfit1_2=1.0, but the
-          // MOC3 binary may not actually bind that param to the body part
-          // visibility in the user's model variant. Direct Part opacity is
-          // the authoritative path for the body color flip.
+          // 2026-06-15 v44: fix for body Part26 still not responding after v42.
+          // User feedback: '只有黑色頭巾，其他黑色衣服變透明沒有顯示'
+          // (headscarf shows, body black clothes stay transparent).
+          // Hypothesis: Part26 is in MULTIPLY blend mode. setPartOpacityById
+          // alone sets the opacity layer, but if MULTIPLY=0 the texture is
+          // multiplied by 0 (invisible) regardless of opacity.
+          // Fix: also call setPartMultiplyBlendById to force visibility.
           const m = (typeof model !== 'undefined' && model) ? model : window.model;
           const cm = m && m.internalModel && m.internalModel.coreModel;
 
-          // Path 1: native model.expression() — sets hair params reliably
-          //         (verified by v41: head changes correctly).
+          // Path 1: native model.expression() — sets hair params (always works).
           let usedExpression = false;
           if (m && typeof m.expression === 'function') {
             try {
@@ -2891,32 +2914,61 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             } catch (eExp) {
               console.warn('[Outfit] native expression failed:', eExp.message);
             }
-          } else {
-            console.warn('[Outfit] m.expression not available; typeof m =', typeof m);
           }
 
-          // Path 2: direct Part opacity for body color (v42 fix).
-          // Part26 = 黑色衣服, Part30 = 白色衣服 (from 吸血鬼.cdi3.json).
-          // For black outfit: Part26.opacity=1, Part30.opacity=0.
-          // For white outfit: Part26.opacity=0, Part30.opacity=1.
-          let partOk = false;
-          if (cm && typeof cm.setPartOpacityById === 'function') {
-            try {
-              const blackOpacity = (nextOutfit === 'vampire') ? 1.0 : 0.0;
-              const whiteOpacity = (nextOutfit === 'vampire') ? 0.0 : 1.0;
-              cm.setPartOpacityById('Part26', blackOpacity);
-              cm.setPartOpacityById('Part30', whiteOpacity);
-              console.log('[Outfit] part opacity set: Part26(black)=' + blackOpacity + ', Part30(white)=' + whiteOpacity);
-              partOk = true;
-            } catch (ePart) {
-              console.warn('[Outfit] setPartOpacityById failed:', ePart.message);
+          // Path 2: Part opacity + MULTIPLY blend for body.
+          // For black: Part26=1, Part30=0, with both MULTIPLY=1 (full visibility).
+          // For white: Part26=0, Part30=1, with both MULTIPLY=1.
+          const blackOp = (nextOutfit === 'vampire') ? 1.0 : 0.0;
+          const whiteOp = (nextOutfit === 'vampire') ? 0.0 : 1.0;
+          if (cm) {
+            const log = {};
+            // Opacity (try multiple ID formats in case 'Part26' is wrong)
+            const partIdVariants = {
+              'Part26': ['Part26', 'part26', 'part_26', '26', 'PART_26', 'Part_26', 'Black_Clothes', '黑衣服'],
+              'Part30': ['Part30', 'part30', 'part_30', '30', 'PART_30', 'Part_30', 'White_Clothes', '白衣服'],
+            };
+            for (const partKey of ['Part26', 'Part30']) {
+              const targetOp = (partKey === 'Part26') ? blackOp : whiteOp;
+              let applied = false;
+              for (const idTry of partIdVariants[partKey]) {
+                if (typeof cm.setPartOpacityById === 'function') {
+                  try { cm.setPartOpacityById(idTry, targetOp); } catch (e) {}
+                }
+                // Also try numeric index-based setPartOpacity
+                if (typeof cm.getPartId === 'function' && typeof cm.getPartCount === 'function') {
+                  try {
+                    const cnt = cm.getPartCount();
+                    for (let i = 0; i < cnt; i++) {
+                      const realId = cm.getPartId(i);
+                      if (realId === idTry) {
+                        if (typeof cm.setPartOpacity === 'function') {
+                          cm.setPartOpacity(i, targetOp);
+                          log[partKey + '[idx' + i + ']'] = targetOp;
+                          applied = true;
+                        }
+                        break;
+                      }
+                    }
+                  } catch (e) {}
+                }
+              }
+              if (!applied) log[partKey] = 'no working ID found';
             }
-          } else {
-            console.warn('[Outfit] setPartOpacityById not available on coreModel');
+            // MULTIPLY blend mode (v44 new)
+            if (typeof cm.setPartMultiplyBlendById === 'function') {
+              try {
+                cm.setPartMultiplyBlendById('Part26', 1.0);
+                cm.setPartMultiplyBlendById('Part30', 1.0);
+                log['multiply'] = 'Part26=1, Part30=1 (forced)';
+              } catch (eM) {
+                log['multiply'] = 'failed: ' + eM.message;
+              }
+            }
+            console.log('[Outfit] part set log:', JSON.stringify(log));
           }
 
-          // Path 3: applyOutfit() so the per-frame render loop and any
-          // other consumer of emoteState.outfit stays in sync.
+          // Path 3: applyOutfit() so per-frame render loop stays in sync.
           if (typeof applyOutfit === 'function') {
             try {
               applyOutfit(emoteState.outfit);
@@ -2931,7 +2983,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             }
           }
 
-          // Diagnostic: read back param + part opacity values
+          // Diagnostic readback
           if (cm) {
             try {
               const readBack = {};
@@ -2941,10 +2993,14 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
                 }
               }
               if (typeof cm.getPartOpacityById === 'function') {
-                readBack['Part26(black)'] = cm.getPartOpacityById('Part26');
-                readBack['Part30(white)'] = cm.getPartOpacityById('Part30');
+                readBack['Part26_op'] = cm.getPartOpacityById('Part26');
+                readBack['Part30_op'] = cm.getPartOpacityById('Part30');
               }
-              console.log('[Outfit] readback after toggle:', JSON.stringify(readBack));
+              if (typeof cm.getPartMultiplyBlendById === 'function') {
+                readBack['Part26_mul'] = cm.getPartMultiplyBlendById('Part26');
+                readBack['Part30_mul'] = cm.getPartMultiplyBlendById('Part30');
+              }
+              console.log('[Outfit] readback:', JSON.stringify(readBack));
             } catch (eRb) {
               console.warn('[Outfit] readback failed:', eRb.message);
             }
@@ -2952,10 +3008,6 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
 
           showBubble('已切換衣裝：' + (nextOutfit === 'vampire2' ? '白色衣裝' : '黑色衣裝'));
           btn.setAttribute('aria-pressed', String(nextOutfit === 'vampire2'));
-
-          if (!usedExpression && !partOk) {
-            console.error('[Outfit] All paths failed; outfit toggle had no effect.');
-          }
         }
 
         // 2026-06-14 v40: expose toggleOutfit globally so line 4127 outer
