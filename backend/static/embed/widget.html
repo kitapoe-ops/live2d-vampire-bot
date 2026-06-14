@@ -2869,53 +2869,56 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           const nextOutfit = isBlack ? 'vampire2' : 'vampire';
           emoteState.outfit = nextOutfit;
 
-          // 2026-06-13 v16: removed model.expression('vampire'/'vampire2') call.
-          // The .exp3.json files for those names mix outfit + facial params,
-          // which caused the next applyEmotion() to overwrite the outfit color.
-          // Outfit is now applied via applyOutfit() (which writes the 6 outfit
-          // params directly), and is also reinforced by the per-frame
-          // model.update override below. Outfit is now fully independent of
-          // the emotion system.
-          //
-          // 2026-06-13 v23: write outfit params DIRECTLY via coreModel after
-          // applyOutfit(). The v22 per-id cache that applyOutfit() bypasses
-          // would otherwise cause the per-frame listener to skip re-writing
-          // the values that applyOutfit just set, and we've seen the model
-          // fail to re-render in some browser/PixiLive2D combos. The direct
-          // write + cache-invalidation guarantees the visual flip.
-          if (typeof applyOutfit === 'function') {
-            applyOutfit(emoteState.outfit);
-            // v22 cache invalidation: next per-frame listener will rebuild
-            // the cache for outfit params (it sees fresh values).
-            if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
-              for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
-                __v22_lastValue[k] = undefined;
-              }
-            }
-            // Belt-and-suspenders: write directly to coreModel so the visual
-            // change happens immediately on the very next render, not after
-            // a per-frame listener tick. Pixi Live2D's parameter blending
-            // computes lazily on the next update() call, so this write is
-            // picked up by the very next frame anyway, but writing twice
-            // (once via applyOutfit -> KNOWLEDGE, once directly) costs us
-            // nothing and gives us a log to diagnose.
+          // 2026-06-15 v41: use model.expression() like the gesture pattern
+          // (renderActionList line ~4256 calls m.expression('knife') etc).
+          // Previous applyOutfit() relied on KNOWLEDGE.setParam which can
+          // silently fail (returns {ok:false} then falls back to coreModel
+          // which may also fail), with no log to indicate the failure path.
+          // The native 'vampire' / 'vampire2' .exp3.json expressions
+          // (defined in 吸血鬼.model3.json + 吸血鬼.exp3.json / vampire2.exp3.json)
+          // set the same 6 outfit params with the same values as OUTFIT_PARAMS,
+          // so going through the Cubism pipeline is equivalent AND more reliable
+          // (uses internal motion-manager state, survives cache invalidation).
+          const m = (typeof model !== 'undefined' && model) ? model : window.model;
+          let usedExpression = false;
+          if (m && typeof m.expression === 'function') {
             try {
-              const cm = model && model.internalModel && model.internalModel.coreModel;
-              const directMap = (window.__v23_outfitMap = window.__v23_outfitMap || OUTFIT_PARAMS);
-              const map = directMap[nextOutfit] || directMap.vampire;
-              for (const id in map) {
-                if (cm && typeof cm.setParameterValueById === 'function') {
-                  try { cm.setParameterValueById(id, Number(map[id])); } catch (e) {}
+              m.expression(nextOutfit);
+              console.log('[Outfit] native expression(\'' + nextOutfit + '\') triggered');
+              usedExpression = true;
+            } catch (eExp) {
+              console.warn('[Outfit] native expression failed:', eExp.message);
+            }
+          } else {
+            console.warn('[Outfit] m.expression not available; typeof m =', typeof m);
+          }
+
+          // Belt-and-suspenders: also call applyOutfit() so the per-frame
+          // render loop and any other consumer of emoteState.outfit stays
+          // in sync. applyOutfit() values match the .exp3.json values exactly
+          // (verified by comparing OUTFIT_PARAMS table to 吸血鬼.exp3.json).
+          if (typeof applyOutfit === 'function') {
+            try {
+              applyOutfit(emoteState.outfit);
+              // v22 cache invalidation: next per-frame listener will rebuild
+              // the cache for outfit params (it sees fresh values).
+              if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
+                for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
+                  __v22_lastValue[k] = undefined;
                 }
               }
-              console.log('[Live2D] Outfit toggled to:', nextOutfit, '(direct write ok)');
-            } catch (eDirect) {
-              console.log('[Live2D] Outfit toggled to:', nextOutfit, '(direct write failed:', eDirect.message + ')');
+              console.log('[Outfit] applyOutfit(' + emoteState.outfit + ') reinforced');
+            } catch (eA) {
+              console.error('[Outfit] applyOutfit failed:', eA.message);
             }
           }
 
           showBubble('已切換衣裝：' + (nextOutfit === 'vampire2' ? '白色衣裝' : '黑色衣裝'));
           btn.setAttribute('aria-pressed', String(nextOutfit === 'vampire2'));
+
+          if (!usedExpression) {
+            console.warn('[Outfit] Only applyOutfit() path was used; visual flip depends on per-frame loop. If still no visual change, check coreModel.setParameterValueById reachability.');
+          }
         }
 
         // 2026-06-14 v40: expose toggleOutfit globally so line 4127 outer
