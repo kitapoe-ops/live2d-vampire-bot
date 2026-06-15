@@ -117,7 +117,7 @@
   }
 })();
 </script>
-<title>AI Bot Widget ???¸è?é¬?(vampire.kitahim.uk)</title>
+<title>AI Bot Widget 吃雍虋 (vampire.kitahim.uk)</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%235b54e8%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22central%22%20font-size%3D%2242%22%20font-family%3D%22Apple%20Color%20Emoji%2CSegoe%20UI%20Emoji%2Csans-serif%22%3E%F0%9F%A7%9B%3C%2Ftext%3E%3C%2Fsvg%3E" />
 <style>
   :root{
@@ -155,7 +155,7 @@
   }
   /* Hint text shown on hover only (so widget doesn't look cluttered) */
   #widget-drag-handle::after {
-    content:'???–拽以移??;
+    content:'单住拽拔今移動';
     position:absolute; top:14px; left:50%; transform:translateX(-50%);
     font-size:10px; color:rgba(91,84,232,.8); font-weight:500;
     opacity:0; transition:opacity .15s;
@@ -459,13 +459,13 @@
        Android intent, plus a copy-URL fallback for environments where intent
        is intercepted. JS in the BROWSER init block below toggles `hidden`. -->
   <div id="webview-guard" class="webview-guard" hidden role="alert" aria-live="polite">
-    <p>?š« <strong>App ?§å»º?è¦½?¨ä??¯æ´èªžéŸ³?Ÿèƒ½</strong></p>
-    <p>請é?下方?‰é???Google Chrome ?‹å?,æ?複製網å?貼到 Chrome ??</p>
+    <p>揚示 <strong>App 內建清瀏器不支援語音功能</strong></p>
+    <p>请點重下方按钮以 Google Chrome 打開，或到網址資到 Chrome 打開</p>
     <div class="webview-guard-actions">
       <a href="intent://vampire.kitahim.uk/widget#Intent;scheme=https;package=com.android.chrome;end"
-         class="webview-guard-cta chrome" id="webview-chrome-link">??Chrome 中é???/a>
+         class="webview-guard-cta chrome" id="webview-chrome-link">在 Chrome 中打開
       <button type="button" class="webview-guard-cta copy" id="webview-copy-btn">複製網å?</button>
-      <button type="button" class="webview-guard-cta dismiss" id="webview-dismiss-btn" aria-label="?œé??ç¤º">?</button>
+      <button type="button" class="webview-guard-cta dismiss" id="webview-dismiss-btn" aria-label="闭閱提示">闭</button>
     </div>
   </div>
 
@@ -473,7 +473,7 @@
     <!-- 2026-06-14 v36: drag-to-reposition handle. Drag the top strip
          to move the entire widget frame. Position is persisted by the
          host (embed.js) in localStorage xiaob_widget_pos. -->
-    <div id="widget-drag-handle" title="?–拽以移??widget"></div>
+    <div id="widget-drag-handle" title="拽拔今移動 widget"></div>
     <div id="bubble"></div>
     <canvas id="avatar-canvas"></canvas>
     <div id="suggestions"></div>
@@ -484,7 +484,7 @@
            for embedded use cases). Toggle in Settings ??對話 tab. -->
       <div class="dock-row" id="chat-bar">
         <input id="type-input" type="text" maxlength="200" placeholder="?"å??æ?也可以â€? aria-label="輸入?‡å??é?" />
-        <button class="ctrl primary" id="btn-send" aria-label="?å‡º?‡å??é?" title="?å‡º?‡å??é?"><span aria-hidden="true">??/span></button>
+        <button class="ctrl primary" id="btn-send" aria-label="发送及字及請" title="发送及字及請"><span aria-hidden="true">傳送</span></button>
       </div>
     </div>
     <!-- 2026-06-13 v30: replace 7-button toolbar with two bottom-right floating
@@ -496,10 +496,10 @@
       <!-- 2026-06-13 v31: mic/settings/close moved here + action buttons -->
       <!-- Visible when stage is shown: -->
       <button class="ctrl corner-btn" id="btn-mic" data-mic-btn="1" aria-label="?‹å?語音對話" title="?‹å?語音對話"><span aria-hidden="true">?ޤ</span></button>
-      <button class="ctrl corner-btn" id="btn-actions" aria-label="?•ä??—表" title="?•ä??—表"><span aria-hidden="true">??</span></button>
+      <button class="ctrl corner-btn" id="btn-actions" aria-label="?•ä??—表" title="?•ä??—表"><span aria-hidden="true">傳送</span></button>
       <button class="ctrl corner-btn" id="btn-emote-corner" aria-label="?‡æ?è¡??" title="?‡æ?è¡??"><span aria-hidden="true">?§¥</span></button>
       <button class="ctrl corner-btn" id="btn-settings" aria-label="?‹å?設å??¢æ¿" title="設å?" aria-haspopup="dialog" aria-expanded="false"><span aria-hidden="true">?™ï?</span></button>
-      <button class="ctrl corner-btn" id="btn-close" aria-label="?¶èµ·?©ç?" title="?¶èµ·?©ç?"><span aria-hidden="true">??/span></button>
+      <button class="ctrl corner-btn" id="btn-close" aria-label="?¶èµ·?©ç?" title="?¶èµ·?©ç?"><span aria-hidden="true">傳送</span></button>
       <!-- Visible when stage is hidden (restore button): -->
       <button class="ctrl corner-btn" id="btn-restore" aria-label="顯示?©ç?" title="顯示?©ç?" style="display:none;"><span aria-hidden="true">?'¬</span></button>
     </div>
@@ -511,8 +511,8 @@
       <div class="settings-backdrop" data-settings-close="1"></div>
       <div class="settings-panel" role="document">
         <header class="settings-header">
-          <h2 id="settings-title">?™ï? 設å?</h2>
-          <button class="ctrl settings-close" id="btn-settings-close" aria-label="?œé?設å??¢æ¿" title="?œé?"><span aria-hidden="true">??/span></button>
+          <h2 id="settings-title">⚙️ 設定面板</h2>
+          <button class="ctrl settings-close" id="btn-settings-close" aria-label="?œé?設å??¢æ¿" title="?œé?"><span aria-hidden="true">傳送</span></button>
         </header>
         <!-- 2026-06-13 v31: Tab Bar Navigation -->
         <div class="settings-tabs" role="tablist" aria-label="設å??†é?">
@@ -1019,7 +1019,7 @@
         micBtn.classList.add('mic-unsupported');
         micBtn.setAttribute('data-webview-blocked', '1');
         micBtn.title = 'App 內建瀏覽器語音功能不支援，請使用Chrome語音功能';
-        micBtn.setAttribute('aria-label', '語音功能就此開啟，請使用Chrome語音功能);
+        micBtn.setAttribute('aria-label', '語音功能就此開啟，請使用Chrome語音功能');
       }
 
       // Wire up copy-URL fallback (works on iOS WebView + any env where
@@ -1029,7 +1029,7 @@
       copyBtn && copyBtn.addEventListener('click', () => {
         const ok = () => {
           const orig = copyBtn.textContent;
-          copyBtn.textContent = 'å·²è?è£???;
+          copyBtn.textContent = '已寫請！';
           setTimeout(() => { copyBtn.textContent = orig; }, 1800);
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1168,14 +1168,22 @@
 
   // Reply pool (ç²µè????, ?¸è?é¬?personality)
   const REPLY_POOL = {
-    correct:   ['?±æ?!ä??Ÿè°?Žï?', '?‡éŒ¯?¦ï?你好?»å?ï¼?, '答å??±ï?æ­??ï¼?, 'Bingoï¼?, '100?†ï?'],
-    wrong:     ['å·®å?少啫,å?諗ä?ï¼?, '?"ç?要ï??å?一次ï?', '?¯å?少å?,å?æ²¹ï?', 'å·®ä??²å•²?‹ï??"好?¾æ?ï¼?],
-    sad:       ['?"ç?要ã?,æ??½é™ªä½ä???, '?'å?一齊面對啦??, 'ä½ å?係ä??‹äºº?Žã€?],
-    happy:     ['?»ä?!繼續å?æ²¹ï?', '好嘢ï¼?, 'Yeahï¼?, 'ä½ æ?棒啦ï¼?],
-    angry:     ['?"好嬲å?多啦,深?¼å¸??, '?·é??²ï?ä½ å??…ã€?],
-    shy:       ['ä½?..ä½ æ?住æ??Ÿå???..', '?'æ?害ç???..'],
-    surprised: ['?©ï??éƒ½å¾—ï?ï¼?, '?‡ï?', '乜æ??éƒ½?¯ä»¥ï¼?],
-    neutral:   ['?¯å—¯ï¼Œæ??ºåº¦?½ç???, '?'喺度ã€?, '?'聽緊ä?講ã€?],
+    correct:   ['太棒了！你真聰明！', '沒錯呢！你好厲害呀！', '答對啦！好威呀！', 'Bingo！', '100分！'],
+    ,
+    wrong:   ['差咁少啫，再諗下啦！', '唔緊要，試多一次！', '爭少少，加油！', '差咗啲啲，唔好放棄！'],
+    ,
+    sad:   ['唔使客氣，我會陪你。', '我哋一齊面對啦。', '你仲有我喺度。'],
+    ,
+    happy:   ['開心！繼續加油！', '好嘢！', 'Yeah！', '你太棒啦！'],
+    ,
+    angry:   ['唔好嬲咁多啦，深呼吸。', '冷靜啲，好無？'],
+    ,
+    shy:   ['你...你望住我做咩呀...', '我會怕醜㗎嘛...'],
+    ,
+    surprised:   ['哇！咁都得？', '吓？', '乜咁都得㗎？'],
+    ,
+    neutral:   ['嗯嗯，我喺度聽緊。', '我喺度。', '我聽緊你講。'],
+    ,
   };
 
   async function handleReact({ text, context, voice, voice_id }) {
