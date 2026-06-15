@@ -2832,7 +2832,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       // 表情與外觀客製化選單已移除，此處改為衣裝轉換按鈕一鍵切換邏輯
       window.updateEmoteListActiveUI = function() {}; // 空函數相容性
       (function() {
-        const btn = document.getElementById('btn-emote');
+        const btn = document.getElementById('btn-emote-corner');
 
         // 修改按鈕的標示與屬性，以代表衣裝切換
         btn.setAttribute('aria-label', '切換衣裝形態 (黑色/白色)');
