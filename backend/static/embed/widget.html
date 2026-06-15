@@ -2411,7 +2411,11 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
                       log.relevant[id] = { idx: i, op: op, mul: mul };
                     }
                   }
-                  console.log('[v44-auto-parts] initial state:', JSON.stringify(log));
+                  console.log('[v46-auto-parts] initial state:', JSON.stringify(log));
+                  // v46: also run testPartOpacity automatically
+                  if (typeof window.testPartOpacity === 'function') {
+                    try { window.testPartOpacity('Part26'); } catch(e) { console.warn('[v46-auto] testPartOpacity failed:', e.message); }
+                  }
                 }
               } catch (e) { console.warn('[v44-auto-parts] failed:', e.message); }
             }, 2000);
@@ -3020,11 +3024,24 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         // (white) was correctly hidden. So the string ID 'Part26' may not
         // match the actual part identifier in the loaded model.
         // Call window.listParts() in devtools to see all part IDs.
+        //
+        // 2026-06-15 v46: EXPANDED — also list ALL coreModel methods and
+        // test every possible Part opacity API, including index-based.
         window.listParts = function() {
           const _m = (typeof model !== 'undefined' && model) ? model : window.model;
           const _cm = _m && _m.internalModel && _m.internalModel.coreModel;
-          const out = { method: null, parts: null, error: null };
+          const out = { method: null, parts: null, error: null, methods: null };
           if (!_cm) { out.error = 'no coreModel'; console.warn('[listParts]', out); return out; }
+          // --- List all coreModel methods ---
+          const allMethods = [];
+          for (const k of Object.keys(_cm).sort()) {
+            if (typeof _cm[k] === 'function') allMethods.push(k);
+          }
+          out.methods = allMethods.filter(m =>
+            /part|opacity|multiply|screen|overlay|blend|draw/i.test(m)
+          );
+          console.log('[v46-all-part-methods]', out.methods);
+
           // Method A: getPartId(index) loop
           if (typeof _cm.getPartCount === 'function') {
             try {
@@ -3032,7 +3049,10 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
               const arr = [];
               for (let i = 0; i < count; i++) {
                 const id = (typeof _cm.getPartId === 'function') ? _cm.getPartId(i) : '?';
-                const op = (typeof _cm.getPartOpacity === 'function') ? _cm.getPartOpacity(i) : (typeof _cm.getPartOpacityById === 'function' && id !== '?' ? _cm.getPartOpacityById(id) : null);
+                let op = null;
+                if (typeof _cm.getPartOpacity === 'function') {
+                  try { op = _cm.getPartOpacity(i); } catch(e) { op = 'err:'+e.message; }
+                }
                 arr.push({ index: i, id: id, opacity: op });
               }
               out.method = 'getPartCount+getPartId';
@@ -3054,7 +3074,83 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           console.warn('[listParts] could not enumerate parts:', out);
           return out;
         };
-        console.log('[Outfit] toggleOutfit + listParts() exposed; call listParts() in devtools to enumerate model parts');
+
+        // v46: dedicated Part opacity test — tries ALL possible API patterns
+        // to find what actually works for Part26 (black clothes).
+        // Run: window.testPartOpacity()
+        window.testPartOpacity = function(partId) {
+          partId = partId || 'Part26';
+          const _m = (typeof model !== 'undefined' && model) ? model : window.model;
+          const _cm = _m && _m.internalModel && _m.internalModel.coreModel;
+          if (!_cm) { console.error('[testPartOpacity] no coreModel'); return; }
+          const results = {};
+          const methods = Object.keys(_cm).filter(k => typeof _cm[k] === 'function');
+          // Find index of Part26
+          let targetIdx = null;
+          if (typeof _cm.getPartCount === 'function' && typeof _cm.getPartId === 'function') {
+            const cnt = _cm.getPartCount();
+            for (let i = 0; i < cnt; i++) {
+              if (_cm.getPartId(i) === partId) { targetIdx = i; break; }
+            }
+          }
+          results.partIndex = targetIdx;
+          results.partCount = typeof _cm.getPartCount === 'function' ? _cm.getPartCount() : null;
+
+          // Test each opacity-related method
+          const opacityMethods = [
+            'getPartOpacity', 'getPartOpacityById',
+            'setPartOpacity', 'setPartOpacityById',
+            'getPartMultiplyBlend', 'getPartMultiplyBlendById',
+            'setPartMultiplyBlend', 'setPartMultiplyBlendById',
+            'getPartScreenBlend', 'getPartScreenBlendById',
+            'setPartScreenBlend', 'setPartScreenBlendById',
+            'getPartOverlayBlend', 'getPartOverlayBlendById',
+            'setPartOverlayBlend', 'setPartOverlayBlendById',
+          ];
+          for (const m of opacityMethods) {
+            if (typeof _cm[m] !== 'function') { results[m] = 'NO_SUCH_METHOD'; continue; }
+            try {
+              if (m.includes('ById')) {
+                const val = _cm[m](partId);
+                results[m + '(get)'] = val !== undefined ? val : 'undefined';
+              } else if (targetIdx !== null) {
+                const val = _cm[m](targetIdx);
+                results[m + '(get,idx)'] = val !== undefined ? val : 'undefined';
+              } else {
+                results[m] = 'NO_INDEX';
+              }
+            } catch(e) { results[m] = 'ERROR: ' + e.message; }
+          }
+          // Try SET on each setter (use index if available)
+          for (const m of opacityMethods) {
+            if (!m.startsWith('set')) continue;
+            if (typeof _cm[m] !== 'function') continue;
+            try {
+              if (m.includes('ById')) {
+                const ret = _cm[m](partId, 1.0);
+                results[m + '(set_1.0)'] = ret !== undefined ? ret : 'undefined/no-error';
+              } else if (targetIdx !== null) {
+                const ret = _cm[m](targetIdx, 1.0);
+                results[m + '(set_1.0,idx)'] = ret !== undefined ? ret : 'undefined/no-error';
+              }
+            } catch(e) { results[m + '(set_1.0)'] = 'ERROR: ' + e.message; }
+          }
+          console.log('[v46-testPartOpacity] partId=' + partId, results);
+          return results;
+        };
+
+        // v46: log the PART METHODS on startup (within auto-enumerate block)
+        // Find and update the setTimeout in KNOWLEDGE.setModel to also list methods
+        {
+          const _origSetModel = window.KNOWLEDGE && window.KNOWLEDGE.setModel;
+          // The setTimeout at +2s (around line 2398) runs after model loads.
+          // We already added auto-parts logging there. Add method listing too.
+          // Since we can't easily hook here, expose a manual command instead.
+          // Users can run: window.testPartOpacity('Part26') and window.listParts()
+        }
+
+        console.log('[Outfit] v46: toggleOutfit + listParts() + testPartOpacity(partId) exposed');
+        console.log('[v46-hint] Run window.testPartOpacity(\'Part26\') to find the working SDK API');
       })();
 
       document.addEventListener('keydown', (e) => {
