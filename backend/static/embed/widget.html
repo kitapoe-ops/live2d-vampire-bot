@@ -2277,10 +2277,36 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         vampire:  { PARAMoutfit1_2: 1.0, PARAMhariWB: 1.0, PARAMhariWB2: 0.0, PARAMhari_7: 1.0, PARAMhari_8: 1.0, PARAMhari_3: 1.0 },
         vampire2: { PARAMoutfit1_2: 0.0, PARAMhariWB: 0.0, PARAMhariWB2: 1.0, PARAMhari_7: 1.0, PARAMhari_8: 1.0, PARAMhari_3: 0.0 },
       };
+      // 2026-06-15 v52: applyOutfit now writes DIRECTLY to coreModel first (bypass
+      // KNOWLEDGE which may claim success without having the param in its index),
+      // THEN syncs to KNOWLEDGE as a secondary write, AND invalidates the v22
+      // per-frame write cache so the next RAF tick always sends fresh values.
+      // This fixes PART_INVISIBILITY where PARAMoutfit1_2 appeared to 'not stick'
+      // because KNOWLEDGE.setParam succeeded but the coreModel never received the value.
       function applyOutfit(outfitName) {
         const map = OUTFIT_PARAMS[outfitName] || OUTFIT_PARAMS.vampire;
         for (const id in map) {
-          try { safeSetParam(id, map[id]); } catch (e) { /* param may be missing on some model variants */ }
+          const val = map[id];
+          // Primary: write directly to Live2D Wasm coreModel (always fires, no caching)
+          try {
+            const cm = model && model.internalModel && model.internalModel.coreModel;
+            if (cm && typeof cm.setParameterValueById === 'function') {
+              cm.setParameterValueById(id, Number(val));
+            }
+          } catch (e) { /* param may be missing on some model variants */ }
+          // Secondary: also push to KNOWLEDGE so its internal index stays in sync
+          try {
+            if (window.KNOWLEDGE && typeof window.KNOWLEDGE.setParam === 'function') {
+              window.KNOWLEDGE.setParam(id, val);
+            }
+          } catch (e) { /* KNOWLEDGE may not have this param; ignore */ }
+        }
+        // Invalidate v22 per-frame write cache for outfit params so the next
+        // RAF always writes fresh (v22Set would otherwise skip if value unchanged).
+        if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
+          for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
+            __v22_lastValue[k] = undefined;
+          }
         }
       }
 
@@ -2807,58 +2833,91 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           const isBlack = (emoteState.outfit !== 'vampire2');
           const nextOutfit = isBlack ? 'vampire2' : 'vampire';
           emoteState.outfit = nextOutfit;
-
           // 2026-06-13 v16: removed model.expression('vampire'/'vampire2') call.
-          // The .exp3.json files for those names mix outfit + facial params,
-          // which caused the next applyEmotion() to overwrite the outfit color.
-          // Outfit is now applied via applyOutfit() (which writes the 6 outfit
-          // params directly), and is also reinforced by the per-frame
-          // model.update override below. Outfit is now fully independent of
-          // the emotion system.
-          //
-          // 2026-06-13 v23: write outfit params DIRECTLY via coreModel after
-          // applyOutfit(). The v22 per-id cache that applyOutfit() bypasses
-          // would otherwise cause the per-frame listener to skip re-writing
-          // the values that applyOutfit just set, and we've seen the model
-          // fail to re-render in some browser/PixiLive2D combos. The direct
-          // write + cache-invalidation guarantees the visual flip.
+          // The .exp3.json files mix outfit + facial params, which caused the
+          // next applyEmotion() to overwrite the outfit color.
+          // Outfit is now applied via applyOutfit() + reinforced by the per-frame
+          // model.on('update') listener. Outfit is fully independent of emotion system.
           if (typeof applyOutfit === 'function') {
             applyOutfit(emoteState.outfit);
-            // v22 cache invalidation: next per-frame listener will rebuild
-            // the cache for outfit params (it sees fresh values).
-            if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
-              for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
-                __v22_lastValue[k] = undefined;
-              }
-            }
-            // Belt-and-suspenders: write directly to coreModel so the visual
-            // change happens immediately on the very next render, not after
-            // a per-frame listener tick. Pixi Live2D's parameter blending
-            // computes lazily on the next update() call, so this write is
-            // picked up by the very next frame anyway, but writing twice
-            // (once via applyOutfit -> KNOWLEDGE, once directly) costs us
-            // nothing and gives us a log to diagnose.
-            try {
-              const cm = model && model.internalModel && model.internalModel.coreModel;
-              const directMap = (window.__v23_outfitMap = window.__v23_outfitMap || OUTFIT_PARAMS);
-              const map = directMap[nextOutfit] || directMap.vampire;
-              for (const id in map) {
-                if (cm && typeof cm.setParameterValueById === 'function') {
-                  try { cm.setParameterValueById(id, Number(map[id])); } catch (e) {}
+          }
+          // 2026-06-15 v52: Also set Part26/Part30 opacity DIRECTLY via coreModel
+          // API. Some model part opacities are NOT fully controlled by PARAMoutfit1_2
+          // alone — they need an explicit setPartOpacityById call to become visible.
+          // We try both the named path (setPartOpacityById) and the numeric index
+          // path (setPartOpacity) with graceful fallbacks so one failure doesn't
+          // prevent the others from running.
+          try {
+            const cm = model && model.internalModel && model.internalModel.coreModel;
+            if (cm) {
+              const targetOp = (nextOutfit === 'vampire') ? 1.0 : 0.0; // black=visible, white=invisible
+              const partNames = ['Part26', 'Part30'];
+              let opLog = [];
+              for (const pName of partNames) {
+                // Try setPartOpacityById first (named path)
+                if (typeof cm.setPartOpacityById === 'function') {
+                  try {
+                    cm.setPartOpacityById(pName, targetOp);
+                    const readback = (typeof cm.getPartOpacityById === 'function')
+                      ? cm.getPartOpacityById(pName) : 'n/a';
+                    opLog.push(pName + '=' + readback);
+                  } catch (e) { opLog.push(pName + '=ERR:' + e.message); }
+                }
+                // Also try scanning all part indices for a matching name (brute-force fallback)
+                if (typeof cm.setPartOpacity === 'function') {
+                  const count = (typeof cm.getPartCount === 'function') ? cm.getPartCount() : 35;
+                  for (let pi = 0; pi < count; pi++) {
+                    try {
+                      let partId = null;
+                      if (typeof cm.getPartId === 'function') {
+                        try { partId = cm.getPartId(pi); } catch(e2) {}
+                      }
+                      if (partId === pName || (typeof cm.getPartName === 'function' && cm.getPartName(pi) === pName)) {
+                        cm.setPartOpacity(pi, targetOp);
+                        const readback = cm.getPartOpacity(pi);
+                        opLog.push(pName + '[idx' + pi + ']=' + readback);
+                        break;
+                      }
+                    } catch(e3) {}
+                  }
                 }
               }
-              console.log('[Live2D] Outfit toggled to:', nextOutfit, '(direct write ok)');
-            } catch (eDirect) {
-              console.log('[Live2D] Outfit toggled to:', nextOutfit, '(direct write failed:', eDirect.message + ')');
+              console.log('[Live2D] Outfit toggled to:', nextOutfit, '| Part ops:', opLog.join(', ') || 'no direct Part API available');
             }
+          } catch (ePart) {
+            console.warn('[Live2D] Outfit Part opacity set failed:', ePart.message);
           }
-
           showBubble('已切換衣裝：' + (nextOutfit === 'vampire2' ? '白色衣裝' : '黑色衣裝'));
           btn.setAttribute('aria-pressed', String(nextOutfit === 'vampire2'));
         }
 
         // 2026-06-15: expose globally so btn-emote-corner listener (outside this IIFE) can call it
         window.toggleOutfit = toggleOutfit;
+
+        // 2026-06-15 v52: window.testOutfit — manual console diagnostic.
+        // Usage: in browser DevTools console, type: testOutfit('vampire') or testOutfit('vampire2')
+        // Reads back PARAMoutfit1_2 and Part26/Part30 opacity to verify the model state.
+        window.testOutfit = function(outfitName) {
+          outfitName = outfitName || emoteState.outfit;
+          console.log('[testOutfit] Setting outfit to:', outfitName);
+          try { toggleOutfit(); } catch(e) {}
+          // Force one frame to process
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              try {
+                var cm = model && model.internalModel && model.internalModel.coreModel;
+                if (!cm) { console.warn('[testOutfit] no coreModel'); return; }
+                var p12 = 'n/a', p26 = 'n/a', p30 = 'n/a';
+                try { p12 = cm.getParameterValueById('PARAMoutfit1_2'); } catch(e){}
+                if (typeof cm.getPartOpacityById === 'function') {
+                  try { p26 = cm.getPartOpacityById('Part26'); } catch(e){}
+                  try { p30 = cm.getPartOpacityById('Part30'); } catch(e){}
+                }
+                console.log('[testOutfit] RESULT — outfit:', outfitName, '| PARAMoutfit1_2:', p12, '| Part26_op:', p26, '| Part30_op:', p30);
+              } catch(e) { console.warn('[testOutfit] error:', e.message); }
+            });
+          });
+        };
 
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -3058,6 +3117,9 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       }
 
       let lastBlinkT = 0, nextBlinkIn = 2.0;
+      // 2026-06-15 v52: per-frame diagnostic counter for PARAMoutfit1_2.
+      // Logs every 60 frames so we can verify the outfit param is stable.
+      let _v52_frameCount = 0, _v52_lastOutfitLog = null;
       // 2026-06-13 v22: per-param write-skip cache.
       // The model.on('update') listener below writes ~28 parameters per
       // frame via safeSetParam (breath, body sway, outfit x6, gesture x4,
@@ -3205,6 +3267,26 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         // ─── 寫入全域 emoteState 外觀與表情參數 ───
         // 1. 服裝型態 (outfit) — 2026-06-13 v16: delegated to applyOutfit() (single source of truth)
         applyOutfit(emoteState.outfit);
+        // v52 per-frame diagnostic: log PARAMoutfit1_2 every 60 frames so we can
+        // see if the value drifts or stays stable. Also log Part26/30 opacity.
+        _v52_frameCount++;
+        if (_v52_frameCount % 60 === 1) {
+          try {
+            const cm = model && model.internalModel && model.internalModel.coreModel;
+            let p12 = 'n/a', p26op = 'n/a', p30op = 'n/a';
+            if (cm) {
+              try { p12 = cm.getParameterValueById('PARAMoutfit1_2'); } catch(e){}
+              if (typeof cm.getPartOpacityById === 'function') {
+                try { p26op = cm.getPartOpacityById('Part26'); } catch(e){}
+                try { p30op = cm.getPartOpacityById('Part30'); } catch(e){}
+              }
+            }
+            if (_v52_lastOutfitLog !== p12 + '|' + p26op + '|' + p30op) {
+              _v52_lastOutfitLog = p12 + '|' + p26op + '|' + p30op;
+              console.log('[v52-perframe] outfit=' + emoteState.outfit + ' PARAMoutfit1_2=' + p12 + ' Part26_op=' + p26op + ' Part30_op=' + p30op);
+            }
+          } catch(eDiag) {}
+        }
 
         // 2. 手勢道具 (gesture) — 2026-06-12 16:59: independent flags so
         // PARAMhands_1 (mc) + PARAMhands_2 (knife) can both be 1.0 simultaneously.
