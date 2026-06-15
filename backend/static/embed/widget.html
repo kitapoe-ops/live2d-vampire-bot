@@ -2396,28 +2396,44 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           // relevant parts on init so the diagnostic data is captured
           // automatically without requiring manual listParts() call.
           if (model && model.internalModel && model.internalModel.coreModel) {
+            // v47: BRUTE-FORCE — no reliance on getPartId(string).
+            // Scan ALL part indices, try setPartOpacity(i) and getPartOpacity(i),
+            // setPartMultiplyBlend(i) and getPartMultiplyBlend(i).
+            // Test value = 0.5; verify it sticks, then restore original.
+            // This bypasses the 'getPartId returns ?' bug entirely.
             setTimeout(() => {
+              const _cm = model.internalModel.coreModel;
+              if (typeof _cm.getPartCount !== 'function') { console.warn('[v47-bf] no getPartCount'); return; }
+              const cnt = _cm.getPartCount();
+              const findings = [];
+              for (let i = 0; i < cnt; i++) {
+                const f = { idx: i, op: { save: null, set05: null, restored: null }, mul: { save: null, set1: null, restored: null } };
+                try { f.op.save = _cm.getPartOpacity(i); } catch(e) { f.op.save = 'ERR:'+e.message; }
+                try { f.mul.save = _cm.getPartMultiplyBlend ? _cm.getPartMultiplyBlend(i) : 'NO_API'; } catch(e) { f.mul.save = 'ERR:'+e.message; }
+                try { _cm.setPartOpacity(i, 0.5); f.op.set05 = _cm.getPartOpacity(i); } catch(e) { f.op.set05 = 'ERR:'+e.message; }
+                try { if (_cm.setPartMultiplyBlend) { _cm.setPartMultiplyBlend(i, 1.0); f.mul.set1 = _cm.getPartMultiplyBlend ? _cm.getPartMultiplyBlend(i) : '?'; } } catch(e) { f.mul.set1 = 'ERR:'+e.message; }
+                try { _cm.setPartOpacity(i, f.op.save !== 'ERR:'+f.op.save ? f.op.save : 1.0); } catch(e) {}
+                try { if (_cm.setPartMultiplyBlend) _cm.setPartMultiplyBlend(i, f.mul.save !== 'ERR:'+f.mul.save ? f.mul.save : 1.0); } catch(e) {}
+                try { f.op.restored = _cm.getPartOpacity(i); } catch(e) { f.op.restored = 'ERR:'+e.message; }
+                const opWorks = (f.op.set05 !== 'ERR' && f.op.set05 !== null && f.op.set05 !== 'NO_API') && (Math.abs(f.op.set05 - 0.5) < 0.05);
+                const mulWorks = (f.mul.set1 !== 'ERR' && f.mul.set1 !== 'NO_API' && f.mul.set1 !== '?') && (Math.abs(f.mul.set1 - 1.0) < 0.05);
+                if (opWorks || mulWorks) findings.push({ idx: i, op_before: f.op.save, op_after_set05: f.op.set05, op_restored: f.op.restored, mul_before: f.mul.save, mul_after_set1: f.mul.set1, op_works: opWorks, mul_works: mulWorks });
+              }
+              console.log('[v47-BRUTEFORCE] scanned ' + cnt + ' parts, mutable parts:', JSON.stringify(findings, null, 2));
+              // ALSO auto-enumerate with getPartId for reference
               try {
-                const _cm = model.internalModel.coreModel;
-                if (typeof _cm.getPartCount === 'function' && typeof _cm.getPartId === 'function') {
-                  const cnt = _cm.getPartCount();
-                  const relevant = ['Part18', 'Part22', 'Part26', 'Part30', 'Part49', 'Part54', 'Part59'];
-                  const log = { totalParts: cnt, relevant: {} };
-                  for (let i = 0; i < cnt; i++) {
-                    const id = _cm.getPartId(i);
-                    if (relevant.indexOf(id) >= 0) {
-                      const op = (typeof _cm.getPartOpacity === 'function') ? _cm.getPartOpacity(i) : null;
-                      const mul = (typeof _cm.getPartMultiplyBlend === 'function') ? _cm.getPartMultiplyBlend(i) : null;
-                      log.relevant[id] = { idx: i, op: op, mul: mul };
-                    }
-                  }
-                  console.log('[v46-auto-parts] initial state:', JSON.stringify(log));
-                  // v46: also run testPartOpacity automatically
-                  if (typeof window.testPartOpacity === 'function') {
-                    try { window.testPartOpacity('Part26'); } catch(e) { console.warn('[v46-auto] testPartOpacity failed:', e.message); }
+                const relevant = ['Part18','Part22','Part26','Part30','Part49','Part54','Part59'];
+                const ref = {};
+                for (let i = 0; i < cnt; i++) {
+                  const id = (typeof _cm.getPartId === 'function') ? _cm.getPartId(i) : '?';
+                  if (relevant.indexOf(id) >= 0) {
+                    const op = (typeof _cm.getPartOpacity === 'function') ? _cm.getPartOpacity(i) : null;
+                    const mul = _cm.getPartMultiplyBlend ? _cm.getPartMultiplyBlend(i) : null;
+                    ref[id] = { idx: i, op: op, mul: mul };
                   }
                 }
-              } catch (e) { console.warn('[v44-auto-parts] failed:', e.message); }
+                console.log('[v47-auto-parts] (getPartId ref):', JSON.stringify(ref));
+              } catch(e) { console.warn('[v47-auto-parts] ref failed:', e.message); }
             }, 2000);
           }
           return true;
