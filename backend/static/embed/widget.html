@@ -860,8 +860,8 @@
   const CFG = new URLSearchParams(location.search);
   const isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   const DEFAULT_MODEL = isLocal
-    ? '/static/live2d/vampire/' + encodeURIComponent('?吸血鬼 '.model3.json'
-    : './live2d/vampire/' + encodeURIComponent('?吸血鬼 '.model3.json';
+    ? '/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json'
+    : './live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json';
   const MODEL_URL = CFG.get('model') || DEFAULT_MODEL;
   // TTS_ENDPOINT: legacy BAZOOKA proxy path, kept for self-hosted deployments.
   // Cloudflare Pages deployment uses MINIMAX_TTS_DIRECT (browser ??api.minimax.chat).
