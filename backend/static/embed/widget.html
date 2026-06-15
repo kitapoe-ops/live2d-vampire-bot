@@ -117,7 +117,7 @@
   }
 })();
 </script>
-<title>AI Bot Widget ???��?�?(vampire.kitahim.uk)</title>
+<title>AI Bot Widget ???¸è?é¬?(vampire.kitahim.uk)</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%235b54e8%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22central%22%20font-size%3D%2242%22%20font-family%3D%22Apple%20Color%20Emoji%2CSegoe%20UI%20Emoji%2Csans-serif%22%3E%F0%9F%A7%9B%3C%2Ftext%3E%3C%2Fsvg%3E" />
 <style>
   :root{
@@ -155,7 +155,7 @@
   }
   /* Hint text shown on hover only (so widget doesn't look cluttered) */
   #widget-drag-handle::after {
-    content:'???�拽以移??;
+    content:'???–拽以移??;
     position:absolute; top:14px; left:50%; transform:translateX(-50%);
     font-size:10px; color:rgba(91,84,232,.8); font-weight:500;
     opacity:0; transition:opacity .15s;
@@ -459,13 +459,13 @@
        Android intent, plus a copy-URL fallback for environments where intent
        is intercepted. JS in the BROWSER init block below toggles `hidden`. -->
   <div id="webview-guard" class="webview-guard" hidden role="alert" aria-live="polite">
-    <p>?�� <strong>App ?�建?�覽?��??�援語音?�能</strong></p>
-    <p>請�?下方?��???Google Chrome ?��?，�?複製網�?貼到 Chrome ??</p>
+    <p>?š« <strong>App ?§å»º?è¦½?¨ä??¯æ´èªžéŸ³?Ÿèƒ½</strong></p>
+    <p>請é?下方?‰é???Google Chrome ?‹å?,æ?複製網å?貼到 Chrome ??</p>
     <div class="webview-guard-actions">
       <a href="intent://vampire.kitahim.uk/widget#Intent;scheme=https;package=com.android.chrome;end"
-         class="webview-guard-cta chrome" id="webview-chrome-link">??Chrome 中�???/a>
-      <button type="button" class="webview-guard-cta copy" id="webview-copy-btn">複製網�?</button>
-      <button type="button" class="webview-guard-cta dismiss" id="webview-dismiss-btn" aria-label="?��??�示">?</button>
+         class="webview-guard-cta chrome" id="webview-chrome-link">??Chrome 中é???/a>
+      <button type="button" class="webview-guard-cta copy" id="webview-copy-btn">複製網å?</button>
+      <button type="button" class="webview-guard-cta dismiss" id="webview-dismiss-btn" aria-label="?œé??ç¤º">?</button>
     </div>
   </div>
 
@@ -473,7 +473,7 @@
     <!-- 2026-06-14 v36: drag-to-reposition handle. Drag the top strip
          to move the entire widget frame. Position is persisted by the
          host (embed.js) in localStorage xiaob_widget_pos. -->
-    <div id="widget-drag-handle" title="?�拽以移??widget"></div>
+    <div id="widget-drag-handle" title="?–拽以移??widget"></div>
     <div id="bubble"></div>
     <canvas id="avatar-canvas"></canvas>
     <div id="suggestions"></div>
@@ -483,25 +483,25 @@
            Default hidden (postMessage 'react' is the primary input path
            for embedded use cases). Toggle in Settings ??對話 tab. -->
       <div class="dock-row" id="chat-bar">
-        <input id="type-input" type="text" maxlength="200" placeholder="?��??��?也可以�? aria-label="輸入?��??��?" />
-        <button class="ctrl primary" id="btn-send" aria-label="?�出?��??��?" title="?�出?��??��?"><span aria-hidden="true">??/span></button>
+        <input id="type-input" type="text" maxlength="200" placeholder="?"å??æ?也可以â€? aria-label="輸入?‡å??é?" />
+        <button class="ctrl primary" id="btn-send" aria-label="?å‡º?‡å??é?" title="?å‡º?‡å??é?"><span aria-hidden="true">??/span></button>
       </div>
     </div>
     <!-- 2026-06-13 v30: replace 7-button toolbar with two bottom-right floating
-         buttons: a ?��? setting button that opens a global settings modal,
+         buttons: a ?™ï? setting button that opens a global settings modal,
          and a ??collapse button. All other controls (DeepSeek API key,
          voice select, TTS mode, mic permission, outfit toggle, mute) move
          into the settings modal so the in-frame UI stays minimal. -->
-    <div id="corner-actions" role="toolbar" aria-label="?�擬人快?��?�?>
+    <div id="corner-actions" role="toolbar" aria-label="?›æ"¬äººå¿«?Ÿå?ä½?>
       <!-- 2026-06-13 v31: mic/settings/close moved here + action buttons -->
       <!-- Visible when stage is shown: -->
-      <button class="ctrl corner-btn" id="btn-mic" data-mic-btn="1" aria-label="?��?語音對話" title="?��?語音對話"><span aria-hidden="true">?��</span></button>
-      <button class="ctrl corner-btn" id="btn-actions" aria-label="?��??�表" title="?��??�表"><span aria-hidden="true">??</span></button>
-      <button class="ctrl corner-btn" id="btn-emote-corner" aria-label="?��?�??" title="?��?�??"><span aria-hidden="true">?��</span></button>
-      <button class="ctrl corner-btn" id="btn-settings" aria-label="?��?設�??�板" title="設�?" aria-haspopup="dialog" aria-expanded="false"><span aria-hidden="true">?��?</span></button>
-      <button class="ctrl corner-btn" id="btn-close" aria-label="?�起?��?" title="?�起?��?"><span aria-hidden="true">??/span></button>
+      <button class="ctrl corner-btn" id="btn-mic" data-mic-btn="1" aria-label="?‹å?語音對話" title="?‹å?語音對話"><span aria-hidden="true">?ޤ</span></button>
+      <button class="ctrl corner-btn" id="btn-actions" aria-label="?•ä??—表" title="?•ä??—表"><span aria-hidden="true">??</span></button>
+      <button class="ctrl corner-btn" id="btn-emote-corner" aria-label="?‡æ?è¡??" title="?‡æ?è¡??"><span aria-hidden="true">?§¥</span></button>
+      <button class="ctrl corner-btn" id="btn-settings" aria-label="?‹å?設å??¢æ¿" title="設å?" aria-haspopup="dialog" aria-expanded="false"><span aria-hidden="true">?™ï?</span></button>
+      <button class="ctrl corner-btn" id="btn-close" aria-label="?¶èµ·?©ç?" title="?¶èµ·?©ç?"><span aria-hidden="true">??/span></button>
       <!-- Visible when stage is hidden (restore button): -->
-      <button class="ctrl corner-btn" id="btn-restore" aria-label="顯示?��?" title="顯示?��?" style="display:none;"><span aria-hidden="true">?��</span></button>
+      <button class="ctrl corner-btn" id="btn-restore" aria-label="顯示?©ç?" title="顯示?©ç?" style="display:none;"><span aria-hidden="true">?'¬</span></button>
     </div>
     <!-- Global settings modal (hidden by default). Populated by the
          settings renderer below; v30 moved every per-feature toggle out
@@ -511,13 +511,13 @@
       <div class="settings-backdrop" data-settings-close="1"></div>
       <div class="settings-panel" role="document">
         <header class="settings-header">
-          <h2 id="settings-title">?��? 設�?</h2>
-          <button class="ctrl settings-close" id="btn-settings-close" aria-label="?��?設�??�板" title="?��?"><span aria-hidden="true">??/span></button>
+          <h2 id="settings-title">?™ï? 設å?</h2>
+          <button class="ctrl settings-close" id="btn-settings-close" aria-label="?œé?設å??¢æ¿" title="?œé?"><span aria-hidden="true">??/span></button>
         </header>
         <!-- 2026-06-13 v31: Tab Bar Navigation -->
-        <div class="settings-tabs" role="tablist" aria-label="設�??��?">
+        <div class="settings-tabs" role="tablist" aria-label="設å??†é?">
           <button class="settings-tab active" data-tab="general" role="tab" aria-selected="true">一??/button>
-          <button class="settings-tab" data-tab="model" role="tab" aria-selected="false">模�?</button>
+          <button class="settings-tab" data-tab="model" role="tab" aria-selected="false">模å?</button>
           <button class="settings-tab" data-tab="chat" role="tab" aria-selected="false">對話</button>
           <button class="settings-tab" data-tab="debug" role="tab" aria-selected="false">診斷</button>
         </div>
@@ -531,13 +531,13 @@
                 <input id="settings-ds-key" type="password" placeholder="sk-..." autocomplete="off" />
               </label>
               <label class="settings-field">
-                <span>API Endpoint (?��???</span>
+                <span>API Endpoint (?¸æ???</span>
                 <input id="settings-ds-api" type="text" placeholder="https://api.deepseek.com/v1/chat/completions" />
               </label>
-              <p class="settings-hint">Key ?��???localStorage，�??��??�任�?server??/p>
+              <p class="settings-hint">Key ?²å???localStorage,å??ƒä??³ä»»ä½?server??/p>
             </section>
             <section class="settings-section">
-              <h3>?? MiniMax 神�?語音</h3>
+              <h3>?? MiniMax 神ç?語音</h3>
               <label class="settings-field">
                 <span>API Key</span>
                 <input id="settings-minimax-key" type="password" placeholder="eyJhbGciOi..." autocomplete="off" />
@@ -546,15 +546,15 @@
                 <span>Group ID</span>
                 <input id="settings-minimax-group" type="text" placeholder="123456789012345678" />
               </label>
-              <p class="settings-hint">?�鑰?��??��??�您?�瀏覽??localStorage??/p>
+              <p class="settings-hint">?'é'°?ªæ??²å??ºæ'¨?…瀏覽??localStorage??/p>
             </section>
             <section class="settings-section">
-              <h3>?���?語音?��? (TTS)</h3>
+              <h3>?—£ï¸?語音?ˆæ? (TTS)</h3>
               <label class="settings-field">
-                <span>TTS 路�?</span>
+                <span>TTS è·¯ç?</span>
                 <select id="settings-tts-mode">
-                  <option value="browser">?�覽??(?�費，Web Speech API)</option>
-                  <option value="neural">MiniMax 神�?語音 (高質素�??� API Key)</option>
+                  <option value="browser">?è¦½??(?è²»ï¼ŒWeb Speech API)</option>
+                  <option value="neural">MiniMax 神ç?語音 (高質素ï??€ API Key)</option>
                 </select>
               </label>
               <label class="settings-field">
@@ -562,40 +562,40 @@
                 <select id="settings-voice"></select>
               </label>
               <label class="settings-field settings-row">
-                <span>語�?<span id="settings-tts-rate-val">1.0</span>?</span>
+                <span>語é€?<span id="settings-tts-rate-val">1.0</span>?</span>
                 <input id="settings-tts-rate" type="range" min="0.5" max="2.0" step="0.1" />
               </label>
               <label class="settings-field settings-row">
-                <span>?�音</span>
+                <span>?œéŸ³</span>
                 <input id="settings-mute" type="checkbox" />
               </label>
             </section>
             </div>
-          <!-- Tab: 模�? (Model) -->
+          <!-- Tab: 模å? (Model) -->
           <div class="settings-tab-content" data-tab-content="model">
             <section class="settings-section">
-              <h3>?�� ?�畫?�數</h3>
+              <h3>?Ž­ ?•ç•«?ƒæ•¸</h3>
               <label class="settings-field settings-row">
-                <span>?�吸幅度 <span id="dev-breath-val">0.50</span></span>
+                <span>?¼å¸å¹…度 <span id="dev-breath-val">0.50</span></span>
                 <input id="dev-breath" type="range" min="0" max="1" step="0.05" value="0.5" />
               </label>
               <label class="settings-field settings-row">
-                <span>身�??��? <span id="dev-body-sway-val">2.5</span></span>
+                <span>身é??ƒå? <span id="dev-body-sway-val">2.5</span></span>
                 <input id="dev-body-sway" type="range" min="0" max="5" step="0.1" value="2.5" />
               </label>
               <label class="settings-field settings-row">
-                <span>說話?��? <span id="dev-speaking-sway-val">3.5</span></span>
+                <span>說話?ƒå? <span id="dev-speaking-sway-val">3.5</span></span>
                 <input id="dev-speaking-sway" type="range" min="0" max="6" step="0.1" value="3.5" />
               </label>
               <label class="settings-field settings-row">
-                <span>?��?追蹤 <span id="dev-eye-track-val">1.0</span>?</span>
+                <span>?¼ç?追蹤 <span id="dev-eye-track-val">1.0</span>?</span>
                 <input id="dev-eye-track" type="range" min="0.5" max="2.0" step="0.05" value="1.0" />
               </label>
               <label class="settings-field settings-row">
-                <span>Idle ?�畫?��? <span id="dev-idle-val">30</span>�?/span>
+                <span>Idle ?•ç•«?"é? <span id="dev-idle-val">30</span>ç§?/span>
                 <input id="dev-idle" type="range" min="10" max="120" step="5" value="30" />
               </label>
-              <p class="settings-hint">調整 Live2D ?�畫行為?�改?�即?��??��?/p>
+              <p class="settings-hint">調整 Live2D ?•畫行為?'改?•即?'ç??ˆã€?/p>
             </section>
           </div>
           <!-- Tab: 對話 (Chat) -->
@@ -606,21 +606,21 @@
                  Enable if you want users to type directly into the
                  widget itself. -->
             <section class="settings-section">
-              <h3>?�� 互�?模�?</h3>
+              <h3>?'¬ 互å?模å?</h3>
               <label class="settings-field settings-row">
-                <span>顯示?��?輸入�?/span>
+                <span>顯示?‡å?輸入æ¡?/span>
                 <input id="setting-show-chatbar" type="checkbox" />
               </label>
-              <p class="settings-hint">?��?後只?��?外部 postMessage 觸發?�內建輸?��??��?，�? LLM 對話?��??��??��???work??/p>
+              <p class="settings-hint">?œé?後只?¥å?外部 postMessage 觸發?'內建輸?¥æ??±è?,ä? LLM 對話?‡è??³å??½ä???work??/p>
             </section>
             <section class="settings-section">
-              <h3>?? AI ?��??�數</h3>
+              <h3>?? AI ?žæ??ƒæ•¸</h3>
               <label class="settings-field settings-row">
-                <span>?��?標籤?�綴</span>
+                <span>?…ç?標籤?ç¶´</span>
                 <input id="dev-emotion-prefix" type="checkbox" checked />
               </label>
               <label class="settings-field settings-row">
-                <span>?�鍵詞表?�觸??/span>
+                <span>?œéµè©žè¡¨?…觸??/span>
                 <input id="dev-keyword-emote" type="checkbox" checked />
               </label>
               <label class="settings-field settings-row">
@@ -632,22 +632,22 @@
                 <input id="dev-temp" type="range" min="0.3" max="1.2" step="0.1" value="0.7" />
               </label>
               <label class="settings-field settings-row">
-                <span>TTS ?��?上�? <span id="dev-tts-cap-val">120</span>�?/span>
+                <span>TTS ?‡å?上é? <span id="dev-tts-cap-val">120</span>å­?/span>
                 <input id="dev-tts-cap" type="range" min="80" max="200" step="10" value="120" />
               </label>
-              <p class="settings-hint">AI ?��??��??��??��??��?/p>
+              <p class="settings-hint">AI ?žæ??‡è??³å??å??¸ã€?/p>
             </section>
           </div>
           <!-- Tab: 診斷 (Debug) -->
           <div class="settings-tab-content" data-tab-content="debug">
             <section class="settings-section">
-              <h3>?�� 診斷工具</h3>
+              <h3>?"§ 診斷工具</h3>
               <label class="settings-field settings-row">
                 <span>Debug HUD</span>
                 <input id="dev-debug-hud" type="checkbox" />
               </label>
               <label class="settings-field settings-row">
-                <span>?��?等�?</span>
+                <span>?¥è?等ç?</span>
                 <select id="dev-log-level">
                   <option value="verbose">Verbose</option>
                   <option value="info" selected>Info</option>
@@ -656,35 +656,35 @@
                 </select>
               </label>
               <div class="settings-row" style="gap:8px;margin-top:8px;">
-                <button class="ctrl" id="dev-introspect">?�數 introspection</button>
-                <button class="ctrl" id="dev-boot-diag">Boot 記�?</button>
+                <button class="ctrl" id="dev-introspect">?ƒæ•¸ introspection</button>
+                <button class="ctrl" id="dev-boot-diag">Boot 記é?</button>
               </div>
-              <p class="settings-hint">introspection ?�在 console 輸出?�??Live2D ?�數??/p>
+              <p class="settings-hint">introspection ?ƒåœ¨ console 輸出?€??Live2D ?ƒæ•¸??/p>
             </section>
             <section class="settings-section">
-              <h3>?�� 資�?管�?</h3>
+              <h3>?'¾ 資æ?管ç?</h3>
               <div class="settings-row" style="gap:8px;margin-top:8px;">
-                <button class="ctrl" id="dev-export">?�出設�?</button>
-                <button class="ctrl" id="dev-import">導入設�?</button>
+                <button class="ctrl" id="dev-export">?¯å‡ºè¨­å?</button>
+                <button class="ctrl" id="dev-import">導入設å?</button>
               </div>
               <input id="dev-import-file" type="file" accept=".json" style="display:none;" />
-              <button class="ctrl" id="dev-reset" style="margin-top:8px;background:#e74c3c;color:#fff;">清除?�??localStorage</button>
+              <button class="ctrl" id="dev-reset" style="margin-top:8px;background:#e74c3c;color:#fff;">清除?€??localStorage</button>
             </section>
           </div>
         </div>
         <footer class="settings-footer">
-          <button class="ctrl" id="btn-settings-reset" title="清除?�??localStorage 設�?">?�設</button>
+          <button class="ctrl" id="btn-settings-reset" title="清除?€??localStorage 設å?">?è¨­</button>
         </footer>
       </div>
     </div>
     <!-- Voice list popover (anchored above control bar, opens on btn-voice click) -->
-    <div id="voice-list" role="listbox" aria-label="語音?��?"></div>
-    <div id="emote-list" role="listbox" aria-label="表�??��?"></div>
+    <div id="voice-list" role="listbox" aria-label="語音?¸æ?"></div>
+    <div id="emote-list" role="listbox" aria-label="表æ??¸æ?"></div>
   </div>
-  <div id="direct-warn">請透�? <code>embed.js</code> 載入此�?件�?/div>
+  <div id="direct-warn">請透é? <code>embed.js</code> 載入此å?ä»¶ã€?/div>
   <div id="debug-hud">
     <div id="debug-hud-head">
-      <span>?�� debug</span>
+      <span>?"§ debug</span>
       <span>
         <button id="debug-hud-clear" title="Clear logs">clear</button>
         <button id="debug-hud-toggle" title="Collapse/expand">??/button>
@@ -745,7 +745,7 @@
             e.stopPropagation();
             var hud = document.getElementById('debug-hud');
             hud.classList.toggle('collapsed');
-            this.textContent = hud.classList.contains('collapsed') ? '+' : '??;
+            this.textContent = hud.classList.contains('collapsed') ? '+' : '吸血鬼';
           });
         }
         return body;
@@ -822,7 +822,7 @@
     outfit: 'vampire',
     gesture: 'normal',
     // 2026-06-12 16:59: per-gesture flags so multiple gestures can be active
-    // simultaneously (e.g. knife + mc for a sentence with ?� + ??.
+    // simultaneously (e.g. knife + mc for a sentence with ?€ + ??.
     gestures: { knife: false, mc: false, mouse: false, click: false },
     eyes: 'normal',
     blush: false,
@@ -842,20 +842,20 @@
   //               voice_id = real MiniMax voice_id (sent in API),
   //               lang = BCP-47 tag, name = display name }.
   const serverVoicesCatalog = [
-    // 粵�? (Cantonese, zh-HK) ??primary use case
-    {id: 'cantonese-female',  voice_id: 'Cantonese_GentleLady', lang: 'zh-HK', name: '粵�?女主??(Cantonese female host)'},
-    {id: 'cantonese-male',    voice_id: 'Cantonese_PlayfulMan', lang: 'zh-HK', name: '粵�??�主??(Cantonese male host)'},
-    {id: 'cantonese-gentle',  voice_id: 'Cantonese_GentleLady',           lang: 'zh-HK', name: '粵�?溫�?女聲 (Cantonese gentle lady)'},
-    {id: 'cantonese-cute',    voice_id: 'Cantonese_CuteGirl',             lang: 'zh-HK', name: '粵�??��?女孩 (Cantonese cute girl)'},
-    {id: 'cantonese-playful', voice_id: 'Cantonese_PlayfulMan',           lang: 'zh-HK', name: '粵�?活�??�聲 (Cantonese playful man)'},
-    {id: 'cantonese-kind',    voice_id: 'Cantonese_KindWoman',            lang: 'zh-HK', name: '粵�??�良女聲 (Cantonese kind woman)'},
-    // ?�通話 (Mandarin, zh-CN)
-    {id: 'mandarin-female',   voice_id: 'female-tianmei',                 lang: 'zh-CN', name: '?�通話?��?女聲 (Mandarin sweet female)'},
-    {id: 'mandarin-male',     voice_id: 'presenter_male',                 lang: 'zh-CN', name: '?�通話?�主??(Mandarin male presenter)'},
-    {id: 'mandarin-shaonv',   voice_id: 'female-tianmei',                  lang: 'zh-CN', name: '?�通話少女?�色 (Mandarin young girl)'},
-    {id: 'mandarin-yujie',    voice_id: 'female-tianmei',                   lang: 'zh-CN', name: '?�通話御�??�色 (Mandarin mature lady)'},
-    {id: 'mandarin-chengshu', voice_id: 'female-tianmei',                lang: 'zh-CN', name: '?�通話?��?女�?(Mandarin mature woman)'},
-    {id: 'mandarin-announcer',voice_id: 'presenter_male', lang: 'zh-CN', name: '?�通話?��??�主??(Mandarin news announcer)'}
+    // ç²µè? (Cantonese, zh-HK) ??primary use case
+    {id: 'cantonese-female',  voice_id: 'Cantonese_GentleLady', lang: 'zh-HK', name: 'ç²µè?女主??(Cantonese female host)'},
+    {id: 'cantonese-male',    voice_id: 'Cantonese_PlayfulMan', lang: 'zh-HK', name: 'ç²µè??·ä¸»??(Cantonese male host)'},
+    {id: 'cantonese-gentle',  voice_id: 'Cantonese_GentleLady',           lang: 'zh-HK', name: 'ç²µè?溫æ?女聲 (Cantonese gentle lady)'},
+    {id: 'cantonese-cute',    voice_id: 'Cantonese_CuteGirl',             lang: 'zh-HK', name: 'ç²µè??¯æ?女孩 (Cantonese cute girl)'},
+    {id: 'cantonese-playful', voice_id: 'Cantonese_PlayfulMan',           lang: 'zh-HK', name: 'ç²µè?æ´»æ??·è² (Cantonese playful man)'},
+    {id: 'cantonese-kind',    voice_id: 'Cantonese_KindWoman',            lang: 'zh-HK', name: 'ç²µè??"良女聲 (Cantonese kind woman)'},
+    // ?®é€šè©± (Mandarin, zh-CN)
+    {id: 'mandarin-female',   voice_id: 'female-tianmei',                 lang: 'zh-CN', name: '?®é€šè©±?œç?女聲 (Mandarin sweet female)'},
+    {id: 'mandarin-male',     voice_id: 'presenter_male',                 lang: 'zh-CN', name: '?®é€šè©±?·ä¸»??(Mandarin male presenter)'},
+    {id: 'mandarin-shaonv',   voice_id: 'female-tianmei',                  lang: 'zh-CN', name: '?®é€šè©±å°'女?³è‰² (Mandarin young girl)'},
+    {id: 'mandarin-yujie',    voice_id: 'female-tianmei',                   lang: 'zh-CN', name: '?®é€šè©±å¾¡å??³è‰² (Mandarin mature lady)'},
+    {id: 'mandarin-chengshu', voice_id: 'female-tianmei',                lang: 'zh-CN', name: '?®é€šè©±?ç?女æ€?(Mandarin mature woman)'},
+    {id: 'mandarin-announcer',voice_id: 'presenter_male', lang: 'zh-CN', name: '?®é€šè©±?°è??·ä¸»??(Mandarin news announcer)'}
   ];
   const CFG = new URLSearchParams(location.search);
   const isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
@@ -876,7 +876,7 @@
   const MINIMAX_GROUP_ID_DEFAULT = '';  // overridable via localStorage `minimax_group_id`
   let MINIMAX_TTS_KEY = (function () { try { return localStorage.getItem('minimax_tts_key') || ''; } catch (e) { return ''; } })();
   let MINIMAX_GROUP_ID = (function () { try { return localStorage.getItem('minimax_group_id') || MINIMAX_GROUP_ID_DEFAULT; } catch (e) { return ''; } })();
-  let DEEPSEEK_KEY = localStorage.getItem('deepseek_key') || CFG.get('ds_key') || ''; // ?��? URL ?�數??localStorage 讀??DeepSeek API Key
+  let DEEPSEEK_KEY = localStorage.getItem('deepseek_key') || CFG.get('ds_key') || ''; // ?é? URL ?ƒæ•¸??localStorage 讀??DeepSeek API Key
   const DEEPSEEK_API = CFG.get('ds_api') || 'https://api.deepseek.com/v1/chat/completions';
 
   // 2026-06-13 v31: Developer mode parameters (localStorage-persisted)
@@ -893,7 +893,7 @@
   // 2026-06-14 v34: chat bar visibility. Default OFF (hidden) because
   // the postMessage 'react' path is the primary input for embedded use.
   // Users who want the old direct-typing experience can flip the
-  // toggle in Settings ??對話 ??互�?模�?.
+  // toggle in Settings ??對話 ??互å?模å?.
   let __xiaob_show_chatbar = (function(){try{return localStorage.getItem('xiaob_show_chatbar')==='true'}catch(e){return false}})();
   // Apply on boot (before any settings modal is opened, so the user
   // sees the chosen state immediately).
@@ -1018,8 +1018,8 @@
       if (micBtn) {
         micBtn.classList.add('mic-unsupported');
         micBtn.setAttribute('data-webview-blocked', '1');
-        micBtn.title = 'App ?�建?�覽?��??�援語音?�能，�???Chrome ?��?';
-        micBtn.setAttribute('aria-label', '語音?�能?�此?��?不可??);
+        micBtn.title = 'App 內建瀏覽器語音功能不支援，請使用Chrome語音功能';
+        micBtn.setAttribute('aria-label', '語音功能就此開啟，請使用Chrome語音功能);
       }
 
       // Wire up copy-URL fallback (works on iOS WebView + any env where
@@ -1029,7 +1029,7 @@
       copyBtn && copyBtn.addEventListener('click', () => {
         const ok = () => {
           const orig = copyBtn.textContent;
-          copyBtn.textContent = '已�?�???;
+          copyBtn.textContent = 'å·²è?è£???;
           setTimeout(() => { copyBtn.textContent = orig; }, 1800);
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1166,16 +1166,16 @@
 
   function _reactRandomPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-  // Reply pool (粵�????, ?��?�?personality)
+  // Reply pool (ç²µè????, ?¸è?é¬?personality)
   const REPLY_POOL = {
-    correct:   ['?��?！�??�聰?��?', '?�錯?��?你好?��?�?, '答�??��?�??�?, 'Bingo�?, '100?��?'],
-    wrong:     ['差�?少啫，�?諗�?�?, '?��?要�??��?一次�?', '?��?少�?，�?油�?', '差�??�啲?��??�好?��?�?],
-    sad:       ['?��?要�?，�??�陪住�???, '?��?一齊面對啦??, '你�?係�??�人?��?],
-    happy:     ['?��?！繼續�?油�?', '好嘢�?, 'Yeah�?, '你�?棒啦�?],
-    angry:     ['?�好嬲�?多啦，深?�吸??, '?��??��?你�??��?],
-    shy:       ['�?..你�?住�??��???..', '?��?害�???..'],
-    surprised: ['?��??�都得�?�?, '?��?', '乜�??�都?�以�?],
-    neutral:   ['?�嗯，�??�度?��???, '?�喺度�?, '?�聽緊�?講�?],
+    correct:   ['?±æ?!ä??Ÿè°?Žï?', '?‡éŒ¯?¦ï?你好?»å?ï¼?, '答å??±ï?æ­??ï¼?, 'Bingoï¼?, '100?†ï?'],
+    wrong:     ['å·®å?少啫,å?諗ä?ï¼?, '?"ç?要ï??å?一次ï?', '?¯å?少å?,å?æ²¹ï?', 'å·®ä??²å•²?‹ï??"好?¾æ?ï¼?],
+    sad:       ['?"ç?要ã?,æ??½é™ªä½ä???, '?'å?一齊面對啦??, 'ä½ å?係ä??‹äºº?Žã€?],
+    happy:     ['?»ä?!繼續å?æ²¹ï?', '好嘢ï¼?, 'Yeahï¼?, 'ä½ æ?棒啦ï¼?],
+    angry:     ['?"好嬲å?多啦,深?¼å¸??, '?·é??²ï?ä½ å??…ã€?],
+    shy:       ['ä½?..ä½ æ?住æ??Ÿå???..', '?'æ?害ç???..'],
+    surprised: ['?©ï??éƒ½å¾—ï?ï¼?, '?‡ï?', '乜æ??éƒ½?¯ä»¥ï¼?],
+    neutral:   ['?¯å—¯ï¼Œæ??ºåº¦?½ç???, '?'喺度ã€?, '?'聽緊ä?講ã€?],
   };
 
   async function handleReact({ text, context, voice, voice_id }) {
@@ -1291,22 +1291,22 @@
     try { key = localStorage.getItem('deepseek_key') || ''; } catch (e) { return null; }
     if (!key) return null;
 
-    const systemPrompt = '你�?一?��??��??��?，�??��??�戶輸入??context 決�?表�??��?作、簡?��?覆。\n' +
-      '?��? JSON，�?好�??��??��??�JSON schema：\n' +
+    const systemPrompt = 'ä½ ä?一?‹å??‰å??©æ?,æ??¹æ??¨æˆ¶è¼¸å…¥??context 決å?表æ??å?作、簡?­å?覆。\n' +
+      '?ªå? JSON,å?好å??¶ä??‡å??'JSON schema:\n' +
       '{\n' +
       '  "emotion": "happy" | "sad" | "angry" | "shy" | "surprised" | "neutral",\n' +
       '  "action": "Scene1" | "Idle" | "knife" | "mc" | "mouse" | "click" | "bloodFace" | "bloodBody" | null,\n' +
-      '  "reply": "一?�粵語�?覆�?max 60 �?\n' +
+      '  "reply": "一?¥ç²µèªžå?覆ï?max 60 å­?\n' +
       '}\n' +
-      '規�?：\n' +
-      '- ?�戶?��?低落 / ?�傷 ??emotion: "sad", action: null\n' +
-      '- ?�戶?��? / ?��? / 答啱 ??emotion: "happy", action: "mc"\n' +
-      '- ?�戶?�錯 / 失�? ??emotion: "sad" ??"shy"\n' +
-      '- ?�戶驚�? / ?��? ??emotion: "surprised"\n' +
-      '- ?�戶�???emotion: "angry"\n' +
-      '- ?�設 ??emotion: "neutral", action: null\n' +
-      '- reply 要粵語口語�?max 60 字\n' +
-      '- ?��?鬼性格，�?好�?講嘢';
+      '規å?:\n' +
+      '- ?¨æˆ¶?…ç?低落 / ?²å'· ??emotion: "sad", action: null\n' +
+      '- ?¨æˆ¶?¶ç? / ?å? / 答啱 ??emotion: "happy", action: "mc"\n' +
+      '- ?¨æˆ¶?¯éŒ¯ / 失æ? ??emotion: "sad" ??"shy"\n' +
+      '- ?¨æˆ¶é©šè? / ?å? ??emotion: "surprised"\n' +
+      '- ?¨æˆ¶å¬???emotion: "angry"\n' +
+      '- ?è¨­ ??emotion: "neutral", action: null\n' +
+      '- reply 要粵語口語ï?max 60 字\n' +
+      '- ?¸è?鬼性格,å?好ç?講嘢';
 
     const r = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -1341,38 +1341,38 @@
   function _reactKeyword(text) {
     // 2026-06-14 v39: massively expanded sentiment word lists + punctuation
     // signals. v38's narrow patterns left most user text falling to neutral
-    // ("?�喺度聽�?), making the widget feel unresponsive.
+    // ("?'喺度聽ç·?), making the widget feel unresponsive.
     const t = (text || '').toLowerCase();
     if (!t.trim()) return { emotion: 'neutral', action: null, reply: _reactRandomPick(REPLY_POOL.neutral) };
 
     // Word lists (Cantonese/Chinese, plus common English).
-    // Match is substring (includes), so single chars like ??�?work too.
+    // Match is substring (includes), so single chars like ??�work too.
     const HAPPY_KW = [
-      '??, '?��?', '答啱', 'correct', 'right', '??, '??, 'yes', 'yes!',
-      '?��?', '高�?', '?�奮', '快�?', '好嘢', '�?, '??, '�?, '??, '??,
-      '�?, '?��?', '?�嘻', '?��?�?, '完�?', '?��?', 'yeah', 'yay', 'happy',
+      '??, '?±å?', '答啱', 'correct', 'right', '??, '??, 'yes', 'yes!',
+      '?‹å?', '高è?', '?ˆå¥®', 'å¿«æ?', '好嘢', 'æ£?, '??, 'æ­?, '??, '??,
+      'ç¬?, '?ˆå?', '?»å˜»', '?‹å?æ­?, '完ç?', '?å?', 'yeah', 'yay', 'happy',
       'joy', 'great', 'good', 'wonderful', 'amazing', 'love', 'loved',
-      '?��?', '中�?', '?�歡', '太正', '??, '?�??, 'like', '?��?',
+      '?¾æ?', '中æ?', '?œæ­¡', '太正', '??, '?€??, 'like', '?šå?',
     ];
     const SAD_KW = [
-      '??, '?�啱', '答錯', 'wrong', '??, '??, 'no!', 'no', '失�?', '?��?',
-      '??, '?��?', '??, '??, '??, '心�?', '心�?', '心淡', '??, '?��?',
-      '絕�?', '失�?', '�?, '??, '辛苦', '???', '???', '?��?�?, '??,
+      '??, '?"啱', '答錯', 'wrong', '??, '??, 'no!', 'no', '失æ?', '?"å?',
+      '??, '?·å?', '??, '??, '??, '心ç?', '心ç?', '心淡', '??, '?°å?',
+      '絕æ?', '失æ?', 'ç´?, '??, '辛苦', '???', '???', '?"é?å¿?, '??,
       'sad', 'cry', 'tired', 'hurt', 'bad', 'terrible', 'awful', 'depressed',
-      'lonely', '寂�?', '孤獨', '?�助', 'miserable', '失�?',
-      '不�???, '?��???, '?�爽', '辛苦', '??, '??, '?��?',
+      'lonely', '寂å?', '孤獨', '?¡åŠ©', 'miserable', '失æ?',
+      '不è???, '?"è???, '?"爽', '辛苦', '??, '??, '?…å?',
     ];
     const ANGRY_KW = [
-      '�?, '嬲�?', '嬲死', '激�?, '??, '?�大', '�?��', '激�?, 'angry',
+      'å¬?, '嬲ç?', '嬲死', '激å¬?, '??, '?«å¤§', 'æ°?­»', '激æ­?, 'angry',
       'mad', 'furious', 'hate', 'hated', 'pissed', 'rage', '討厭',
     ];
     const SHY_KW = [
-      '害�?', '?��?', '紅�?', '?��?', '紅�?', '不好?��?, '?�好?��?, 'shy',
+      '害ç?', '?•ç?', '紅è?', '?‰ç?', '紅æ?', '不好?æ€?, '?"好?æ€?, 'shy',
       'embarrass', 'blush',
     ];
     const SURPRISED_KW = [
-      '�?, '驚死', '??, '??, '??, '??, '竟然', '居然', '估�???,
-      '諗�???, 'surprise', 'wow', 'omg', 'shock', 'amazing',
+      'é©?, '驚死', '??, '??, '??, '??, '竟然', '居然', 'ä¼°å???,
+      '諗å???, 'surprise', 'wow', 'omg', 'shock', 'amazing',
     ];
 
     // Score each emotion by how many keywords appear.
@@ -1388,7 +1388,7 @@
     // Punctuation signals (boost score)
     if (/!{2,}/.test(t))      scores.happy     += 0.5;
     if (/\?{2,}/.test(t))     scores.surprised += 0.5;
-    if (/\.{2,}|?�{2,}|?�…|??.test(t)) scores.sad += 0.5;
+    if (/\.{2,}|?'{2,}|?¦â€¦|??.test(t)) scores.sad += 0.5;
     if (/!{1,}/.test(t) && scores.angry > 0)   scores.angry += 0.3;
     if (/\?{1,}/.test(t) && scores.surprised > 0) scores.surprised += 0.2;
 
@@ -1404,9 +1404,9 @@
         emotion: 'neutral',
         action:  null,
         reply:   _reactRandomPick([
-          '?�嗯，�??�度?��???,
-          '?�聽緊�?講�?你繼續�?,
-          '?�到，�??�度??,
+          '?¯å—¯ï¼Œæ??ºåº¦?½ç???,
+          '?'聽緊ä?講ï?你繼續ã€?,
+          '?¶åˆ°ï¼Œæ??ºåº¦??,
         ]),
       };
     }
@@ -1452,7 +1452,7 @@
     const bottomVal = (stageRect.height - barRect.top + gap) + 'px';
     bubble.style.bottom = bottomVal;
 
-    // ?�步?�新彈出?�單?��??��?置�??��?定�??�螢幕�??��??��?
+    // ?Œæ­¥?´æ–°å½ˆå‡º?¸å–®?"å??¨ä?ç½®ï??¿å?定ä??¨èž¢å¹•ä??¹ä??¯è?
     const voicePopover = document.getElementById('voice-list');
     if (voicePopover) voicePopover.style.bottom = bottomVal;
     const emotePopover = document.getElementById('emote-list');
@@ -1465,7 +1465,7 @@
     const vs = speechSynthesis.getVoices();
     const pick = (re) => vs.find(v => re.test(v.name + ' ' + v.lang) && !/Google/i.test(v.name));
     ttVoice =
-         pick(/(HsiaoChen|HsiaoYu|?�臻|?�雨).*zh/i)
+         pick(/(HsiaoChen|HsiaoYu|?‰è‡»|?‰é›¨).*zh/i)
       || pick(/(Yating|Zhiwei).*zh[-_]TW/i)
       || pick(/Microsoft.*zh[-_]TW/i)
       || pick(/zh[-_]TW/i)
@@ -1492,7 +1492,7 @@
     var lastEnd = -1;
     for (var i = 0; i < softCap; i++) {
       var c = text.charAt(i);
-      if (c === '?? || c === '�? || c === '?' || c === '?' || c === '!' || c === ';') {
+      if (c === '?? || c === 'ï¼? || c === '?' || c === '?' || c === '!' || c === ';') {
         lastEnd = i;
       }
     }
@@ -1507,7 +1507,7 @@
     if (!__dev_keyword_emote) return;
     const base = currentSentenceEmotion || 'neutral';
     // 2026-06-12 16:59: gestures now use independent Set-style tracking so multiple
-    // gestures (e.g. ?�+????knife + mc) can be active simultaneously. Previously
+    // gestures (e.g. ?€+????knife + mc) can be active simultaneously. Previously
     // emoteState.gesture was a single string and the if-else chain at the bottom
     // overwrote it on each pass, so only one gesture was ever active.
     // Backward-compat: keep emoteState.gesture (string) for code that still reads it,
@@ -1552,29 +1552,29 @@
     const t = text.toLowerCase();
     const has = (words) => words.some(w => t.includes(w));
 
-    // ?��??��??��?詞庫
-    // 1. ?�勢?�具
-    const kKnife = ['小�?', '?��?', '??, '??, '�?, '??, '?��', '武器', '?�險', '?��?, '?�身', '?��?', '??, '??, '威�?', '?��?', '決鬥', '�?, '?��?', '?�', 'knife', 'dagger', 'sword', 'attack', 'kill'];
-    const kMc = ['麥�?�?, '話�?', '?��?', '歌唱', '主�?', '?��', '?��?', '?��?�?, '歌聲', '演�?', '?�音', '?��?', '�?��', '表�?', '歌�?', '?��', '?��', '??, '�?, 'sing', 'song', 'microphone', 'mic', 'music'];
-    const kMouse = ['滑�?', '?�腦', '?���?, '游�?', '?�制', '滑�?裝�?', '?��?', '?��?', '?�盤', '?��?', '寫�?�?, '編�?', '�?��', 'coding', '上網', '衝浪', '網�?', 'mouse', 'computer', 'keyboard', 'code', 'program'];
-    const kClick = ['??, '�?, '??, '??', '??, '�?, '??, '�?, '點�?', '?��?', '?��?', '確�?', '?�出', 'click', 'press', 'touch', 'point'];
+    // ?´å??"é??µè?詞庫
+    // 1. ?‹å‹¢?"å…·
+    const kKnife = ['小å?', '?•é?', '??, '??, 'æ®?, '??, '?"ª', '武器', '?±éšª', '?€å­?, '?²èº«', '?»æ?', '??, '??, '威è?', '?•æ?', '決鬥', 'æ­?, '?½æ?', '?€', 'knife', 'dagger', 'sword', 'attack', 'kill'];
+    const kMc = ['麥å?é¢?, '話ç?', '?±æ?', '歌唱', '主æ?', '?ޤ', '?³æ?', '?±é?æ­?, '歌聲', '演è?', '?­éŸ³', '?¼è?', 'å»?'­', '表æ?', '歌æ?', '?޵', '?޶', '??, 'æ­?, 'sing', 'song', 'microphone', 'mic', 'music'];
+    const kMouse = ['滑é?', '?»è…¦', '?–±ï¸?, '游æ?', '?§åˆ¶', '滑é?裝å?', '?™æ?', '?¢å?', '?µç›¤', '?"å?', '寫ç?å¼?, 'ç·¨ç?', 'ä»?¢¼', 'coding', '上網', '衝浪', 'ç¶²é?', 'mouse', 'computer', 'keyboard', 'code', 'program'];
+    const kClick = ['??, 'é»?, '??, '??', '??, 'ç¢?, '??, 'è§?, '點æ?', '?‰é?', '?¸æ?', '確å?', '?å‡º', 'click', 'press', 'touch', 'point'];
 
-    // 2. ?��??�部
-    const kHeartEyes = ['?��?', '?�歡', '?��?', '心�?', '??', '?��?', '中�?', '?��?', '心�?', '好帥', '好�?', '心跳', '?�白', '表白', '寶�?', '親�???, '心�?', '?��?', '漂亮', '迷人', '?�公', '?��?', 'love', 'like', 'heart', 'cute', 'sweet', 'crush'];
-    const kCircleEyes = ['??, '??, '轉�?', '混�?', '??, '??', '??, '?��?', '?�厥', '迷�?', '?��?', '不知?�??, '?��?', '不�?', '?��???, '?��???, '???', '複�?', '??, 'dizzy', 'faint', 'confused', 'stunned', 'blank'];
-    const kStarEyes = ['?��?', '?�亮', '崇�?', '羨�?', '?��', '??, '?��?', '?��?', '好厲�?, '太強�?, '好�?', '?��?', '許�?', '?�耀', '亮晶??, 'star', 'shine', 'admire', 'expect', 'wish'];
+    // 2. ?¹æ??¼éƒ¨
+    const kHeartEyes = ['?›å?', '?œæ­¡', '?›ä?', '心å?', '??', '?¤ï?', '中æ?', '?›æ?', '心å?', '好帥', '好ç?', '心跳', '?Šç™½', '表白', '寶è?', '親æ???, '心å?', '?¯æ?', '漂亮', '迷人', '?å…¬', '?å?', 'love', 'like', 'heart', 'cute', 'sweet', 'crush'];
+    const kCircleEyes = ['??, '??, '轉å?', 'æ··ä?', '??, '??', '??, '?­æ?', '?ˆåŽ¥', 'è¿·ç?', '?¼å?', '不知?€??, '?°æ?', '不æ?', '?žä???, '?‹ä???, '???', '複é?', '??, 'dizzy', 'faint', 'confused', 'stunned', 'blank'];
+    const kStarEyes = ['?Ÿæ?', '?ƒäº®', '崇æ?', '羨æ?', '?¤©', '??, '?Ÿå?', '?¶å?', '好厲å®?, '太強äº?, '好æ?', '?¼æ?', '許é?', '?ƒè€€', '亮晶??, 'star', 'shine', 'admire', 'expect', 'wish'];
 
-    // 3. ?�部?��?
-    const kBlush = ['害�?', '紅�?', '?��?', '不好?��?, '?��', '討厭??, '?��?', '純�?', '?��?', '緊張', '尷尬', '?��?', 'shy', 'blush', 'embarrassed', 'nervous'];
-    const kTears = ['流�?', '??, '?��?', '???', '委�?', '?��', '?��', '?��?', '?�傷', '?�??, '好�?', '�?, '桑�?', '崩潰', '失落', '沮喪', '?�哭', '?��?', 'cry', 'tear', 'sad', 'sob', 'breakdown', 'depressed'];
-    const kAngry = ['?�氣', '?��?', '?��?, '?�火', '不爽', '??', '?��', '?�嘴', '?��?', '?��?', '?��?, '?�大', '?�氣�?, '�?��', '討厭�?, 'angry', 'mad', 'furious', 'pissed', 'annoyed', 'shut up'];
+    // 3. ?¢éƒ¨?ˆæ?
+    const kBlush = ['害ç?', '紅æ?', '?‰ç?', '不好?æ€?, '?˜³', '討厭??, '?'å?', '純æ?', '?§å?', '緊張', 'å°·å°¬', '?è?', 'shy', 'blush', 'embarrassed', 'nervous'];
+    const kTears = ['流æ?', '??, '?·å?', '???', '委å?', '?˜­', '?˜¢', '?šå?', '?²å'·', '?€??, '好æ?', 'æ³?, '桑å?', 'å´©æ½°', '失落', '沮喪', '?›å"­', '?¼æ?', 'cry', 'tear', 'sad', 'sob', 'breakdown', 'depressed'];
+    const kAngry = ['?Ÿæ°£', '?'ç?', '?¤æ€?, '?±ç«', '不爽', '??', '?˜¡', '?‰å˜´', '?¼é?', '?"ç?', '?´æ€?, '?«å¤§', '?Ÿæ°£æ°?, 'æ°?­»', '討厭ä½?, 'angry', 'mad', 'furious', 'pissed', 'annoyed', 'shut up'];
 
-    // 4. 血跡�???
-    const kBlood = ['?�部血�?, '?��??��?', '?�口血�?, '身�??��?', '?�傷', '流�?', '?��', '血�?, '?��?', '流鼻血', '?�傷', '?�傷', '血??, 'blood', 'bleed', 'hurt', 'wound', 'injury', 'bloody'];
+    // 4. 血跡æ???
+    const kBlood = ['?‰éƒ¨è¡€è·?, '?‰ä??‰è?', '?¸å£è¡€è·?, '身ä??‰è?', '?—å'·', '流è?', '?©¸', '血è·?, '?è?', '流鼻血', '?²å'·', '?ºå'·', '血??, 'blood', 'bleed', 'hurt', 'wound', 'injury', 'bloody'];
 
     // 2026-06-12 16:59: 4 independent flags instead of if-else chain.
     // Now emoteState.gestures.knife + emoteState.gestures.mc can BOTH be true
-    // for a sentence that contains both ?� and ????the param-setter below
+    // for a sentence that contains both ?€ and ????the param-setter below
     // lights up PARAMhands_1 (mc) AND PARAMhands_2 (knife) at the same time.
     if (has(kKnife)) { emoteState.gestures.knife = true; emoteState.gesture = 'knife'; }
     if (has(kMc))    { emoteState.gestures.mc = true;    emoteState.gesture = emoteState.gesture === 'normal' ? 'mc'    : emoteState.gesture; }
@@ -1582,7 +1582,7 @@
     if (has(kClick)) { emoteState.gestures.click = true; emoteState.gesture = emoteState.gesture === 'normal' ? 'click' : emoteState.gesture; }
 
     // 2026-06-12 16:59: independent flags for eye modes too ??if a sentence
-    // has both 心�? and ?? you get hearteyes + circleeyes simultaneously.
+    // has both 心å? and ?? you get hearteyes + circleeyes simultaneously.
     if (has(kHeartEyes))  emoteState.eyes = 'hearteyes';
     if (has(kCircleEyes)) emoteState.eyes = emoteState.eyes === 'normal' ? 'circleeyes' : emoteState.eyes;
     if (has(kStarEyes))   emoteState.eyes = emoteState.eyes === 'normal' ? 'stareyes'   : emoteState.eyes;
@@ -1624,10 +1624,10 @@
         return;  // wait for user to input key, don't fall back to browser
       }
       speakNeural(ttsText, myseq).catch((e) => {
-        if (myseq !== speakSeq) return;  // 已被?�新?��??��?�???不�??�?�播??
+        if (myseq !== speakSeq) return;  // 已被?´æ–°?"é??Šå?ä»???不è??€?žæ'­??
         const msg = (e && e.message) || '';
-        if (/http 4\d\d|Failed to fetch|NetworkError|Load failed/i.test(msg)) neuralDisabled = true; // 結�??�失???��?�?CORS/被�?)?��??�試神�?語音
-        console.warn('神�?語音失�?，退?�瀏覽?��??��?', msg);
+        if (/http 4\d\d|Failed to fetch|NetworkError|Load failed/i.test(msg)) neuralDisabled = true; // 結æ??§å¤±???¡å?ç«?CORS/被æ?)?'ä??è©¦ç¥žç?語音
+        console.warn('神ç?語音失æ?,退?žç€è¦½?¨è??³ï?', msg);
         useAudioMouth = false;
         speakBrowser(ttsText);
       });
@@ -1774,7 +1774,7 @@
   }
 
   function bigrams(s) {
-    s = (s || '').toLowerCase().replace(/[\s，。、�?�?.?!~～]/g, '');
+    s = (s || '').toLowerCase().replace(/[\s,。、ï?ï¼?.?!~~]/g, '');
     const g = [];
     for (let i = 0; i < s.length - 1; i++) g.push(s.slice(i, i + 2));
     if (s.length === 1) g.push(s);
@@ -1798,23 +1798,23 @@
   }
   function brain(qRaw) {
     const q = (qRaw || '').trim();
-    if (!q) return '?�好?��??��?楚�??�以?�說一次�?�?;
+    if (!q) return '?'好?æ??½æ?楚ï??¯ä»¥?èªªä¸€æ¬¡å?ï¼?;
     let best = null, bestScore = 0;
     for (const e of (window.KB || [])) { const s = scoreEntry(q, e); if (s > bestScore) { bestScore = s; best = e; } }
     if (best && bestScore >= 0.16) return best.a;
-    return '你�??�是?? + q + '?��??��??��??��??��?庫�?沒收?��?你可以�??�「怎麼安�??�「怎麼?��?你�?角色?�「�?不�??�」「麥?�風?�麼?�」這�??��?;
+    return 'ä½ å??"是?? + q + '?å??§ï??™é??'ç??¥è?庫é?沒收?"ï?你可以å??'「怎麼安è??ã€Œæ€Žéº¼?›æ?ä½ ç?角色?ã€Œè?不è??¢ã€ã€Œéº¥?‹é¢¨?Žéº¼?¨ã€é€™ä??"ã€?;
   }
   async function answer(q) {
     q = (q || '').trim();
-    if (!q) return '?�好?��??��?楚�??�以?�說一次�?�?;
+    if (!q) return '?'好?æ??½æ?楚ï??¯ä»¥?èªªä¸€æ¬¡å?ï¼?;
     if (window.LLM && window.LLM.state === 'ready') {
-      const ctx = topK(q, 3).map(e => 'Q�? + e.q + '\nA�? + e.a).join('\n---\n');
+      const ctx = topK(q, 3).map(e => 'Qï¼? + e.q + '\nAï¼? + e.a).join('\n---\n');
       const messages = [
-        { role: 'system', content: '你是?�吸血鬼」�??�人?��??��??��?體中?�、口語、�?多兩三句話簡?��?答。優?��??�【�??��??�】�?答�?資�?沒�??�就?�常識簡?��??��?不確定就?�實說�??��??�\n\n?��??��??�】\n' + (ctx || '（無�?) },
+        { role: 'system', content: '你是?Œå¸è¡€é¬¼ã€è??¬äºº?©æ??'è??¨ç?體中?‡ã€å£èªžã€æ?多兩三句話簡?­å?答。優?ˆä??šã€å??ƒè??™ã€'å?答ï?資æ?沒æ??"å°±?¨å¸¸è­˜ç°¡?­å??‰ï?不確定就?å¯¦èªªä??¥é??'\n\n?å??ƒè??™ã€'\n' + (ctx || '(無ï¼?) },
         { role: 'user', content: q }
       ];
       try {
-        showBubble('讓�??�想??);
+        showBubble('讓æ??³æƒ³??);
         const out = await window.LLM.chat(messages);
         if (out && out.trim()) return out.trim();
       } catch (e) { console.warn('LLM error', e); }
@@ -1823,7 +1823,7 @@
   }
 
   // =====================================================================
-  // ?��?增強：DeepSeek 多模?�實?��?式解?��??��?
+  // ?¸å?增強:DeepSeek 多模?‹å¯¦?'æ?式解?ç??‹æ?
   // =====================================================================
   const DEEPSEEK_STREAM_ENGINE = (function() {
     // Streaming parser for DeepSeek chat completions. The model emits inline emotion
@@ -1861,7 +1861,7 @@
       if (typeof applyEmotion === 'function') {
         applyEmotion(emo);
       }
-      // ?��?超�??�銷毀安全?��?8 秒�??��?淡出，防�?AI 網路?��?定格崩潰
+      // ?Ÿç?超æ??ªéŠ·æ¯€å®‰å…¨?–ï?8 秒å??ªå?淡出,防ç¯?AI 網路?·ç?定格崩潰
       _watchdog = setTimeout(function() {
         clearEmotionMatrix();
       }, 8000);
@@ -1967,13 +1967,13 @@
 
   async function handleDeepSeekStream(text) {
     DEEPSEEK_STREAM_ENGINE.reset();
-    showBubble('?? ?�考中??);
+    showBubble('?? ?è€ƒä¸­??);
 
     // Hard cap on streamed output so we never accumulate more than what TTS can speak.
     // TTS endpoint caps at 150 chars; bubble can show a bit more for legibility, but
     // anything past this is dropped from the stream to prevent mid-sentence audio cuts.
     const STREAM_TEXT_CAP = 200;   // streaming buffer cap (post-strip)
-    const STREAM_END_MARKERS = ['??, '�?, '�?, '?', '!', '!', '~'];  // stop at first sentence boundary (fullwidth + halfwidth)
+    const STREAM_END_MARKERS = ['??, 'ï¼?, 'ï¼?, '?', '!', '!', '~'];  // stop at first sentence boundary (fullwidth + halfwidth)
     let streamEnded = false;
 
     try {
@@ -1990,10 +1990,10 @@
           temperature: __dev_temperature,
           messages: [
             { role: 'system', content: (function() {
-              var base = '你是網�??��?角�??��?鬼�?女助?�。�??��??��??��??��?體貼?�\n?��?規�?（�??�格?��?）�?\n1. 繁�?中�?，台??��語。\n2. 字數 80??20 ?��?以內，�?多�??�。\n3. 不�??�英?�、�?要用簡�?字、�?要使??Markdown?�表?�符?��?�?��?�塊�?;
+              var base = '你是網é??³ä?角ç??¸è?鬼å?女助?‹ã€'ä??²å??æ??Œä??§å?體貼?'\n?žæ?規å?(è??´æ ¼?µå?)ï?\n1. 繁é?中æ?,台??"¨èªžã€'\n2. 字數 80??20 ?‹å?以內,æ?多ä??¥ã€'\n3. 不è??¨è‹±?‡ã€ä?要用簡é?字、ä?要使??Markdown?è¡¨?…符?Ÿæ?ä»?¢¼?€å¡Šã€?;
               // 2026-06-13 v31: emotion tag instruction driven by __dev_emotion_prefix (dev mode toggle)
               if (__dev_emotion_prefix) {
-                return base + '\n3. ?��??�聯?��?標籤，�?段�??��?�?1 ?��?<happy> <sad> <angry> <surprised> <shy> <thinking> <neutral>?�\n4. ?�用一?��?籤在?�頭?��?要在?��?中�??��??��??�\n範�?�?angry>?��??�種簡單?��??��?竟然?��??��?<shy>?�拿你�?辦�?...';
+                return base + '\n3. ?¥é??§è¯?…æ?標籤,æ?段å??‰æ?å°?1 ?‹ï?<happy> <sad> <angry> <surprised> <shy> <thinking> <neutral>?'\n4. ?ªç"¨ä¸€?‹æ?籤在?‹é ­?'ä?要在?¥å?中é??‡æ??…ç??'\n範ä?ï¼?angry>?ˆï??™ç¨®ç°¡å–®?"ä??…ä?竟然?½ä??'ï?<shy>?Ÿæ‹¿ä½ æ?辦æ?...';
               }
               return base;
             })() },
@@ -2003,7 +2003,7 @@
         })
       });
 
-      if (!response.ok) throw new Error('API 返�? HTTP ' + response.status);
+      if (!response.ok) throw new Error('API 返å? HTTP ' + response.status);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
@@ -2057,21 +2057,21 @@
         speak(accumulatedCleanText.trim());
       }
     } catch (err) {
-      console.error('[DeepSeek API ?�誤]', err);
-      speak('??��?��?網路失�?�? + err.message);
+      console.error('[DeepSeek API ?¯èª¤]', err);
+      speak('??Ž¥?¸å?網路失æ?ï¼? + err.message);
     }
   }
 
   function handleUser(text) {
     if (!text) return;
     currentSentenceEmotion = 'neutral';
-    showBubble('你�?' + text);
+    showBubble('ä½ ï?' + text);
     
-    // 一?�進入?�戶交�?對話，�??�使展示輪播定�??�失?��?交由 AI 大腦?�管
+    // 一?¦é€²å…¥?¨æˆ¶äº¤ä?對話,ç??³ä½¿å±•示輪播定æ??¨å¤±?ˆï?交由 AI 大腦?¥ç®¡
     if (window.__demoCarouselInterval) {
       clearInterval(window.__demoCarouselInterval);
       window.__demoCarouselInterval = null;
-      console.log('[Live2D] 互�?對話已建立�?展示輪播定�??��??�卸載�?);
+      console.log('[Live2D] 互å?對話已建立ï?展示輪播定æ??¨ç??·å¸è¼‰ã€?);
     }
 
     if (DEEPSEEK_KEY) {
@@ -2084,7 +2084,7 @@
   function setMic(on) {
     const b = document.getElementById('btn-mic');
     b.classList.toggle('listening', on);
-    b.textContent = on ? '???�聽�? : '?�� 說話';
+    b.textContent = on ? '???†è½ä¸? : '?ޤ 說話';
     // Suggestions are hidden by user request (2026-06-12). CSS keeps them
     // display:none; we don't toggle visibility here.
   }
@@ -2104,38 +2104,38 @@
       } catch (e) {}
       if (!SR) {
       // Mobile mic fix (2026-06-13): explain why mic fails on common mobile browsers.
-      // - iOS Safari: 沒�? SpeechRecognition API (webkit prefix ?��??�援) ???�戶必�???Chrome / Edge
-      // - Android Chrome: 大部?�支?��?�?cross-origin iframe ?�要父??`allow="speech-recognition *"`
-      // - Desktop Chrome: 一定支??(失�??��?多數�?permission blocked ??insecure context)
+      // - iOS Safari: 沒æ? SpeechRecognition API (webkit prefix ?½ä??¯æ´) ???¨æˆ¶å¿…é???Chrome / Edge
+      // - Android Chrome: 大部?†æ"¯?´ï?ä½?cross-origin iframe ?€è¦çˆ¶??`allow="speech-recognition *"`
+      // - Desktop Chrome: 一定支??(失æ??Ÿå?多數ä¿?permission blocked ??insecure context)
       const ua = (navigator.userAgent || '').toLowerCase();
       const isIOS = /iphone|ipad|ipod/.test(ua);
       const isAndroid = /android/.test(ua);
       const msg = isIOS
-        ? 'iOS Safari 不支?�瀏覽?��??�辨�??? 請改??Chrome / Edge，�??�接?��? ?��'
+        ? 'iOS Safari 不支?´ç€è¦½?¨è??³è¾¨è­??? 請改??Chrome / Edge,æ??´æŽ¥?"å? ?'¬'
         : isAndroid
-          ? 'Android Chrome 語音辨�??��?HTTPS + 麥�?風�??��?請確認已?��?後�?�???�?
-          : '你�??�覽?��??�援語音辨�?，建議用 Chrome 桌面?��????���?;
+          ? 'Android Chrome 語音辨è??€è¦?HTTPS + 麥å?風æ??ï?請確認已?ˆæ?後å?è©???ï¸?
+          : 'ä½ ç??è¦½?¨ä??¯æ´èªžéŸ³è¾¨è?,建議用 Chrome 桌面?ˆé????–¥ï¸?;
       showBubble(msg);
       // Also surface via speak() for text-mode users
       speak(msg.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ''));
       return;
     }
     if (listening && recognition) { recognition.stop(); return; }
-    try { recognition = new SR(); } catch (e) { speak('語音辨�??��?失�?�? + e.message); return; }
+    try { recognition = new SR(); } catch (e) { speak('語音辨è??Ÿå?失æ?ï¼? + e.message); return; }
     // 2026-06-13 v12: per user #17287 static analysis ??'zh-TW' (Taiwan Mandarin)
-// hardcoded 觸發 phonetic rejection for Cantonese speakers (�?���?yue).
-// User ?�實?��?言�?zh-HK, ??primary lang + ??fallback chain: zh-HK ??zh-CN ??en-US.
-// Fallback ?��? onerror 'no-speech' ?�陣 try next lang.
+// hardcoded 觸發 phonetic rejection for Cantonese speakers (å»?±è©?yue).
+// User ?…實?›è?言ä¿?zh-HK, ??primary lang + ??fallback chain: zh-HK ??zh-CN ??en-US.
+// Fallback ?é? onerror 'no-speech' ?°é™£ try next lang.
 window.SR_LANG_CHAIN = ['zh-HK', 'zh-CN', 'en-US'];
 window.SR_LANG_INDEX = 0;
 recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
     recognition.continuous = false; recognition.maxAlternatives = 1;
-    recognition.onstart  = () => { listening = true; setMic(true); showBubble('?�聽中…�?說話 ??�?); };
+    recognition.onstart  = () => { listening = true; setMic(true); showBubble('?†è½ä¸­â€¦è?說話 ??ï¸?); };
     recognition.onresult = (e) => {
       let txt = ''; for (const r of e.results) txt += r[0].transcript;
       const last = e.results[e.results.length - 1];
       if (last.isFinal) handleUser(txt.trim());
-      else showBubble('?? + txt + '?��?);
+      else showBubble('?? + txt + '?â€?);
     };
           recognition.onerror = (e) => {
         listening = false; setMic(false);
@@ -2179,14 +2179,14 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           console.error('[mic-diagnostic]', JSON.stringify(_diag, null, 2));
           try { localStorage.setItem('xiaob_mic_diag', JSON.stringify(_diag)); } catch (er) {}
         }
-        let hint = '?�覽?��??�援語音辨�? ?? 請改??Google Chrome / Edge 桌面?��??�直?��?�??��';
+        let hint = '?è¦½?¨ä??¯æ´èªžéŸ³è¾¨è? ?? 請改??Google Chrome / Edge 桌面?ˆï??–ç›´?¥æ?å­??'¬';
         if (e.error === 'not-allowed') {
           // 2026-06-13 v11: per-browser specific hint (Brave/Edge/Firefox all
           // expose SR API but lack Google speech backend ??'not-allowed' is the
           // expected result. We tell the user exactly which browser they used
           // and that Chrome is the only Chromium-based browser with working
           // speech backend on Android).
-          let browserName = '你�??�覽??;
+          let browserName = 'ä½ å??è¦½??;
           if (BROWSER.isBrave) browserName = 'Brave';
           else if (BROWSER.isEdge) browserName = 'Microsoft Edge';
           else if (BROWSER.isFirefox) browserName = 'Firefox';
@@ -2195,28 +2195,28 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           else if (BROWSER.isChrome) browserName = 'Google Chrome';
           const chromeOnly = (BROWSER.isBrave || BROWSER.isEdge || BROWSER.isFirefox || BROWSER.isSamsung || BROWSER.isOpera);
           hint = chromeOnly
-            ? browserName + ' 缺�? Google 語音後端 ??�?請改??Google Chrome 桌面?��? Android ???��'
-            : '?�獲?��? ??�?請�?許瀏覽?�使?�麥?�風，�??�用 Google Chrome ??';
+            ? browserName + ' 缺å? Google 語音後端 ??ï¸?請改??Google Chrome 桌面?ˆæ? Android ???'¬'
+            : '?ªç²?ˆæ? ??ï¸?請å?許瀏覽?¨ä½¿?¨éº¥?‹é¢¨ï¼Œæ??¹ç"¨ Google Chrome ??';
         } else if (e.error === 'service-not-allowed') {
-          hint = '沒聽?�聲???? 請�?試�?次�?並�?近�?點麥?�風 ?��';
+          hint = '沒聽?°è²???? 請å?試ä?次ï?並é?近ä?點麥?‹é¢¨ ?'¬';
         } else if (e.error === 'no-speech') {
           // 2026-06-13 v13: fix v12 recursive error loop. User #17321
           // console log 顯示 'error' handler took 60463ms (60s blocking!)
-          // ?�為 v12 ??onerror ?�直??call recognition.start(), �?SR
-          // ?�部 state �?transitioning, onerror 觸發後�? start() ??
-          // queue ?�錯�?stack 60s timeout. Fix: ??setTimeout delay 200ms
-          // �?onend 完�?, ??abort flag ?��??��? loop, ?�制 fallback
-          // ?��?1 �?(?��? 3 ??lang ??�� no-speech).
+          // ? ç'º v12 ??onerror ?§ç›´??call recognition.start(), ä½?SR
+          // ?§éƒ¨ state ä»?transitioning, onerror 觸發後å? start() ??
+          // queue ?ºéŒ¯èª?stack 60s timeout. Fix: ??setTimeout delay 200ms
+          // ç­?onend 完æ?, ??abort flag ?¿å??¡é? loop, ?åˆ¶ fallback
+          // ?€å¤?1 æ¬?(?¿å? 3 ??lang ??'° no-speech).
           if (window.SR_FALLBACK_IN_PROGRESS) {
-            // 已�???fallback ?��?�? ?��? trigger (?��? recursive)
+            // å·²ç???fallback ?²è?ä¸? ?"å? trigger (?¿å? recursive)
             return;
           }
           window.SR_FALLBACK_IN_PROGRESS = true;
           const idx = (window.SR_LANG_INDEX || 0) + 1;
           if (idx < window.SR_LANG_CHAIN.length && idx <= 1) {
-            // ?�制 fallback ?��?1 �?(�?zh-HK ??zh-CN, ??try en-US)
+            // ?åˆ¶ fallback ?€å¤?1 æ¬?(å¾?zh-HK ??zh-CN, ??try en-US)
             window.SR_LANG_INDEX = idx;
-            hint = '?�聽??' + window.SR_LANG_CHAIN[idx - 1] + ' ?��?????�?試�???' + window.SR_LANG_CHAIN[idx] + ' 講�??��?近麥?�風';
+            hint = '?‡è½??' + window.SR_LANG_CHAIN[idx - 1] + ' ?…è?????ï¸?試ä???' + window.SR_LANG_CHAIN[idx] + ' 講ï??–é?近麥?‹é¢¨';
             setTimeout(() => {
               try {
                 recognition.lang = window.SR_LANG_CHAIN[idx];
@@ -2228,7 +2228,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
               }
             }, 200);
           } else {
-            hint = '?�收?��??�輸???? 請確�?mic 已�? unmute, 對�? mic 大聲?��??? 如�??�廣?�話, 請去 Settings ??System ??Languages ??Offline speech recognition ??下�? 中�? (香港) language pack.';
+            hint = '?‡æ"¶?°è??³è¼¸???? 請確èª?mic å·²ç? unmute, 對ä? mic 大聲?²è??? 如æ??¨å»£?±è©±, 請去 Settings ??System ??Languages ??Offline speech recognition ??下è? 中æ? (香港) language pack.';
             window.SR_LANG_INDEX = 0;
             recognition.lang = window.SR_LANG_CHAIN[0];
             window.SR_FALLBACK_IN_PROGRESS = false;
@@ -2341,7 +2341,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         }
       }
 
-      // ?�寫 model.update 以確保在 Motion/Expression 計�?完畢後強?��??�衣裝�???
+      // ?å¯« model.update 以確保在 Motion/Expression 計ç?完畢後強?¶å??¨è¡£è£å???
       // 2026-06-13 v21: removed the second applyOutfit() call from this
       // override. The model.on('update', ...) listener below already calls
       // applyOutfit() once per frame at the end of its per-frame work. With
@@ -2372,8 +2372,8 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           sessionStorage.setItem('xiaob_welcomed', '1');
           setTimeout(() => {
             const greet = (window.ttsLang && /^zh-HK/i.test(window.ttsLang))
-              ? '你好，�?係吸血�??? 你可以撳下面 ?�� 試�?跟�??��?，�??�直?��?字�??��?
-              : '你好，�??�吸血�?AI ?�擬人。�??�以???�� 試�??�輸?��??�直?��?字�??�任何�?題�?;
+              ? '你好,æ?係吸血é¬??? 你可以撳下面 ?ޤ 試å?跟æ??¾å?,æ??…ç›´?¥æ?字å??'ã€?
+              : '你好,æ??¯å¸è¡€é¬?AI ?›æ"¬äººã€'ä??¯ä»¥???ޤ 試è??³è¼¸?¥ï??–ç›´?¥æ?字å??'任何å?題ã€?;
             showBubble(greet);
           }, 600);
         }
@@ -2527,7 +2527,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         for (const g of Object.keys(ms)) (ms[g] || []).forEach(d => { delete d.Sound; delete d.sound; });
       } catch (e) {}
 
-      // ?�?� Motion injection: load .motion3.json files and register them ?�?�
+      // ?€?€ Motion injection: load .motion3.json files and register them ?€?€
       // 2026-06-12: Helper to restore outfit params after any motion finishes.
       // Called by the onAnimationEnd callback added to each CubismMotion in injectMotions().
       // This is the definitive fix for the "select black ??motion resets to white" bug.
@@ -2785,7 +2785,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         },
       };
       const EMOTION_KEYS = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'shy', 'thinking'];
-      const EMOTION_LABELS = { neutral:'?�� 待�?', happy:'?? ?��?', sad:'?�� ?��?', angry:'?? ?�氣', surprised:'?�� 驚�?', shy:'?�� 害�?', thinking:'?? ?��? };
+      const EMOTION_LABELS = { neutral:'?˜¶ 待æ?', happy:'?? ?‹å?', sad:'?˜¢ ?·å?', angry:'?? ?Ÿæ°£', surprised:'?˜² 驚è?', shy:'?˜³ 害ç?', thinking:'?? ?è€? };
       let currentEmotion = 'neutral';
       // 2026-06-13 v30: expose EMOTION_KEYS/LABELS to script-level scope so the
       // settings modal (which lives outside this IIFE) can populate the
@@ -2815,7 +2815,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         bloodBody: false
       });
 
-      window.applyEmotion = function(name) { // ?�至?��?供�??��?外部?�路調用
+      window.applyEmotion = function(name) { // ?è‡³?¨å?供ç??‹æ?外部?ˆè·¯èª¿ç"¨
         if (!window.KNOWLEDGE) { console.warn('[emotion] no KNOWLEDGE'); return; }
         const preset = EMOTION_PRESETS[name];
         if (!preset) { console.warn('[emotion] unknown:', name); return; }
@@ -2828,7 +2828,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         currentEmotion = name;
         currentSentenceEmotion = name;
 
-        // ?�步??emoteState
+        // ?Œæ­¥??emoteState
         if (name === 'happy') {
           emoteState.eyes = 'hearteyes';
           emoteState.blush = false;
@@ -2861,7 +2861,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           emoteState.angry = false;
         }
 
-        // ?�叫 Live2D ?��?表�?系統?�放對�???exp3.json (?��???fallback)
+        // ?¼å« Live2D ?Ÿç?表æ?系統?­æ"¾å°æ???exp3.json (?¯ä???fallback)
         if (typeof model !== 'undefined' && model && typeof model.expression === 'function') {
           // 2026-06-13 v16: 'neutral' no longer maps to 'vampire'/'vampire2'.
           // Those .exp3.json files include outfit color params, which would
@@ -2886,28 +2886,28 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           }
         }
 
-        // ?�步?�新表�??�單中被?�中?��??�樣�?
+        // ?Œæ­¥?´æ–°è¡¨æ??¸å–®ä¸­è¢«?¸ä¸­?"æ??•樣å¼?
         if (typeof updateEmoteListActiveUI === 'function') {
           updateEmoteListActiveUI();
         }
 
         console.log('[emotion] ' + name + ' => ok=' + r.ok + ' failed=' + r.failed);
-        showBubble('表�?�? + (EMOTION_LABELS[name] || name));
+        showBubble('表æ?ï¼? + (EMOTION_LABELS[name] || name));
       };
 
-      // 表�??��?觀客製?�選?�已移除，此?�改?�衣裝�??��??��??��??��?�?
-      window.updateEmoteListActiveUI = function() {}; // 空函?�相容�?
+      // 表æ??‡å?觀客製?–選?®å·²ç§»é™¤ï¼Œæ­¤?•改?ºè¡£è£è??›æ??•ä??µå??›é?è¼?
+      window.updateEmoteListActiveUI = function() {}; // 空函?¸ç›¸å®¹æ€?
       (function() {
-        // 2026-06-14 v40 fix: ?��? #btn-emote-corner (line 500 HTML ?�正??
-        // ?�本�?#btn-emote ???�到 null ??IIFE 第�?�?setAttribute �?crash
-        // ??toggleOutfit 永�??��?�???line 4127 listener `toggleOutfit && toggleOutfit()` ??undefined short-circuit ??trigger
+        // 2026-06-14 v40 fix: ?¹æ? #btn-emote-corner (line 500 HTML ?Ÿæ­£??
+        // ?Ÿæœ¬å¯?#btn-emote ???žåˆ° null ??IIFE 第ä?æ¬?setAttribute å°?crash
+        // ??toggleOutfit æ°¸é??ªå?ç¾???line 4127 listener `toggleOutfit && toggleOutfit()` ??undefined short-circuit ??trigger
         const btn = document.getElementById('btn-emote-corner');
         if (!btn) { console.error('[Outfit] btn-emote-corner not found, abort'); return; }
 
-        // 修改?��??��?示�?屬性�?以代表衣裝�???
-        btn.setAttribute('aria-label', '?��?�??形�? (黑色/?�色)');
-        btn.setAttribute('title', '?��?�??形�? (黑色/?�色)');
-        btn.innerHTML = '<span aria-hidden="true">?��</span> �??';
+        // 修改?‰é??"æ?示è?屬性ï?以代表衣裝å???
+        btn.setAttribute('aria-label', '?‡æ?è¡??å½¢æ? (黑色/?½è‰²)');
+        btn.setAttribute('title', '?‡æ?è¡??å½¢æ? (黑色/?½è‰²)');
+        btn.innerHTML = '<span aria-hidden="true">?§¥</span> è¡??';
 
         function toggleOutfit() {
           const isBlack = (emoteState.outfit !== 'vampire2');
@@ -2915,7 +2915,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           emoteState.outfit = nextOutfit;
 
           // 2026-06-15 v44: fix for body Part26 still not responding after v42.
-          // User feedback: '?��?黑色?�巾，其他�??�衣?��??��?沒�?顯示'
+          // User feedback: '?ªæ?黑色?­å·¾ï¼Œå…¶ä»–é??²è¡£?è??æ?沒æ?顯示'
           // (headscarf shows, body black clothes stay transparent).
           // Hypothesis: Part26 is in MULTIPLY blend mode. setPartOpacityById
           // alone sets the opacity layer, but if MULTIPLY=0 the texture is
@@ -2937,9 +2937,9 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           }
 
           // Path 1B (v47 CRITICAL FIX): Directly set PARAMoutfit1_2.
-          // CDI3 confirms this is "�??：�??�白" ??the rigging parameter for body clothes.
+          // CDI3 confirms this is "è¡??:é??'白" ??the rigging parameter for body clothes.
           // vampire2.exp3.json does NOT set PARAMoutfit1_2 (leaves it at 0).
-          // ?��?�?exp3.json sets PARAMoutfit1_2=1.0 (black clothes).
+          // ?¸è?é¬?exp3.json sets PARAMoutfit1_2=1.0 (black clothes).
           // This triggers the model's rigging to show/hide body clothes.
           if (cm && typeof cm.setParameterValueById === 'function') {
             try {
@@ -2971,7 +2971,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             // Opacity (try multiple ID formats in case 'Part26' is wrong)
             const partIdVariants = {
               'Part26': ['Part26', 'part26', 'part_26', '26', 'PART_26', 'Part_26', 'Black_Clothes', '黑衣??],
-              'Part30': ['Part30', 'part30', 'part_30', '30', 'PART_30', 'Part_30', 'White_Clothes', '?�衣??],
+              'Part30': ['Part30', 'part30', 'part_30', '30', 'PART_30', 'Part_30', 'White_Clothes', '?½è¡£??],
             };
             for (const partKey of ['Part26', 'Part30']) {
               const targetOp = (partKey === 'Part26') ? blackOp : whiteOp;
@@ -3051,7 +3051,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             }
           }
 
-          showBubble('已�??�衣裝�?' + (nextOutfit === 'vampire2' ? '?�色�??' : '黑色�??'));
+          showBubble('å·²å??›è¡£è£ï?' + (nextOutfit === 'vampire2' ? '?½è‰²è¡??' : '黑色è¡??'));
           btn.setAttribute('aria-pressed', String(nextOutfit === 'vampire2'));
         }
 
@@ -3262,7 +3262,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         // window.__demoCarouselInterval opt-in (default off).
       }, 1500);
 
-      // Bug 1 修正：�??�地尋�?�???��??�防禦命?�空??KNOWLEDGE 強制綁�?，並?�面?�用?�大寫�?線�???
+      // Bug 1 修正:å??¬åœ°å°‹å?ä»???‡å??¨é˜²ç¦¦å'½?ç©º??KNOWLEDGE 強制綁å?,並?¨é¢?›ç"¨?¨å¤§å¯«å?線å???
       function safeSetParam(name, value) {
         let success = false;
         if (window.KNOWLEDGE && typeof window.KNOWLEDGE.setParam === 'function') {
@@ -3295,7 +3295,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       }
       probeParamIndices();
 
-      // 互�?式�?鼠�??�然?��??��?模�?
+      // 互å?式æ?é¼ è??ªç"¶?ºå??å?模ç?
       let mouseX = 0, mouseY = 0;
       let hasMouseInput = false;
 
@@ -3512,7 +3512,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         const t = performance.now() / 1000;
         const w = app.renderer.width, h = app.renderer.height;
 
-        // 計�?滑�?/?�然?��??��??�目標座�?
+        // 計ç?滑é?/?ªç"¶?¨æ??ƒå??"目標座æ¨?
         let targetX = w / 2;
         let targetY = h / 2;
 
@@ -3520,12 +3520,12 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           targetX = mouseX;
           targetY = mouseY;
         } else {
-          // 沒�?滑�?輸入?��?使用 Sine/Cos ?��?微�??�然?��?（�?度�?足�?，�?寬度 12%?��?�?8% ?��?移�?
+          // 沒æ?滑é?輸入?'ï?使用 Sine/Cos ?¢ç?å¾®å??ªç"¶?ƒå?(å?度è?è¶³å?,ç?寬度 12%?é?åº?8% ?"å?ç§»ï?
           targetX = w / 2 + Math.sin(t * 0.5) * (w * 0.12);
           targetY = h / 2 + Math.cos(t * 0.4) * (h * 0.08);
         }
 
-        // 使用 model.track 追蹤?��?（�?寫入 PARAM_ANGLE_X/Y ??PARAM_EYE_BALL_X/Y�?
+        // 使用 model.track 追蹤?®æ?(æ?寫入 PARAM_ANGLE_X/Y ??PARAM_EYE_BALL_X/Yï¼?
         // 2026-06-13 v31: sensitivity driven by __dev_eye_track (dev mode slider)
         if (model && typeof model.track === 'function') {
           // Scale target by eye tracking sensitivity (1.0 = default, 0.5 = less responsive, 2.0 = more responsive)
@@ -3534,17 +3534,17 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           model.track(trackX, trackY);
         }
 
-        // ?�吸 (PARAM_BREATH) ?��???0 ??1 之�?
+        // ?¼å¸ (PARAM_BREATH) ?¯å???0 ??1 之é?
         // 2026-06-13 v31: amplitude driven by __dev_breath_amp (dev mode slider)
         const breath = (Math.sin(t * 1.5) + 1.0) / 2.0 * __dev_breath_amp;
         v22Set('PARAM_BREATH', breath);
 
-        // 身�??�肩?�?��? (PARAM_BODY_ANGLE_X/Y/Z, PARAM_shoulder)
+        // 身é??‡è'©?€?ƒå? (PARAM_BODY_ANGLE_X/Y/Z, PARAM_shoulder)
         // 2026-06-13 v31: driven by __dev_body_sway / __dev_speaking_sway (dev mode sliders)
         let bodySwayX = Math.sin(t * 0.4) * __dev_body_sway;
         let bodySwayY = Math.cos(t * 0.3) * (__dev_body_sway * 0.6);
         if (isSpeaking) {
-          // 說話?��??��??��?度�??��?，�?身�?顯�??��?
+          // 說話?'å?? æ??•å?度å??»ç?,è?身é?顯å??Ÿå?
           bodySwayX += Math.sin(t * 3.0) * __dev_speaking_sway;
           bodySwayY += Math.cos(t * 2.5) * (__dev_speaking_sway * 0.6);
           v22Set('PARAM_BODY_ANGLE_Z', Math.sin(t * 2.0) * (__dev_speaking_sway * 0.6));
@@ -3573,8 +3573,8 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           } catch (e) { /* param may not exist on all model variants */ }
         }
 
-        // ?�?�?� 寫入?��? emoteState 外�??�表?��????�?�?�
-        // 1. ?��??��? (outfit) ??2026-06-13 v16: delegated to applyOutfit() (single source of truth)
+        // ?€?€?€ 寫入?¨å? emoteState 外è??‡è¡¨?…å????€?€?€
+        // 1. ?è??‹æ? (outfit) ??2026-06-13 v16: delegated to applyOutfit() (single source of truth)
 
         // 2026-06-15 v50: per-frame diagnostic ??log PARAMoutfit1_2 actual SDK value
         // every 60 frames so we can see whether doFade() is actually applying it.
@@ -3614,7 +3614,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
 
         applyOutfit(emoteState.outfit);
 
-        // 2. ?�勢?�具 (gesture) ??2026-06-12 16:59: independent flags so
+        // 2. ?‹å‹¢?"å…· (gesture) ??2026-06-12 16:59: independent flags so
         // PARAMhands_1 (mc) + PARAMhands_2 (knife) can both be 1.0 simultaneously.
         var _gs = emoteState.gestures || { knife: false, mc: false, mouse: false, click: false };
         v22Set('PARAMhands_1', _gs.mc    ? 1.0 : 0.0);
@@ -3622,12 +3622,12 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         v22Set('PARAMhands_3', _gs.mouse ? 1.0 : 0.0);
         v22Set('Paramclick',   _gs.click ? 1.0 : 0.0);
 
-        // 3. ?��??�部 (eyes)
+        // 3. ?¹æ??¼éƒ¨ (eyes)
         v22Set('PARAMWHITEEYE', emoteState.eyes === 'circleeyes' ? 1.0 : 0.0);
         v22Set('PARAMhearteye', emoteState.eyes === 'hearteyes' ? 1.0 : 0.0);
         v22Set('PARAMstareye', emoteState.eyes === 'stareyes' ? 1.0 : 0.0);
 
-        // 4. ?�部?��? (blush, tears, angry)
+        // 4. ?‰éƒ¨?ˆæ? (blush, tears, angry)
         v22Set('PARAMSHY', emoteState.blush ? 1.0 : 0.0);
         if (emoteState.tears) {
           v22Set('PARAMTEARS', 1.0);
@@ -3640,16 +3640,16 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         }
         v22Set('PARAMANGRY', emoteState.angry ? 1.0 : 0.0);
 
-        // 5. 血跡�???(bloodFace, bloodBody)
+        // 5. 血跡æ???(bloodFace, bloodBody)
         v22Set('PARAMBLOOD2', emoteState.bloodFace ? 1.0 : 0.0);
         v22Set('PARAMblood1', emoteState.bloodBody ? 1.0 : 0.0);
 
         // 5b. REMOVED in v45: per-frame Part26/Part30 writes clobbered
         // toggleOutfit()'s direct calls. Part opacity is now exclusively
         // controlled by toggleOutfit() ??the idle loop must NOT touch it.
-        // See v45 fix: '黑色�??變透�?' bug (body black invisible after click).
+        // See v45 fix: '黑色è¡??變透æ?' bug (body black invisible after click).
 
-        // ?�眼?�輯
+        // ?¨çœ¼?è¼¯
         if (t - lastBlinkT > nextBlinkIn) {
           lastBlinkT = t;
           nextBlinkIn = 2.0 + Math.random() * 3.0;
@@ -3664,21 +3664,21 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         v22Set('PARAM_EYE_L_OPEN', blinkVal);
         v22Set('PARAM_EYE_R_OPEN', blinkVal);
 
-        // ?�巴張�??�輯：說話�??��??��?，�?說話?��???
+        // ?´å·´å¼µå??è¼¯ï¼šèªªè©±æ??¨æ??´å?,æ?說話?'é???
         const mouthTarget = useAudioMouth ? audioMouth : (isSpeaking ? (0.3 + Math.random() * 0.55) : 0);
         mouthValue += (mouthTarget - mouthValue) * 0.35;
         v22Set('PARAM_MOUTH_OPEN_Y', mouthValue);
       });
 
       const sg = [
-        { q: '?��???, t: '你好' },
-        { q: '?��?介紹', t: '?�是什�? },
-        { q: '安�?', t: '?�麼安�?' },
-        { q: '?�皮', t: '?�麼?��?你�?角色' }
+        { q: '?"æ???, t: '你好' },
+        { q: '?ªæ?介紹', t: '?™æ˜¯ä»€éº? },
+        { q: '安è?', t: '?Žéº¼å®‰è?' },
+        { q: '?›çš®', t: '?Žéº¼?›æ?ä½ ç?角色' }
       ];
       const sgel = document.getElementById('suggestions');
       const lbl = document.createElement('div');
-      lbl.className = 'sg-label'; lbl.textContent = '?��?�?;
+      lbl.className = 'sg-label'; lbl.textContent = '?æ?ï¼?;
       sgel.appendChild(lbl);
       sg.forEach(s => {
         const b = document.createElement('button');
@@ -3687,7 +3687,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         sgel.appendChild(b);
       });
 
-      setTimeout(() => speak('?��?，�??�吸血鬼�??�以?��?任�??��???), 500);
+      setTimeout(() => speak('?ˆå?,æ??¯å¸è¡€é¬¼ï??¯ä»¥?æ?ä»»ä??é???), 500);
     } catch (e) {
       console.error('Live2D load failed:', e);
     }
@@ -3709,8 +3709,8 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           btn.classList.add('mic-unsupported');
           btn.setAttribute('aria-disabled', 'true');
           btn.setAttribute('title', BROWSER.isAndroid
-            ? 'Android ??Chrome ?�覽?��?缺�? Google 語音後端?��??�用 Google Chrome??
-            : '此瀏覽?��??�援 Web Speech API??);
+            ? 'Android ??Chrome ?è¦½?¨ï?缺å? Google 語音後端?'è??¹ç"¨ Google Chrome??
+            : '此瀏覽?¨ä??¯æ´ Web Speech API??);
         }
       }
     })();
@@ -3731,10 +3731,10 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     function paint() {
       const isNeural = (ttsMode === 'neural');
       btn.setAttribute('aria-pressed', String(isNeural));
-      btn.innerHTML = '<span aria-hidden="true">' + (isNeural ? '??' : '??') + '</span> ' + (isNeural ? 'MiniMax' : '?�費');
+      btn.innerHTML = '<span aria-hidden="true">' + (isNeural ? '??' : '??') + '</span> ' + (isNeural ? 'MiniMax' : '?è²»');
       btn.title = isNeural
-        ? 'MiniMax 神�?語音 (Cantonese HD)?�撳一下�??��??�費 Web Speech API??
-        : '?�費 Web Speech API (?�覽?�內�??�撳一下�??�至 MiniMax 神�?語音??;
+        ? 'MiniMax 神ç?語音 (Cantonese HD)?'撳一下å??›è??è²» Web Speech API??
+        : '?è²» Web Speech API (?è¦½?¨å…§å»??'撳一下å??›è‡³ MiniMax 神ç?語音??;
     }
     // Sync from storage on boot (already loaded into ttsMode above) and paint
     paint();
@@ -3749,9 +3749,9 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
       if (ttsMode === 'neural' && !MINIMAX_TTS_KEY) {
         // 2026-06-12 BAZOOKA-free: prompt user to enter API key
         openMinimaxKeyModal();
-        showBubble('請輸??MiniMax API Key 以�??��?經�???(Cantonese HD)');
+        showBubble('請輸??MiniMax API Key 以å??¨ç?經è???(Cantonese HD)');
       } else {
-        showBubble(ttsMode === 'neural' ? '已�??�至 MiniMax 神�?語音 (Cantonese HD)' : '已�??�至?�費 Web Speech API');
+        showBubble(ttsMode === 'neural' ? 'å·²å??›è‡³ MiniMax 神ç?語音 (Cantonese HD)' : 'å·²å??›è‡³?è²» Web Speech API');
       }
     });
   })();
@@ -3779,23 +3779,23 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     // Cantonese_PlayfulMan (4 active). Mandarin: female-tianmei, presenter_male.
     const SHORT_VOICE_ID = {
       'Cantonese_GentleLady': '粵女', 'Cantonese_PlayfulMan': '粵男',
-      'Cantonese_KindWoman':  '粵�?', 'Cantonese_CuteGirl':   '粵�?',
-      'female-tianmei':      '?�女', 'presenter_male':       '?�男',
+      'Cantonese_KindWoman':  'ç²µå?', 'Cantonese_CuteGirl':   'ç²µè?',
+      'female-tianmei':      '?®å¥³', 'presenter_male':       '?®ç"·',
     };
     function shortLabel(id) {
       if (!id) return '語音';
       if (SHORT_VOICE_ID[id]) return SHORT_VOICE_ID[id];
       if (id.startsWith('cantonese-female')) return '粵女';
       if (id.startsWith('cantonese-male'))   return '粵男';
-      if (id.startsWith('cantonese-gentle')) return '粵�?';
-      if (id.startsWith('cantonese-cute'))   return '粵�?';
+      if (id.startsWith('cantonese-gentle')) return 'ç²µæ?';
+      if (id.startsWith('cantonese-cute'))   return 'ç²µè?';
       if (id.startsWith('cantonese-playful'))return '粵活';
-      if (id.startsWith('cantonese-kind'))   return '粵�?';
-      if (id.startsWith('mandarin-female'))  return '?�女';
-      if (id.startsWith('mandarin-male'))    return '?�男';
-      if (id.startsWith('mandarin-shaonv'))  return '?��?';
-      if (id.startsWith('mandarin-yujie'))   return '?�御';
-      if (id.startsWith('mandarin-chengshu'))return '?��?';
+      if (id.startsWith('cantonese-kind'))   return 'ç²µå?';
+      if (id.startsWith('mandarin-female'))  return '?®å¥³';
+      if (id.startsWith('mandarin-male'))    return '?®ç"·';
+      if (id.startsWith('mandarin-shaonv'))  return '?®å?';
+      if (id.startsWith('mandarin-yujie'))   return '?®å¾¡';
+      if (id.startsWith('mandarin-chengshu'))return '?®ç?';
       return id.split('_').pop().slice(0, 4);
     }
     function paintBtn() {
@@ -3805,7 +3805,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
       } else {
         // browser mode: show language tag of selected voice (e.g. 'zh-TW')
         const v = ttVoice;
-        btnLabel.textContent = v ? (v.lang || '?�覽??).slice(0, 5) : '?�覽??;
+        btnLabel.textContent = v ? (v.lang || '?è¦½??).slice(0, 5) : '?è¦½??;
       }
     }
     // Initial label
@@ -3822,7 +3822,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
       // directly from MiniMax (was hardcoded "12 ?? when the only available
       // voices came from a 12-item BAZOOKA backend).
       const neuralCount = (isNeural && serverVoices.length) ? serverVoices.length : null;
-      header.innerHTML = '<span>' + (isNeural ? ('MiniMax 神�?語音' + (neuralCount ? ' (' + neuralCount + ' ??' : '')) : '?�覽?�內建�???) + '</span><span style="font-size:11px;opacity:.7;">' + (isNeural ? '?? server' : '?? free') + '</span>';
+      header.innerHTML = '<span>' + (isNeural ? ('MiniMax 神ç?語音' + (neuralCount ? ' (' + neuralCount + ' ??' : '')) : '?è¦½?¨å…§å»ºè???) + '</span><span style="font-size:11px;opacity:.7;">' + (isNeural ? '?? server' : '?? free') + '</span>';
       popover.appendChild(header);
 
       if (isNeural) {
@@ -3851,7 +3851,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             // Prompt the user to set up the API key first
             const empty = document.createElement('div');
             empty.className = 'vl-empty';
-            empty.textContent = '請�?�??? 設置 MiniMax API Key + Group ID??;
+            empty.textContent = '請å?é»??? 設置 MiniMax API Key + Group ID??;
             popover.appendChild(empty);
             return;
           }
@@ -3869,13 +3869,13 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         if (!serverVoices.length) {
           const empty = document.createElement('div');
           empty.className = 'vl-empty';
-          empty.textContent = '語音?��??�就緒�?請�?後�?試�?;
+          empty.textContent = '語音?®é??ªå°±ç·'ï?請ç?後é?試ã€?;
           popover.appendChild(empty);
           return;
         }
         // Render neural voices
         // 2026-06-12 17:35: NEURAL_VOICE now stores the real MiniMax voice_id
-        // (e.g. 'Cantonese_ProfessionalHost（F�?), not the friendly alias.
+        // (e.g. 'Cantonese_ProfessionalHost(Fï¼?), not the friendly alias.
         // The voice selector displays the alias (id) for the user but writes
         // the real voice_id to NEURAL_VOICE on click. fetchMinimaxTtsDirect
         // reads NEURAL_VOICE directly as voice_setting.voice_id.
@@ -3903,8 +3903,8 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             paintBtn();
             closePopover();
             // Speak a lang-appropriate sample so the user hears the voice
-            const sample = (v.lang === 'zh-HK') ? '你好，�?係�?港粵語�??��? :
-                           (v.lang === 'zh-CN') ? '你好，�?係普?�話語音?? : v.name;
+            const sample = (v.lang === 'zh-HK') ? '你好,æ?係é?港粵語è??³ã€? :
+                           (v.lang === 'zh-CN') ? '你好,æ?係普?šè©±èªžéŸ³?? : v.name;
             speak(sample);
           });
           popover.appendChild(item);
@@ -3917,14 +3917,14 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         if (!voices.length) {
           const empty = document.createElement('div');
           empty.className = 'vl-empty';
-          empty.textContent = '?�覽?�未?��?語音，�???Chrome / Edge ?��???;
+          empty.textContent = '?è¦½?¨æœª?ä?語音,è???Chrome / Edge ?‹å???;
           popover.appendChild(empty);
           return;
         }
         // Section: built-in
         const section = document.createElement('div');
         section.className = 'vl-section';
-        section.textContent = '?�覽?�內�?(' + voices.length + ')';
+        section.textContent = '?è¦½?¨å…§å»?(' + voices.length + ')';
         popover.appendChild(section);
         voices.forEach((v) => {
           const item = document.createElement('div');
@@ -3938,9 +3938,9 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             try { localStorage.setItem(KEY_BROWSER, v.voiceURI); } catch (e) {}
             paintBtn();
             closePopover();
-            const sample = (/^zh-HK/i.test(v.lang)) ? '你好，�?係�?港粵語�??��? :
-                           (/^zh-CN/i.test(v.lang)) ? '你好，�?係普?�話語音?? :
-                           (/^zh-TW/i.test(v.lang)) ? '你好，�?係台???語�??��? :
+            const sample = (/^zh-HK/i.test(v.lang)) ? '你好,æ?係é?港粵語è??³ã€? :
+                           (/^zh-CN/i.test(v.lang)) ? '你好,æ?係普?šè©±èªžéŸ³?? :
+                           (/^zh-TW/i.test(v.lang)) ? '你好,æ?係台???語è??³ã€? :
                            (/^en/i.test(v.lang)) ? 'Hello, this is a voice sample.' : v.name;
             speak(sample);
           });
@@ -3995,7 +3995,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
   })();
 
   // 2026-06-13 v31: settings modal open/close + tabbed dev mode bindings.
-  // Settings modal now uses a 4-tab structure: 一??/ 模�? / 對話 / 診斷.
+  // Settings modal now uses a 4-tab structure: 一??/ 模å? / 對話 / 診斷.
   (function initSettingsModal() {
     const modal = document.getElementById('settings-modal');
     const openBtn = document.getElementById('btn-settings');
@@ -4053,7 +4053,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         // MiniMax keys
         const mmKey = document.getElementById('settings-minimax-key');
         const mmGroup = document.getElementById('settings-minimax-group');
-        if (mmKey) mmKey.value = MINIMAX_TTS_KEY ? '?�••••••�? : '';
+        if (mmKey) mmKey.value = MINIMAX_TTS_KEY ? '?¢â€¢â€¢â€¢â€¢â€¢â€¢â€? : '';
         if (mmGroup) mmGroup.value = MINIMAX_GROUP_ID || '';
         const ttsSel = document.getElementById('settings-tts-mode');
         if (ttsSel) ttsSel.value = ttsMode;
@@ -4061,7 +4061,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         if (voiceSel) {
           voiceSel.innerHTML = '';
           const opt0 = document.createElement('option');
-          opt0.value = ''; opt0.textContent = '??請選?��?????;
+          opt0.value = ''; opt0.textContent = '??請選?‡è?????;
           voiceSel.appendChild(opt0);
           if (Array.isArray(serverVoicesCatalog)) {
             serverVoicesCatalog.forEach(v => {
@@ -4151,7 +4151,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     });
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
-        if (!confirm('?�設?��??��???localStorage 設�?，繼續�?')) return;
+        if (!confirm('?è¨­?ƒæ??¤æ???localStorage 設å?,繼續ï?')) return;
         try {
           __DEV_KEYS.forEach(k => localStorage.removeItem(k));
           ['deepseek_key', 'xiaob_tts_mode', 'xiaob_voice_id', 'xiaob_browser_voice_uri',
@@ -4169,11 +4169,11 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         if (v && !v.startsWith('*')) {
           DEEPSEEK_KEY = v;
           try { localStorage.setItem('deepseek_key', v); } catch (e) {}
-          showBubble('DeepSeek API Key 已儲�?);
+          showBubble('DeepSeek API Key 已儲å­?);
         } else if (v === '') {
           DEEPSEEK_KEY = '';
           try { localStorage.removeItem('deepseek_key'); } catch (e) {}
-          showBubble('DeepSeek API Key 已�???);
+          showBubble('DeepSeek API Key å·²æ???);
         }
       });
     }
@@ -4193,7 +4193,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         if (v && !v.startsWith('*')) {
           MINIMAX_TTS_KEY = v;
           try { localStorage.setItem('minimax_tts_key', v); } catch (e) {}
-          showBubble('MiniMax API Key 已儲�?);
+          showBubble('MiniMax API Key 已儲å­?);
         }
       });
     }
@@ -4215,7 +4215,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         neuralDisabled = false;
         if (ttsMode === 'neural' && !MINIMAX_TTS_KEY) openMinimaxKeyModal();
         try { window.dispatchEvent(new CustomEvent('xiaob:ttsModeChange', { detail: { mode: ttsMode } })); } catch (e) {}
-        showBubble(ttsMode === 'neural' ? '已�??�至 MiniMax 神�?語音' : '已�??�至?�覽??Web Speech API');
+        showBubble(ttsMode === 'neural' ? 'å·²å??›è‡³ MiniMax 神ç?語音' : 'å·²å??›è‡³?è¦½??Web Speech API');
       });
     }
     // Voice
@@ -4224,7 +4224,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
       voiceSel.addEventListener('change', () => {
         NEURAL_VOICE = voiceSel.value;
         try { localStorage.setItem('xiaob_voice_id', NEURAL_VOICE); } catch (e) {}
-        showBubble('已�??��??? ' + (voiceSel.selectedOptions[0]?.textContent || NEURAL_VOICE));
+        showBubble('å·²å??›è??? ' + (voiceSel.selectedOptions[0]?.textContent || NEURAL_VOICE));
       });
     }
     // TTS rate slider
@@ -4327,12 +4327,12 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             const dump = cm._parameterIds.slice();
             console.log('[v31 introspection] ' + dump.length + ' parameters:');
             dump.forEach(id => console.log('  ' + id));
-            showBubble('introspection 完�?�? + dump.length + ' ?��??�已輸出??console');
+            showBubble('introspection 完æ?ï¼? + dump.length + ' ?‹å??¸å·²è¼¸å‡º??console');
           } else {
-            showBubble('introspection 失�?：coreModel 不可??);
+            showBubble('introspection 失æ?:coreModel 不可??);
           }
         } catch (eIntrospect) {
-          showBubble('introspection 失�?�? + eIntrospect.message);
+          showBubble('introspection 失æ?ï¼? + eIntrospect.message);
         }
       });
     }
@@ -4350,9 +4350,9 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             ts: new Date().toISOString()
           };
           console.log('[v31 boot-diagnostic]', JSON.stringify(info, null, 2));
-          showBubble('Boot 記�?已輸?�至 console');
+          showBubble('Boot 記é?已輸?ºè‡³ console');
         } catch (eDiag) {
-          showBubble('讀?�失?��?' + eDiag.message);
+          showBubble('讀?–失?—ï?' + eDiag.message);
         }
       });
     }
@@ -4390,9 +4390,9 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
           const a = document.createElement('a');
           a.href = url; a.download = 'xiaob_settings_' + Date.now() + '.json';
           a.click(); URL.revokeObjectURL(url);
-          showBubble('設�?已匯??);
+          showBubble('設å?已匯??);
         } catch (eExport) {
-          showBubble('?�出失�?�? + eExport.message);
+          showBubble('?¯å‡ºå¤±æ?ï¼? + eExport.message);
         }
       });
     }
@@ -4422,9 +4422,9 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             if (data.dev_tts_cap) { __dev_tts_cap = data.dev_tts_cap; try { localStorage.setItem('xiaob_dev_tts_cap', String(__dev_tts_cap)); } catch (e) {} }
             // 2026-06-14 v34
             if (data.show_chatbar !== undefined) { __xiaob_show_chatbar = !!data.show_chatbar; try { localStorage.setItem('xiaob_show_chatbar', String(__xiaob_show_chatbar)); } catch (e) {} }
-            showBubble('設�?已�??��??�要�??�整?��??��??��???);
+            showBubble('設å?å·²å??¥ï??€è¦é??°æ•´?†æ??½å??¨ç???);
           } catch (eImport) {
-            showBubble('導入失�?�? + eImport.message);
+            showBubble('導入失æ?ï¼? + eImport.message);
           }
         };
         reader.readAsText(file);
@@ -4435,7 +4435,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     const devReset = document.getElementById('dev-reset');
     if (devReset) {
       devReset.addEventListener('click', () => {
-        if (!confirm('確�?要�??��???localStorage 設�??��?此�?作無法撤?��?)) return;
+        if (!confirm('確å?要æ??¤æ???localStorage 設å??Žï?æ­¤æ?作無法撤?·ã€?)) return;
         try {
           __DEV_KEYS.forEach(k => localStorage.removeItem(k));
           ['deepseek_key', 'xiaob_tts_mode', 'xiaob_voice_id', 'xiaob_browser_voice_uri',
@@ -4495,12 +4495,12 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     popover.innerHTML = '';
     const header = document.createElement('div');
     header.className = 'vl-header';
-    header.innerHTML = '<span>?? ?��??�表</span><span style="font-size:11px;opacity:.7;">測試</span>';
+    header.innerHTML = '<span>?? ?•ä??—表</span><span style="font-size:11px;opacity:.7;">測試</span>';
     popover.appendChild(header);
     // Add Scene1 action
     const scene1Item = document.createElement('div');
     scene1Item.className = 'vl-item';
-    scene1Item.innerHTML = '<div class="vl-name">?�� ?�放 Scene1 ?�畫</div>';
+    scene1Item.innerHTML = '<div class="vl-name">?ެ ?­æ"¾ Scene1 ?•ç•«</div>';
     scene1Item.addEventListener('click', () => {
       console.log('[ActionList] Scene1 clicked, model=', typeof window.model);
       try { 
@@ -4524,7 +4524,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     // Add Idle action
     const idleItem = document.createElement('div');
     idleItem.className = 'vl-item';
-    idleItem.innerHTML = '<div class="vl-name">?��? ?�放 Idle ?�畫</div>';
+    idleItem.innerHTML = '<div class="vl-name">?¸ï? ?­æ"¾ Idle ?•ç•«</div>';
     idleItem.addEventListener('click', () => {
       console.log('[ActionList] Idle clicked');
       try { 
@@ -4544,12 +4544,12 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     popover.appendChild(idleItem);
     // Add emotion actions
     const emotions = [
-      { key: 'happy', label: '?? ?��?' },
-      { key: 'sad', label: '?�� ?��?' },
-      { key: 'angry', label: '?? ?�氣' },
-      { key: 'shy', label: '?�� 害�?' },
-      { key: 'surprised', label: '?�� 驚�?' },
-      { key: 'thinking', label: '?? ?��? }
+      { key: 'happy', label: '?? ?‹å?' },
+      { key: 'sad', label: '?˜¢ ?·å?' },
+      { key: 'angry', label: '?? ?Ÿæ°£' },
+      { key: 'shy', label: '?˜³ 害ç?' },
+      { key: 'surprised', label: '?˜² 驚è?' },
+      { key: 'thinking', label: '?? ?è€? }
     ];
     emotions.forEach(emo => {
       const item = document.createElement('div');
@@ -4586,15 +4586,15 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     const gestureHeader = document.createElement('div');
     gestureHeader.className = 'vl-header';
     gestureHeader.style.marginTop = '8px';
-    gestureHeader.innerHTML = '<span>?�� ?�具</span>';
+    gestureHeader.innerHTML = '<span>?Ž­ ?"å…·</span>';
     popover.appendChild(gestureHeader);
     const gestures = [
-      { key: 'knife', label: '?�� ?��?', flag: 'knife' },
-      { key: 'mc', label: '?�� 麥�?�?, flag: 'mc' },
-      { key: 'mouse', label: '?���?滑�?', flag: 'mouse' },
-      { key: 'click', label: '?? 點�?', flag: 'click' },
-      { key: 'bloodFace', label: '?�� ?�部血�?, flag: 'bloodFace' },
-      { key: 'bloodBody', label: '?�� ?�口血�?, flag: 'bloodBody' }
+      { key: 'knife', label: '?"ª ?¸å?', flag: 'knife' },
+      { key: 'mc', label: '?ޤ 麥å?é¢?, flag: 'mc' },
+      { key: 'mouse', label: '?–±ï¸?滑é?', flag: 'mouse' },
+      { key: 'click', label: '?? 點æ?', flag: 'click' },
+      { key: 'bloodFace', label: '?©¸ ?‰éƒ¨è¡€è·?, flag: 'bloodFace' },
+      { key: 'bloodBody', label: '?©¸ ?¸å£è¡€è·?, flag: 'bloodBody' }
     ];
     gestures.forEach(gs => {
       const item = document.createElement('div');
@@ -4635,30 +4635,30 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     };
     setTimeout(() => document.addEventListener('click', closeHandler), 0);
   }
-  // ?��??��?檢查?�否?��??��??��?話�?亮大?��???
+  // ?å??–æ?檢查?¯å¦?‰é??°ï??‰ç?話é?亮大?¦æ???
   const btnLlm = document.getElementById('btn-llm');
   if (btnLlm) {
     if (DEEPSEEK_KEY) {
       btnLlm.classList.add('llm-on');
-      btnLlm.title = '已�???DeepSeek 大腦';
+      btnLlm.title = 'å·²å???DeepSeek 大腦';
     }
 
     btnLlm.addEventListener('click', () => {
-      const key = prompt("請輸?�您??DeepSeek API Key (?��?空白並送出?��??��???�?, DEEPSEEK_KEY);
+      const key = prompt("請輸?¥æ'¨??DeepSeek API Key (?™ä?空白並送出?¯æ??¤é???ï¼?, DEEPSEEK_KEY);
       if (key !== null) {
         const cleanKey = key.trim();
         if (cleanKey) {
           DEEPSEEK_KEY = cleanKey;
           localStorage.setItem('deepseek_key', DEEPSEEK_KEY);
           btnLlm.classList.add('llm-on');
-          btnLlm.title = '已�???DeepSeek 大腦';
-          speak("DeepSeek 大腦已�??��??��?");
+          btnLlm.title = 'å·²å???DeepSeek 大腦';
+          speak("DeepSeek 大腦已æ??Ÿå??¨ï?");
         } else {
           DEEPSEEK_KEY = '';
           localStorage.removeItem('deepseek_key');
           btnLlm.classList.remove('llm-on');
-          btnLlm.title = '大腦?��???;
-          speak("已�???DeepSeek ?�鑰??);
+          btnLlm.title = '大腦?ªå???;
+          speak("å·²æ???DeepSeek ?'é'°??);
         }
       }
     });
@@ -4677,9 +4677,9 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;';
     modal.innerHTML = [
       '<div style="background:#fff;max-width:420px;width:90%;border-radius:14px;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.3);">',
-        '<h3 style="margin:0 0 8px;color:#1f3a5f;font-size:17px;">?? ?�用 MiniMax 神�?語音</h3>',
-        '<p style="margin:0 0 14px;font-size:13px;color:#5a6878;line-height:1.55;">?�接從瀏覽?�呼??MiniMax T2A API?��?要您?�己??API Key + Group ID??,
-          '<br/>?�鑰?��??��??�您?�瀏覽??(<code>localStorage</code>)，�??�傳?�任何第三方??,
+        '<h3 style="margin:0 0 8px;color:#1f3a5f;font-size:17px;">?? ?Ÿç"¨ MiniMax 神ç?語音</h3>',
+        '<p style="margin:0 0 14px;font-size:13px;color:#5a6878;line-height:1.55;">?´æŽ¥å¾žç€è¦½?¨å'¼??MiniMax T2A API?'é?要您?ªå·±??API Key + Group ID??,
+          '<br/>?'é'°?ªæ??²å??ºæ'¨?…瀏覽??(<code>localStorage</code>),å??ƒå'³?»ä»»ä½•第三方??,
         '</p>',
         '<label style="display:block;margin-bottom:10px;font-size:12px;color:#456;font-weight:600;">API Key</label>',
         '<input id="mk-key" type="password" autocomplete="off" placeholder="eyJhbGciOi..." style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #dde3e9;border-radius:8px;font-size:13px;font-family:ui-monospace,monospace;margin-bottom:12px;">',
@@ -4689,8 +4689,8 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         '<div style="display:flex;gap:8px;justify-content:flex-end;">',
           '<button id="mk-clear" style="padding:7px 14px;border:1px solid #dde3e9;background:#fff;border-radius:8px;font-size:13px;cursor:pointer;">清除</button>',
           '<button id="mk-test" style="padding:7px 14px;border:1px solid #5b54e8;background:#fff;color:#5b54e8;border-radius:8px;font-size:13px;cursor:pointer;">測試</button>',
-          '<button id="mk-save" style="padding:7px 14px;border:none;background:#5b54e8;color:#fff;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">?��?</button>',
-          '<button id="mk-cancel" style="padding:7px 14px;border:1px solid #dde3e9;background:#fff;border-radius:8px;font-size:13px;cursor:pointer;">?��?</button>',
+          '<button id="mk-save" style="padding:7px 14px;border:none;background:#5b54e8;color:#fff;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">?²å?</button>',
+          '<button id="mk-cancel" style="padding:7px 14px;border:1px solid #dde3e9;background:#fff;border-radius:8px;font-size:13px;cursor:pointer;">?–æ?</button>',
         '</div>',
       '</div>'
     ].join('');
@@ -4706,16 +4706,16 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
     modal.querySelector('#mk-save').addEventListener('click', () => {
       const k = $key.value.trim();
       const g = $group.value.trim();
-      if (!k) { $msg.innerHTML = '<span style="color:#c33;">API Key ?�可以空??/span>'; return; }
-      if (!g) { $msg.innerHTML = '<span style="color:#c33;">Group ID ?�可以空??/span>'; return; }
+      if (!k) { $msg.innerHTML = '<span style="color:#c33;">API Key ?"可以空??/span>'; return; }
+      if (!g) { $msg.innerHTML = '<span style="color:#c33;">Group ID ?"可以空??/span>'; return; }
       MINIMAX_TTS_KEY = k;
       MINIMAX_GROUP_ID = g;
       try { localStorage.setItem('minimax_tts_key', k); localStorage.setItem('minimax_group_id', g); } catch (e) {}
-      $msg.innerHTML = '<span style="color:#2a7;">??已儲�?/span>';
+      $msg.innerHTML = '<span style="color:#2a7;">??已儲å­?/span>';
       setTimeout(close, 600);
       if (pendingNeuralToggle) {
         pendingNeuralToggle = false;
-        showBubble('MiniMax 神�?語音已�??????��?下�?話試�?);
+        showBubble('MiniMax 神ç?語音已å??????³ä?下å?話試è©?);
       }
     });
     modal.querySelector('#mk-clear').addEventListener('click', () => {
@@ -4723,22 +4723,22 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
       MINIMAX_TTS_KEY = '';
       MINIMAX_GROUP_ID = '';
       try { localStorage.removeItem('minimax_tts_key'); localStorage.removeItem('minimax_group_id'); } catch (e) {}
-      $msg.innerHTML = '<span style="color:#888;">已�???/span>';
+      $msg.innerHTML = '<span style="color:#888;">å·²æ???/span>';
     });
     modal.querySelector('#mk-test').addEventListener('click', async () => {
-      $msg.innerHTML = '<span style="color:#5b54e8;">測試中�?/span>';
+      $msg.innerHTML = '<span style="color:#5b54e8;">測試中â€?/span>';
       const k = $key.value.trim();
       const g = $group.value.trim();
-      if (!k || !g) { $msg.innerHTML = '<span style="color:#c33;">請�?填寫 API Key + Group ID</span>'; return; }
+      if (!k || !g) { $msg.innerHTML = '<span style="color:#c33;">請å?填寫 API Key + Group ID</span>'; return; }
       const oldKey = MINIMAX_TTS_KEY, oldGroup = MINIMAX_GROUP_ID;
       MINIMAX_TTS_KEY = k; MINIMAX_GROUP_ID = g;
       try {
         const r = await fetchMinimaxTtsDirect('測試');
-        $msg.innerHTML = '<span style="color:#2a7;">??????��?</span>';
+        $msg.innerHTML = '<span style="color:#2a7;">??????å?</span>';
         try { await r.arrayBuffer(); } catch (e) {} // discard
       } catch (e) {
         MINIMAX_TTS_KEY = oldKey; MINIMAX_GROUP_ID = oldGroup;
-        $msg.innerHTML = '<span style="color:#c33;">??' + (e && e.message ? e.message.slice(0, 80) : '失�?') + '</span>';
+        $msg.innerHTML = '<span style="color:#c33;">??' + (e && e.message ? e.message.slice(0, 80) : '失æ?') + '</span>';
       }
     });
   }
