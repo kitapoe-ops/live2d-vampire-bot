@@ -2249,7 +2249,28 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       }
 
       model = await Live2DModel.from(MODEL_URL);
+      // 2026-06-15 v64: Hide model immediately, apply outfit, then reveal.
+      // PIXI v4 autoStart emits 'rendered' on the renderer, NOT on child sprites,
+      // so model.once('rendered') never fires. Use setTimeout instead.
+      model.alpha = 0;
       app.stage.addChild(model);
+      // Apply outfit while model is invisible
+      try {
+        if (typeof applyOutfit === 'function') {
+          applyOutfit(emoteState.outfit);
+          // Verify: read PARAMoutfit1_2 back from coreModel
+          const cm = model && model.internalModel && model.internalModel.coreModel;
+          if (cm && typeof cm.getParameterValueById === 'function') {
+            const val = cm.getParameterValueById('PARAMoutfit1_2');
+            console.log('[Live2D] applyOutfit called, PARAMoutfit1_2 =', val, '(expect 1.0 for black)');
+          }
+        }
+      } catch(e) { console.warn('[Live2D] applyOutfit error:', e); }
+      // Reveal model after 1 frame render cycle — imperceptible to user
+      setTimeout(() => {
+        model.alpha = 1;
+        console.log('[Live2D] Model revealed (applyOutfit applied before this)');
+      }, 16);
       // Expose model and emoteState globally so external functions like renderActionList can access them
       window.model = model;
       window.emoteState = emoteState;
@@ -2308,6 +2329,28 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             __v22_lastValue[k] = undefined;
           }
         }
+        // 2026-06-15 v61 FIX: Part59 (nude body) management.
+        // CDI3: Part59=1 dressed body (vampire), Part59=0 nude body (vampire2/white).
+        // Idle.motion3.json sets Part59=1 every loop — must override on every applyOutfit call.
+        try {
+          const cm2 = model && model.internalModel && model.internalModel.coreModel;
+          if (cm2) {
+            const isVampire = (outfitName === 'vampire');
+            const part59Op = isVampire ? 1.0 : 0.0;
+            const part26Op = isVampire ? 1.0 : 0.0;
+            const _setPart = function(pName, op) {
+              try { if (typeof cm2.setPartOpacityById==='function') cm2.setPartOpacityById(pName, op); } catch(e){}
+              try {
+                const cnt = (typeof cm2.getPartCount==='function') ? cm2.getPartCount() : 60;
+                for (let pi=0; pi<cnt; pi++) {
+                  try { if (cm2.getPartId(pi)===pName) { cm2.setPartOpacity(pi, op); break; } } catch(e2){}
+                }
+              } catch(e3){}
+            };
+            _setPart('Part59', part59Op);
+            _setPart('Part26', part26Op);
+          }
+        } catch(ePart59) {}
       }
 
       // 重寫 model.update 以確保在 Motion/Expression 計算完畢後強制套用衣裝參數
@@ -3296,6 +3339,21 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             };
             for (const p of blackParts)  setPart(p, isBlack ? 1.0 : 0.0);
             for (const p of whiteParts) setPart(p, isBlack ? 0.0 : 1.0);
+            // 2026-06-15 v61: CRITICAL — Part59 (body) every frame.
+            // Idle.motion3 sets Part59=1 every loop. For vampire2: Part59=0 = nude body.
+            try {
+              const part59Op = isBlack ? 1.0 : 0.0;
+              const _sp59 = function(pName, op) {
+                try { if (typeof cm.setPartOpacityById==='function') cm.setPartOpacityById(pName, op); } catch(e){}
+                try {
+                  const cnt = (typeof cm.getPartCount==='function') ? cm.getPartCount() : 60;
+                  for (let pi=0; pi<cnt; pi++) {
+                    try { if (cm.getPartId(pi)===pName) { cm.setPartOpacity(pi, op); break; } } catch(e2){}
+                  }
+                } catch(e3){}
+              };
+              _sp59('Part59', part59Op);
+            } catch(ePart59) {}
           } catch(e) {}
         })();
         // v52 per-frame diagnostic: log PARAMoutfit1_2 every 60 frames so we can
