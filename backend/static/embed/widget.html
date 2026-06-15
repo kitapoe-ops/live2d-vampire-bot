@@ -3427,23 +3427,10 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         v22Set('PARAMBLOOD2', emoteState.bloodFace ? 1.0 : 0.0);
         v22Set('PARAMblood1', emoteState.bloodBody ? 1.0 : 0.0);
 
-        // 5b. 2026-06-15 v42: 衣裝 Part opacity 同步 (Part26 黑/Part30 白)。
-        // 上一個 frame 嘅 model.expression() 唔會倒轉之前嘅 Part opacity set，
-        // 但要防 idle 期間有 motion / gesture call 改動 Part opacity。
-        if (model && model.internalModel && model.internalModel.coreModel) {
-          const cm2 = model.internalModel.coreModel;
-          if (typeof cm2.setPartOpacityById === 'function') {
-            try {
-              if (emoteState.outfit === 'vampire') {
-                cm2.setPartOpacityById('Part26', 1.0);
-                cm2.setPartOpacityById('Part30', 0.0);
-              } else {
-                cm2.setPartOpacityById('Part26', 0.0);
-                cm2.setPartOpacityById('Part30', 1.0);
-              }
-            } catch (ePartLoop) { /* swallow per-frame */ }
-          }
-        }
+        // 5b. REMOVED in v45: per-frame Part26/Part30 writes clobbered
+        // toggleOutfit()'s direct calls. Part opacity is now exclusively
+        // controlled by toggleOutfit() — the idle loop must NOT touch it.
+        // See v45 fix: '黑色衣裝變透明' bug (body black invisible after click).
 
         // 眨眼邏輯
         if (t - lastBlinkT > nextBlinkIn) {
