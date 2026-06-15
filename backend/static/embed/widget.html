@@ -2808,6 +2808,16 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
               console.warn('[Live2D] Failed to play native expression:', e);
             }
           }
+          // 2026-06-15 v53: HYSTERESIS fix — re-assert outfit params after
+          // model.expression() in case the .exp3.json file contains PARAMoutfit1_2
+          // keyframes that would override the current outfit (e.g. vampire.exp3.json
+          // or vampire2.exp3.json being loaded inadvertently by emotion system).
+          // applyOutfit writes to coreModel directly + invalidates v22 outfit cache,
+          // ensuring the next RAF tick also sends fresh values even if this write
+          // is a no-op (value unchanged).
+          if (typeof applyOutfit === 'function') {
+            applyOutfit(emoteState.outfit);
+          }
         }
 
         // 同步更新表情選單中被選中的按鈕樣式
