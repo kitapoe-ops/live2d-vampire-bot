@@ -860,8 +860,8 @@
   const CFG = new URLSearchParams(location.search);
   const isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   const DEFAULT_MODEL = isLocal
-    ? '/static/live2d/vampire/vampire.model3.json'
-    : './static/live2d/vampire/vampire.model3.json';
+    ? '/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json'
+    : './live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json';
   const MODEL_URL = CFG.get('model') || DEFAULT_MODEL;
   // TTS_ENDPOINT: legacy BAZOOKA proxy path, kept for self-hosted deployments.
   // Cloudflare Pages deployment uses MINIMAX_TTS_DIRECT (browser → api.minimax.chat).
@@ -2249,39 +2249,10 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       }
 
       model = await Live2DModel.from(MODEL_URL);
-      // 2026-06-15 v65: internalModel.coreModel may not be initialized until the
-      // first PIXI render pass. Calling applyOutfit() synchronously after model.load
-      // can result in all setParameterValueById() calls silently failing (cm is null).
-      // Fix: hide model, add to stage, then defer applyOutfit to the NEXT rAF tick
-      // where internalModel is guaranteed to be ready. Reveal after applyOutfit runs.
-      model.alpha = 0;
       app.stage.addChild(model);
-      let _applyOutfitDone = false;
-      function _doApplyOutfit() {
-        if (_applyOutfitDone) return;
-        _applyOutfitDone = true;
-        try {
-          if (typeof applyOutfit === 'function') {
-            applyOutfit(emoteState.outfit);
-          }
-        } catch(e) { console.warn('[Live2D] applyOutfit error:', e); }
-        // Read back PARAMoutfit1_2 to verify
-        try {
-          const cm = model && model.internalModel && model.internalModel.coreModel;
-          if (cm && typeof cm.getParameterValueById === 'function') {
-            const val = cm.getParameterValueById('PARAMoutfit1_2');
-            console.log('[Live2D] applyOutfit => PARAMoutfit1_2 =', val, '(expect 1.0 for black)');
-          } else {
-            console.warn('[Live2D] applyOutfit: coreModel not ready yet, internalModel =', model && model.internalModel);
-          }
-        } catch(e2) { console.warn('[Live2D] readback error:', e2); }
-        model.alpha = 1;
-        console.log('[Live2D] Model revealed (applyOutfit complete)');
-      }
-      // Defer to next animation frame — internalModel ready by then
-      requestAnimationFrame(() => { _doApplyOutfit(); });
-      // Fallback: if rAF fires before internalModel is ready
-      setTimeout(() => { if (!_applyOutfitDone) { _doApplyOutfit(); } }, 100);
+      // 2026-06-15 v62: Force applyOutfit immediately so first rendered frame = correct outfit.
+      // Without this, model shows default state (white/nude) for ~1 frame before per-frame applyOutfit fires.
+      try { if (typeof applyOutfit === 'function') applyOutfit(emoteState.outfit); } catch(e) {}
       // Expose model and emoteState globally so external functions like renderActionList can access them
       window.model = model;
       window.emoteState = emoteState;
@@ -2315,39 +2286,53 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       // per-frame write cache so the next RAF tick always sends fresh values.
       // This fixes PART_INVISIBILITY where PARAMoutfit1_2 appeared to 'not stick'
       // because KNOWLEDGE.setParam succeeded but the coreModel never received the value.
-      // 2026-06-15 v66: Complete rewrite of applyOutfit.
-      // Previously used setParameterValueById() which may not properly sync to PIXI Live2D's
-      // internal model state. Now uses model.expression() which is the official Live2D Cubism
-      // API for applying parameter values and is guaranteed to work with PIXI Live2D.
-            // 2026-06-15 v67: FIX — model.expression() uses Blend:Add. PARAMoutfit1_2=0.0 Add
-      // adds 0 to current value — no change. Fix: use model.setParameterValueById() (SET, no blend).
       function applyOutfit(outfitName) {
         const map = OUTFIT_PARAMS[outfitName] || OUTFIT_PARAMS.vampire;
-        try {
-          if (model && typeof model.setParameterValueById === 'function') {
-            for (const id in map) { model.setParameterValueById(id, Number(map[id])); }
-            console.log('[Live2D] applyOutfit:', outfitName, 'OK');
-          } else {
+        for (const id in map) {
+          const val = map[id];
+          // Primary: write directly to Live2D Wasm coreModel (always fires, no caching)
+          try {
             const cm = model && model.internalModel && model.internalModel.coreModel;
             if (cm && typeof cm.setParameterValueById === 'function') {
-              for (const id in map) { cm.setParameterValueById(id, Number(map[id])); }
-              console.log('[Live2D] applyOutfit:', outfitName, 'OK(coreModel)');
-            } else {
-              console.warn('[Live2D] applyOutfit: model not ready, outfit unchanged');
+              cm.setParameterValueById(id, Number(val));
             }
-          }
-        } catch(e) { console.warn('[Live2D] applyOutfit error:', e); }
+          } catch (e) { /* param may be missing on some model variants */ }
+          // Secondary: also push to KNOWLEDGE so its internal index stays in sync
+          try {
+            if (window.KNOWLEDGE && typeof window.KNOWLEDGE.setParam === 'function') {
+              window.KNOWLEDGE.setParam(id, val);
+            }
+          } catch (e) { /* KNOWLEDGE may not have this param; ignore */ }
+        }
+        // Invalidate v22 per-frame write cache for outfit params so the next
+        // RAF always writes fresh (v22Set would otherwise skip if value unchanged).
         if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
           for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
             __v22_lastValue[k] = undefined;
           }
         }
-      }
-        if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
-          for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
-            __v22_lastValue[k] = undefined;
+        // 2026-06-15 v61 FIX: Part59 (nude body) management.
+        // CDI3: Part59=1 dressed body (vampire), Part59=0 nude body (vampire2/white).
+        // Idle.motion3.json sets Part59=1 every loop — must override on every applyOutfit call.
+        try {
+          const cm2 = model && model.internalModel && model.internalModel.coreModel;
+          if (cm2) {
+            const isVampire = (outfitName === 'vampire');
+            const part59Op = isVampire ? 1.0 : 0.0;
+            const part26Op = isVampire ? 1.0 : 0.0;
+            const _setPart = function(pName, op) {
+              try { if (typeof cm2.setPartOpacityById==='function') cm2.setPartOpacityById(pName, op); } catch(e){}
+              try {
+                const cnt = (typeof cm2.getPartCount==='function') ? cm2.getPartCount() : 60;
+                for (let pi=0; pi<cnt; pi++) {
+                  try { if (cm2.getPartId(pi)===pName) { cm2.setPartOpacity(pi, op); break; } } catch(e2){}
+                }
+              } catch(e3){}
+            };
+            _setPart('Part59', part59Op);
+            _setPart('Part26', part26Op);
           }
-        }
+        } catch(ePart59) {}
       }
 
       // 重寫 model.update 以確保在 Motion/Expression 計算完畢後強制套用衣裝參數
@@ -3336,6 +3321,21 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             };
             for (const p of blackParts)  setPart(p, isBlack ? 1.0 : 0.0);
             for (const p of whiteParts) setPart(p, isBlack ? 0.0 : 1.0);
+            // 2026-06-15 v61: CRITICAL — Part59 (body) every frame.
+            // Idle.motion3 sets Part59=1 every loop. For vampire2: Part59=0 = nude body.
+            try {
+              const part59Op = isBlack ? 1.0 : 0.0;
+              const _sp59 = function(pName, op) {
+                try { if (typeof cm.setPartOpacityById==='function') cm.setPartOpacityById(pName, op); } catch(e){}
+                try {
+                  const cnt = (typeof cm.getPartCount==='function') ? cm.getPartCount() : 60;
+                  for (let pi=0; pi<cnt; pi++) {
+                    try { if (cm.getPartId(pi)===pName) { cm.setPartOpacity(pi, op); break; } } catch(e2){}
+                  }
+                } catch(e3){}
+              };
+              _sp59('Part59', part59Op);
+            } catch(ePart59) {}
           } catch(e) {}
         })();
         // v52 per-frame diagnostic: log PARAMoutfit1_2 every 60 frames so we can
@@ -4311,13 +4311,6 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             if (expName) {
               console.log('[ActionList] calling model.expression("' + expName + '")');
               m.expression(expName).then(() => console.log('[ActionList] expression completed')).catch(e => console.error('[ActionList] expression error:', e));
-              // 2026-06-15 v61: HYSTERESIS fix — re-assert outfit params after
-              // model.expression() in case the .exp3.json contains PARAMoutfit1_2
-              // keyframes that would override the current outfit. Matches the v53
-              // fix in applyEmotion(). Without this, the ActionList emotion buttons
-              // (which call model.expression() directly, not applyEmotion()) would
-              // silently corrupt the outfit state on expression load.
-              if (typeof applyOutfit === 'function') applyOutfit(emoteState.outfit);
             }
           } else {
             console.warn('[ActionList] model.expression not available');
@@ -4362,8 +4355,6 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             if (expName) {
               console.log('[ActionList] calling model.expression("' + expName + '")');
               m.expression(expName).then(() => console.log('[ActionList] expression completed')).catch(e => console.error('[ActionList] expression error:', e));
-              // v61: same HYSTERESIS fix for gesture props as for emotion buttons
-              if (typeof applyOutfit === 'function') applyOutfit(emoteState.outfit);
             }
           } else {
             console.warn('[ActionList] model.expression not available');

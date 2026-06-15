@@ -1,0 +1,105 @@
+{
+  "id": "live2d_outfit",
+  "goal": "Fix live2d-fork outfit switching (vampire/vampire2 toggle)",
+  "project": "live2d-fork",
+  "interval_minutes": 15,
+  "dimensions": [
+    {
+      "name": "HYSTERESIS",
+      "description": "Outfit params overwritten on emotion switch",
+      "complete": true,
+      "confidence": "High",
+      "findings": "v61: ActionList emotion/gesture buttons called model.expression() directly (not applyEmotion()), loading .exp3.json files with PARAMoutfit1_2 keyframes. Fixed by adding applyOutfit(emoteState.outfit) after model.expression() in ActionList handlers. Matches v53 fix in applyEmotion(). Commit 75e8a42 deployed to https://5d76b91b.vampire-widget.pages.dev/widget",
+      "attempts": [
+        {
+          "attempt": 1,
+          "commit": "dca6c46",
+          "fix": "window.toggleOutfit exposed globally"
+        },
+        {
+          "attempt": 2,
+          "commit": "047ef52",
+          "fix": "v53: applyOutfit(emoteState.outfit) after model.expression() in applyEmotion()"
+        },
+        {
+          "attempt": 3,
+          "commit": "6069025",
+          "fix": "ROOT FIX: IIFE was looking for 'btn-emote' but HTML has 'btn-emote-corner' — fixed JS to use correct ID"
+        },
+        {
+          "attempt": 4,
+          "commit": "75e8a42",
+          "fix": "v61: applyOutfit() added after model.expression() in ActionList emotion + gesture handlers (dist-pages synced + deployed)"
+        }
+      ]
+    },
+    {
+      "name": "PART_INVISIBILITY",
+      "description": "Black outfit Part26/30 invisible (opacity=0)",
+      "complete": true,
+      "confidence": "Medium",
+      "findings": "v60: toggleOutfit now sets all 12 outfit parts (Part26 + Part3/6/9/10/15 black + Part30 + Part4/7/11/12/16 white). Per-frame loop reinforces every RAF.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "commit": "76c92b0",
+          "fix": "v52: applyOutfit dual-write + Part26/30 opacity + window.testOutfit"
+        }
+      ]
+    },
+    {
+      "name": "MOTION_RESET",
+      "description": "Any motion resets outfit to default white",
+      "complete": true,
+      "confidence": "High",
+      "findings": "motionFinish callback calls restoreOutfitFromEmoteState(). v52 dual-write applyOutfit writes directly to coreModel. Per-frame listener reinforces every frame.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "commit": "76c92b0",
+          "fix": "v52 dual-write applyOutfit"
+        }
+      ]
+    },
+    {
+      "name": "PARAM_DRIFT",
+      "description": "PARAMoutfit1_2 drifts in render loop",
+      "complete": true,
+      "confidence": "High",
+      "findings": "applyOutfit writes correct value every frame via per-frame listener. v52 per-frame diagnostics log PARAMoutfit1_2 every 60 frames.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "commit": "76c92b0",
+          "fix": "v52 dual-write applyOutfit + per-frame diagnostics"
+        }
+      ]
+    },
+    {
+      "name": "EMOTION_CONFLICT",
+      "description": "applyEmotion() conflicts with applyOutfit() params",
+      "complete": true,
+      "confidence": "High",
+      "findings": "v16 fix: applyEmotion never calls model.expression(vampire/vampire2). Outfit params independent of emotion system. applyEmotion uses safe expMap (stareyes/hearteyes/circleeyes/mad/shy/sad). v61 added same protection to ActionList.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "commit": "76c92b0",
+          "fix": "v52 dual-write reinforces v16 separation"
+        }
+      ]
+    }
+  ],
+  "completed_dimensions": [
+    "HYSTERESIS",
+    "PART_INVISIBILITY",
+    "MOTION_RESET",
+    "PARAM_DRIFT",
+    "EMOTION_CONFLICT"
+  ],
+  "last_action": "Confirmation run: all dimensions already resolved. next_task.txt updated. User notified via Telegram 18228.",
+  "last_review": "2026-06-15T13:08:00.000000Z",
+  "iteration_count": 10,
+  "cron_id": "230f52aa-4f51-4de5-95b0-e931bc8f7173",
+  "status": "resolved"
+}

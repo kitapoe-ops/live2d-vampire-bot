@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<title>Animation Blocker Test</title>
+<style>
+  body { margin: 0; background: #111; color: #fff; font-family: monospace; padding: 16px; font-size: 13px; }
+  .btn { padding: 10px 20px; margin: 6px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .btn-primary { background: #6366f1; color: #fff; }
+  .btn-red { background: #ef4444; color: #fff; }
+  .btn-green { background: #22c55e; color: #fff; }
+  #log { background: #000; padding: 12px; margin-top: 16px; font-size: 12px; max-height: 500px; overflow-y: auto; white-space: pre; border-radius: 8px; }
+  h2 { color: #fff; }
+</style>
+</head>
+<body>
+<h2>🔬 Animation vs Manual Part Opacity Test</h2>
+<p>測試：Idle 動畫是否在每幀覆蓋 Part26/30 opacity（導致 toggle 無效）</p>
+
+<button class="btn btn-primary" onclick="stopIdle()">1. Stop Idle Animation</button>
+<button class="btn btn-red" onclick="setBlack()">2. Set Black (Part26=1, Part30=1)</button>
+<button class="btn btn-green" onclick="setWhite()">2b. Set White (Part26=0, Part30=0)</button>
+<button class="btn" onclick="readAll()">3. Read ALL Part Opacity</button>
+<button class="btn btn-primary" onclick="resumeIdle()">4. Resume Idle</button>
+<button class="btn btn-red" onclick="toggleWhileIdle()">5. Toggle while Idle running</button>
+
+<div id="log"></div>
+
+<script src="https://vampire.kitahim.uk/static/embed/embed.js"
+  data-model="https://vampire.kitahim.uk/static/live2d/vampire/%E5%90%B8%E8%A1%80%E9%AC%BC.model3.json"
+  data-knowledge="https://vampire.kitahim.uk/knowledge.js?v=20260611v18"
+  data-api="/api/tts">
+</script>
+<script>
+var logTimer = null;
+var idleStopped = false;
+
+function log(msg) {
+  var el = document.getElementById('log');
+  var ts = new Date().toISOString().substring(11, 23);
+  el.textContent += '[' + ts + '] ' + msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+function getIFrame() {
+  var iframe = document.querySelector('iframe');
+  if (!iframe) { log('ERROR: no iframe found'); return null; }
+  return iframe.contentWindow;
+}
+
+function getCore() {
+  var iWin = getIFrame();
+  if (!iWin || !iWin.model) return null;
+  try { return iWin.model.internalModel && iWin.model.internalModel.coreModel; } catch(e) { return null; }
+}
+
+function getIM() {
+  var iWin = getIFrame();
+  if (!iWin || !iWin.model) return null;
+  try { return iWin.model.internalModel; } catch(e) { return null; }
+}
+
+function readPart(name) {
+  var cm = getCore();
+  if (!cm) return 'cm_missing';
+  try { return cm.getPartOpacityById(name).toFixed(3); } catch(e) { return 'ERR:' + e.message.substring(0,30); }
+}
+
+function readAll() {
+  var cm = getCore();
+  log('=== READ ALL PARTS ===');
+  if (!cm) { log('coreModel not available'); return; }
+  var names = ['Part26','Part30','Part59','Part25','Part27','Part28','Part29','Part01','Part02','Part03','Part04','Part05'];
+  var changed = false;
+  for (var n of names) {
+    var val = readPart(n);
+    log('  ' + n + ' = ' + val);
+  }
+  var outfit = (getIFrame() && getIFrame().emoteState) ? getIFrame().emoteState.outfit : 'N/A';
+  log('  emoteState.outfit = ' + outfit);
+}
+
+function setPart(name, val) {
+  var cm = getCore();
+  if (!cm) return;
+  try {
+    cm.setPartOpacityById(name, val);
+    log('setPartOpacityById(' + name + ', ' + val + ') => OK, now=' + cm.getPartOpacityById(name).toFixed(3));
+  } catch(e) {
+    log('setPartOpacityById(' + name + ') ERR: ' + e.message.substring(0,50));
+  }
+}
+
+function setBlack() {
+  log('=== SET BLACK ===');
+  setPart('Part26', 1.0);
+  setPart('Part30', 1.0);
+  setPart('Part59', 0.0);
+  var iWin = getIFrame();
+  if (iWin && iWin.emoteState) {
+    iWin.emoteState.outfit = 'vampire';
+    log('emoteState.outfit = vampire');
+  }
+}
+
+function setWhite() {
+  log('=== SET WHITE ===');
+  setPart('Part26', 0.0);
+  setPart('Part30', 0.0);
+  setPart('Part59', 0.0);
+  var iWin = getIFrame();
+  if (iWin && iWin.emoteState) {
+    iWin.emoteState.outfit = 'vampire2';
+    log('emoteState.outfit = vampire2');
+  }
+}
+
+function stopIdle() {
+  var iWin = getIFrame();
+  if (!iWin || !iWin.model) { log('model not ready'); return; }
+  log('=== STOP IDLE ===');
+  // Stop all motions by setting their weights to 0 or stopping them
+  try {
+    var im = iWin.model.internalModel;
+    if (im && im.motionManager) {
+      log('Found motionManager');
+      if (typeof im.motionManager.stop === 'function') {
+        im.motionManager.stop();
+        log('motionManager.stop() called');
+      }
+    }
+    // Try stopping via model.motion
+    if (iWin.model.motion) {
+      log('model.motion found, trying stop');
+      if (typeof iWin.model.motion.stop === 'function') {
+        iWin.model.motion.stop();
+      }
+    }
+    // Try accessing internal motion groups
+    if (im && im.motionGroups) {
+      log('motionGroups found, size=' + im.motionGroups.size);
+      im.motionGroups.forEach(function(mot, name) {
+        log('  stopping motion: ' + name);
+        try { 
+          if (typeof mot.stop === 'function') mot.stop();
+          if (mot.weight !== undefined) mot.weight = 0;
+        } catch(e) { log('    ERR: ' + e.message.substring(0,30)); }
+      });
+    }
+    // Alternative: override Idle motion group to do nothing
+    log('Direct PIXI Live2D: searching for how to stop Idle motion...');
+    
+    // Check if Live2DIdleWatchdog exists
+    if (iWin.Live2DIdleWatchdog) {
+      iWin.Live2DIdleWatchdog.disarm();
+      log('IdleWatchdog disarmed');
+    }
+  } catch(e) {
+    log('stopIdle ERR: ' + e.message.substring(0,50));
+  }
+  
+  // Check motion state
+  try {
+    var settings = im && im.settings;
+    var motions = settings && settings.motions;
+    if (motions) {
+      log('Motion groups in settings: ' + Object.keys(motions).join(', '));
+    }
+  } catch(e) {}
+}
+
+function resumeIdle() {
+  var iWin = getIFrame();
+  if (!iWin) return;
+  log('=== RESUME IDLE ===');
+  try {
+    if (iWin.Live2DIdleWatchdog) {
+      iWin.Live2DIdleWatchdog.rearm(iWin.model);
+      log('IdleWatchdog rearmed');
+    }
+  } catch(e) {
+    log('resumeIdle ERR: ' + e.message.substring(0,50));
+  }
+}
+
+function toggleWhileIdle() {
+  log('=== TOGGLE WHILE IDLE RUNNING ===');
+  var iWin = getIFrame();
+  if (!iWin) return;
+  
+  // Read before
+  var p26_before = readPart('Part26');
+  log('Before: Part26=' + p26_before);
+  
+  // Call toggle
+  if (typeof iWin.toggleOutfit === 'function') {
+    iWin.toggleOutfit();
+    log('toggleOutfit() called');
+  } else {
+    log('toggleOutfit NOT FOUND');
+    return;
+  }
+  
+  // Read immediately after
+  var p26_after = readPart('Part26');
+  log('Immediately after: Part26=' + p26_after);
+  
+  // Start monitoring
+  var count = 0;
+  var interval = setInterval(function() {
+    var p26 = readPart('Part26');
+    log('  +' + (count+1) + 's: Part26=' + p26);
+    count++;
+    if (count >= 10) {
+      clearInterval(interval);
+      log('  Monitoring done.');
+    }
+  }, 1000);
+}
+
+// Auto-read after boot
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.ns === 'avatar-widget' && e.data.type === 'boot-success') {
+    log('Widget loaded. Starting auto-read in 3s...');
+    setTimeout(function() {
+      log('=== INITIAL STATE ===');
+      readAll();
+      log('Idle motion is currently running.');
+      log('Test: Click buttons above in order.');
+      log('');
+      log('EXPECTED BEHAVIOR:');
+      log('  1. Stop Idle -> motion should freeze');
+      log('  2. Set Black -> Part26/30 should stay at 1.0 (no animation fighting)');
+      log('  3. Set White -> Part26/30 should stay at 0.0');
+      log('  4. Resume Idle -> motion resumes, Part26/30 fight with animation');
+      log('');
+      log('IF Part26/30 revert after setting, the animation IS overriding it.');
+    }, 3000);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outfit Toggle Test</title>
+<style>
+  body { margin: 0; background: #1a1a2e; font-family: sans-serif; }
+  #embed-target { width: 100vw; height: 100vh; }
+  #panel {
+    position: fixed; bottom: 20px; left: 20px; z-index: 9999;
+    background: rgba(0,0,0,0.85); color: #0f0;
+    padding: 16px; border-radius: 12px; font-size: 13px;
+    max-width: 420px; font-family: monospace;
+  }
+  #panel h3 { margin: 0 0 10px; color: #fff; }
+  .diag-row { margin: 4px 0; }
+  .diag-label { color: #aaa; }
+  .diag-val { color: #0f0; font-weight: bold; }
+  .btn-test {
+    margin-top: 10px; padding: 8px 16px;
+    background: #6366f1; color: #fff; border: none;
+    border-radius: 6px; cursor: pointer; font-size: 14px;
+  }
+  #outfit-img {
+    margin-top: 10px; padding: 8px;
+    background: #000; border-radius: 6px; text-align: center;
+  }
+  #outfit-img img {
+    max-width: 100%; border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<div id="embed-target"></div>
+<div id="panel">
+  <h3>Outfit Diagnostic</h3>
+  <div class="diag-row">
+    <span class="diag-label">emoteState.outfit:</span>
+    <span class="diag-val" id="d-outfit">loading...</span>
+  </div>
+  <div class="diag-row">
+    <span class="diag-label">PARAMoutfit1_2:</span>
+    <span class="diag-val" id="d-p12">—</span>
+  </div>
+  <div class="diag-row">
+    <span class="diag-label">Part26 opacity:</span>
+    <span class="diag-val" id="d-p26">—</span>
+  </div>
+  <div class="diag-row">
+    <span class="diag-label">Part30 opacity:</span>
+    <span class="diag-val" id="d-p30">—</span>
+  </div>
+  <div class="diag-row">
+    <span class="diag-label">window.toggleOutfit:</span>
+    <span class="diag-val" id="d-toggle">—</span>
+  </div>
+  <div class="diag-row">
+    <span class="diag-label">toggle button offset:</span>
+    <span class="diag-val" id="d-btn">—</span>
+  </div>
+  <button class="btn-test" onclick="manualToggle()">Manual Toggle (JS)</button>
+  <button class="btn-test" onclick="refreshDiag()">Refresh</button>
+  <div id="outfit-img"></div>
+</div>
+
+<script src="https://vampire.kitahim.uk/static/embed/embed.js"
+  data-model="https://vampire.kitahim.uk/static/live2d/vampire/%E5%90%B8%E8%A1%80%E9%AC%BC.model3.json"
+  data-knowledge="https://vampire.kitahim.uk/knowledge.js?v=20260611v18"
+  data-api="/api/tts">
+</script>
+<script>
+let diagTimer = null;
+let attemptCount = 0;
+
+function refreshDiag() {
+  attemptCount++;
+  var iframe = document.querySelector('#embed-target iframe');
+  var iWin = iframe ? iframe.contentWindow : null;
+  var iDoc = iframe ? iframe.contentDocument : null;
+  
+  var outfit = iWin && iWin.emoteState ? iWin.emoteState.outfit : 'NOT FOUND';
+  var toggleType = iWin ? typeof iWin.toggleOutfit : 'iframe not found';
+  var cm = null;
+  var p12 = '—', p26 = '—', p30 = '—';
+  
+  if (iWin && iWin.model) {
+    try {
+      cm = iWin.model.internalModel && iWin.model.internalModel.coreModel;
+    } catch(e) {}
+  }
+  
+  if (cm) {
+    try { p12 = cm.getParameterValueById('PARAMoutfit1_2').toFixed(3); } catch(e) { p12 = 'ERR'; }
+    try { p26 = cm.getPartOpacityById('Part26').toFixed(3); } catch(e) { p26 = 'ERR'; }
+    try { p30 = cm.getPartOpacityById('Part30').toFixed(3); } catch(e) { p30 = 'ERR'; }
+  }
+  
+  var btn = iDoc ? iDoc.getElementById('btn-emote-corner') : null;
+  var btnInfo = btn ? btn.offsetWidth + 'x' + btn.offsetHeight + ' (visible:' + (btn.offsetWidth > 0) + ')' : 'NOT FOUND';
+  
+  document.getElementById('d-outfit').textContent = outfit;
+  document.getElementById('d-p12').textContent = p12;
+  document.getElementById('d-p26').textContent = p26;
+  document.getElementById('d-p30').textContent = p30;
+  document.getElementById('d-toggle').textContent = toggleType;
+  document.getElementById('d-btn').textContent = btnInfo;
+  
+  // Show outfit diagram
+  var outfitImg = document.getElementById('outfit-img');
+  if (outfit === 'vampire') {
+    outfitImg.innerHTML = '🖤 Current: vampire (black outfit)<br>PARAMoutfit1_2=' + p12 + ' | Part26=' + p26 + ' | Part30=' + p30;
+    outfitImg.style.background = '#1a0a0a';
+  } else if (outfit === 'vampire2') {
+    outfitImg.innerHTML = '🤍 Current: vampire2 (white outfit)<br>PARAMoutfit1_2=' + p12 + ' | Part26=' + p26 + ' | Part30=' + p30;
+    outfitImg.style.background = '#0a0a1a';
+  } else {
+    outfitImg.innerHTML = '⏳ ' + outfit;
+    outfitImg.style.background = '#1a1a2e';
+  }
+  
+  if (attemptCount < 120) {
+    clearTimeout(diagTimer);
+    diagTimer = setTimeout(refreshDiag, 2000);
+  }
+}
+
+function manualToggle() {
+  var iframe = document.querySelector('#embed-target iframe');
+  var iWin = iframe ? iframe.contentWindow : null;
+  if (iWin && typeof iWin.toggleOutfit === 'function') {
+    iWin.toggleOutfit();
+    console.log('[TEST] toggleOutfit() called');
+  } else {
+    console.log('[TEST] toggleOutfit NOT FOUND in iframe. typeof:', typeof (iWin && iWin.toggleOutfit));
+  }
+}
+
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.ns === 'avatar-widget' && e.data.type === 'boot-success') {
+    console.log('[TEST] boot-success received, starting diagnostics');
+    setTimeout(function() {
+      clearTimeout(diagTimer);
+      refreshDiag();
+    }, 3000);
+  }
+});
+
+// Start diagnostics after iframe loads
+setTimeout(refreshDiag, 5000);
+</script>
+</body>
+</html>

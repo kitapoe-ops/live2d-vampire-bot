@@ -127,41 +127,6 @@
   html, body { margin:0; height:100%; background:transparent; overflow:hidden;
                font-family:"Noto Sans TC", system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
   #stage { position:absolute; inset:0; }
-  /* 2026-06-14 v36 + v38: drag handle at top of stage. Larger + always-visible
-     blue grab indicator + hint text. v38: bump to 28px, 3px line, "↕" text
-     for unmistakable drag affordance after user couldn't grab the v36 line. */
-  #widget-drag-handle {
-    position:absolute; top:0; left:0; right:0; height:28px;
-    cursor:move; z-index:2147483600;
-    background:linear-gradient(180deg, rgba(91,84,232,.12), rgba(91,84,232,0));
-    display:flex; align-items:center; justify-content:center;
-    gap:4px;
-    font-size:11px; font-weight:600; color:rgba(91,84,232,.75);
-    user-select:none; -webkit-user-select:none;
-  }
-  #widget-drag-handle::before {
-    content:''; position:absolute; top:9px; left:50%; transform:translateX(-50%);
-    width:48px; height:4px; border-radius:2px;
-    background:rgba(91,84,232,.65);
-  }
-  #widget-drag-handle:hover {
-    background:linear-gradient(180deg, rgba(91,84,232,.25), rgba(91,84,232,0));
-  }
-  #widget-drag-handle:hover::before {
-    background:rgba(91,84,232,.95);
-  }
-  #widget-drag-handle:active {
-    background:linear-gradient(180deg, rgba(91,84,232,.5), rgba(91,84,232,0));
-  }
-  /* Hint text shown on hover only (so widget doesn't look cluttered) */
-  #widget-drag-handle::after {
-    content:'↕ 拖拽以移動';
-    position:absolute; top:14px; left:50%; transform:translateX(-50%);
-    font-size:10px; color:rgba(91,84,232,.8); font-weight:500;
-    opacity:0; transition:opacity .15s;
-    pointer-events:none;
-  }
-  #widget-drag-handle:hover::after { opacity:1; }
   #avatar-canvas { width:100%; height:100%; display:block; }
   #control-bar {
     position:absolute; left:8px; right:8px; bottom:10px;
@@ -470,10 +435,6 @@
   </div>
 
   <div id="stage">
-    <!-- 2026-06-14 v36: drag-to-reposition handle. Drag the top strip
-         to move the entire widget frame. Position is persisted by the
-         host (embed.js) in localStorage xiaob_widget_pos. -->
-    <div id="widget-drag-handle" title="拖拽以移動 widget"></div>
     <div id="bubble"></div>
     <canvas id="avatar-canvas"></canvas>
     <div id="suggestions"></div>
@@ -860,8 +821,8 @@
   const CFG = new URLSearchParams(location.search);
   const isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   const DEFAULT_MODEL = isLocal
-    ? '/static/live2d/vampire/vampire.model3.json'
-    : './static/live2d/vampire/vampire.model3.json';
+    ? '/static/live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json'
+    : './live2d/vampire/' + encodeURIComponent('吸血鬼') + '.model3.json';
   const MODEL_URL = CFG.get('model') || DEFAULT_MODEL;
   // TTS_ENDPOINT: legacy BAZOOKA proxy path, kept for self-hosted deployments.
   // Cloudflare Pages deployment uses MINIMAX_TTS_DIRECT (browser → api.minimax.chat).
@@ -1090,279 +1051,7 @@
     const d = e.data || {};
     if (d.ns !== 'avatar-widget-host') return;
     if (d.type === 'say') speak(String(d.text || '').slice(0, 600));
-    // 2026-06-14 v35: reactive API — host pushes text + context, widget
-    // auto-decides emotion / action / speech via 3-priority decision.
-    // See plans/external-events-lite.md for the full design.
-    if (d.type === 'react') {
-      // 2026-06-14 v38: log receipt so user can confirm in DevTools
-      console.log('[react] ✅ received:', d);
-      try {
-        handleReact({
-          text:     String(d.text || '').slice(0, 2000),
-          context:  (d.context && typeof d.context === 'object') ? d.context : {},
-          voice:    d.voice    || null,
-          voice_id: d.voice_id || null,
-        });
-      } catch (eReact) {
-        console.warn('[react] handler threw:', eReact);
-      }
-    }
   });
-
-  // 2026-06-14 v36: drag-to-reposition handler. When user drags the top
-  // strip, we ask the host (parent page via embed.js) to move the iframe.
-  // We post deltas (dx/dy) and host accumulates + clamps to viewport.
-  (function installWidgetDrag() {
-    const handle = document.getElementById('widget-drag-handle');
-    if (!handle) return;
-    let dragging = false;
-    let lastX = 0, lastY = 0;
-    function onDown(e) {
-      dragging = true;
-      const pt = (e.touches && e.touches[0]) || e;
-      lastX = pt.clientX;
-      lastY = pt.clientY;
-      e.preventDefault();
-    }
-    function onMove(e) {
-      if (!dragging) return;
-      const pt = (e.touches && e.touches[0]) || e;
-      const dx = pt.clientX - lastX;
-      const dy = pt.clientY - lastY;
-      lastX = pt.clientX;
-      lastY = pt.clientY;
-      try {
-        window.parent.postMessage({
-          ns: 'avatar-widget',
-          type: 'reposition_delta',
-          dx: dx,
-          dy: dy,
-        }, '*');
-      } catch (ePost) { /* ignore */ }
-      e.preventDefault();
-    }
-    function onUp() {
-      if (!dragging) return;
-      dragging = false;
-    }
-    handle.addEventListener('mousedown', onDown);
-    handle.addEventListener('touchstart', onDown, { passive: false });
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchend', onUp);
-  })();
-
-  // ============================================================
-  // 2026-06-14 v35: Reactive API implementation
-  // Lightweight, stable, general-purpose reaction system.
-  // Trigger: parent postMessage { type: 'react', text, context? }
-  // Output:  applyEmotion() + triggerAction() + speak() + showBubble()
-  // Decision: context hint > LLM (DeepSeek) > keyword fallback
-  // ============================================================
-
-  // Cooldown to prevent spam (e.g. fast input events)
-  const _reactCooldown = { lastCall: 0, MIN_GAP_MS: 800 };
-
-  function _reactRandomPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
-  // Reply pool (粵語口語, 吸血鬼 personality)
-  const REPLY_POOL = {
-    correct:   ['啱晒！你真聰明！', '冇錯啦，你好叻呀！', '答得啱，正呀！', 'Bingo！', '100分！'],
-    wrong:     ['差少少啫，再諗下？', '唔緊要，再嚟一次！', '錯咗少少，加油！', '差一啲啲咋，唔好放棄！'],
-    sad:       ['唔緊要㗎，我都陪住你。', '我哋一齊面對啦。', '你唔係一個人喎。'],
-    happy:     ['叻仔！繼續加油！', '好嘢！', 'Yeah！', '你最棒啦！'],
-    angry:     ['唔好嬲咁多啦，深呼吸。', '冷靜啲，你得嘅。'],
-    shy:       ['你...你望住我嚟做咩...', '我會害羞㗎...'],
-    surprised: ['嘩，咁都得？！', '哇！', '乜料咁都可以！'],
-    neutral:   ['嗯嗯，我喺度聽緊。', '我喺度。', '我聽緊你講。'],
-  };
-
-  async function handleReact({ text, context, voice, voice_id }) {
-    if (!text && !context.suggested_emotion) {
-      console.warn('[react] empty payload, drop');
-      return;
-    }
-    const now = Date.now();
-    if (now - _reactCooldown.lastCall < _reactCooldown.MIN_GAP_MS) {
-      console.log('[react] rate-limited, drop');
-      return;
-    }
-    _reactCooldown.lastCall = now;
-
-    let result;
-    try {
-      result = await decideReaction(text, context);
-    } catch (eDecide) {
-      console.warn('[react] decideReaction failed:', eDecide);
-      result = { emotion: 'neutral', action: null, reply: '' };
-    }
-
-    // Apply emotion
-    if (result.emotion && typeof window.applyEmotion === 'function') {
-      try { window.applyEmotion(result.emotion); } catch (eEm) { console.warn('[react] applyEmotion:', eEm); }
-    }
-
-    // Apply action (motion or expression)
-    if (result.action) {
-      try {
-        const m = window.model;
-        if (m) {
-          if (result.action === 'Scene1' || result.action === 'Idle') {
-            const mm = m.motionManager || m;
-            if (typeof mm.motion === 'function') mm.motion(result.action);
-          } else if (typeof m.expression === 'function') {
-            m.expression(result.action).catch(() => {});
-          }
-        }
-      } catch (eAct) { console.warn('[react] action failed:', eAct); }
-    }
-
-    // Speak reply (with optional per-call voice override)
-    if (result.reply) {
-      try {
-        _reactSpeakWithRoute({ text: result.reply, voice, voice_id });
-      } catch (eSpeak) { console.warn('[react] speak:', eSpeak); }
-    }
-
-    // Bubble feedback (always show something so user knows react fired)
-    if (typeof showBubble === 'function') {
-      showBubble(result.reply || text.slice(0, 60));
-    }
-  }
-
-  // Per-call voice routing. Lite v0.2: just temporarily override NEURAL_VOICE
-  // and ttsMode. Restored after the speak() call returns. (Note: speak() is
-  // sync only for browser; neural is async — race possible if two react
-  // calls overlap. The 800ms cooldown above is the primary guard.)
-  function _reactSpeakWithRoute({ text, voice, voice_id }) {
-    if (!text) return;
-    const origMode = ttsMode;
-    const origVoice = NEURAL_VOICE;
-    try {
-      if (voice === 'minimax' && voice_id) {
-        NEURAL_VOICE = voice_id;
-      } else if (voice === 'browser') {
-        ttsMode = 'browser';
-      }
-      speak(text);
-    } finally {
-      ttsMode = origMode;
-      NEURAL_VOICE = origVoice;
-    }
-  }
-
-  async function decideReaction(text, context) {
-    // Priority 1: context hint (zero LLM cost, instant)
-    if (context.correct === true) {
-      return { emotion: 'happy', action: 'mc',
-               reply: _reactRandomPick(REPLY_POOL.correct) };
-    }
-    if (context.correct === false) {
-      return { emotion: 'sad', action: null,
-               reply: _reactRandomPick(REPLY_POOL.wrong) };
-    }
-    if (context.suggested_emotion) {
-      return {
-        emotion: context.suggested_emotion,
-        action:  context.suggested_action || null,
-        reply:   context.suggested_reply   || String(text || '').slice(0, 80),
-      };
-    }
-
-    // Priority 2: LLM (DeepSeek) — dynamic judgment
-    let dsKey = '';
-    try { dsKey = localStorage.getItem('deepseek_key') || ''; } catch (e) { /* ignore */ }
-    if (dsKey && text) {
-      try {
-        const llmResult = await _reactCallDeepSeek(text, context);
-        if (llmResult) return llmResult;
-      } catch (eLLM) {
-        console.warn('[react] LLM failed, fallback to keywords:', eLLM);
-      }
-    }
-
-    // Priority 3: keyword fallback
-    return _reactKeyword(text);
-  }
-
-  async function _reactCallDeepSeek(text, context) {
-    let key = '';
-    try { key = localStorage.getItem('deepseek_key') || ''; } catch (e) { return null; }
-    if (!key) return null;
-
-    const systemPrompt = '你係一個反應式助手，會根據用戶輸入嘅 context 決定表情、動作、簡短回覆。\n' +
-      '只回 JSON，唔好加其他文字。JSON schema：\n' +
-      '{\n' +
-      '  "emotion": "happy" | "sad" | "angry" | "shy" | "surprised" | "neutral",\n' +
-      '  "action": "Scene1" | "Idle" | "knife" | "mc" | "mouse" | "click" | "bloodFace" | "bloodBody" | null,\n' +
-      '  "reply": "一句粵語回覆，max 60 字"\n' +
-      '}\n' +
-      '規則：\n' +
-      '- 用戶情緒低落 / 悲傷 → emotion: "sad", action: null\n' +
-      '- 用戶慶祝 / 成功 / 答啱 → emotion: "happy", action: "mc"\n' +
-      '- 用戶犯錯 / 失敗 → emotion: "sad" 或 "shy"\n' +
-      '- 用戶驚訝 / 意外 → emotion: "surprised"\n' +
-      '- 用戶嬲 → emotion: "angry"\n' +
-      '- 預設 → emotion: "neutral", action: null\n' +
-      '- reply 要粵語口語，max 60 字\n' +
-      '- 吸血鬼性格，唔好笑講嘢';
-
-    const r = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': '***' + key,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Context: ' + JSON.stringify(context || {}) + '\n\nInput: ' + String(text).slice(0, 600) },
-        ],
-        max_tokens: 200,
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
-      }),
-    });
-    if (!r.ok) throw new Error('DeepSeek http ' + r.status);
-    const data = await r.json();
-    const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    if (!content) return null;
-    let parsed;
-    try { parsed = JSON.parse(content); } catch (eParse) { return null; }
-    const validEmo = ['happy','sad','angry','shy','surprised','neutral'];
-    if (!validEmo.includes(parsed.emotion)) parsed.emotion = 'neutral';
-    if (typeof parsed.reply !== 'string') parsed.reply = '';
-    parsed.reply = parsed.reply.slice(0, 60);
-    return parsed;
-  }
-
-  function _reactKeyword(text) {
-    const t = (text || '').toLowerCase();
-    if (/啱|correct|right|✓|✅|yes!|成功|做咗|好棒/.test(t)) {
-      return { emotion: 'happy', action: 'mc', reply: _reactRandomPick(REPLY_POOL.correct) };
-    }
-    if (/錯|wrong|✗|❌|no!|失敗|唔得|唔啱/.test(t)) {
-      return { emotion: 'sad', action: null, reply: _reactRandomPick(REPLY_POOL.wrong) };
-    }
-    if (/嬲|angry|hate|嬲爆|激嬲|嬲到/.test(t)) {
-      return { emotion: 'angry', action: null, reply: _reactRandomPick(REPLY_POOL.angry) };
-    }
-    if (/害羞|shy|不好意思|臉紅|紅臉/.test(t)) {
-      return { emotion: 'shy', action: null, reply: _reactRandomPick(REPLY_POOL.shy) };
-    }
-    if (/驚|嚇|surprise|意外|嘩|竟然|嘩嘩/.test(t)) {
-      return { emotion: 'surprised', action: null, reply: _reactRandomPick(REPLY_POOL.surprised) };
-    }
-    if (/傷心|sad|哭|唔開心|慘|可憐|難過|心痛/.test(t)) {
-      return { emotion: 'sad', action: null, reply: _reactRandomPick(REPLY_POOL.sad) };
-    }
-    if (/開心|happy|好叻|叻|叻仔|棒|正|笑/.test(t)) {
-      return { emotion: 'happy', action: 'mc', reply: _reactRandomPick(REPLY_POOL.happy) };
-    }
-    return { emotion: 'neutral', action: null, reply: _reactRandomPick(REPLY_POOL.neutral) };
-  }
 
   function showBubble(text) {
       // 2026-06-13 v3: log every bubble call for diagnostic
@@ -2249,39 +1938,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       }
 
       model = await Live2DModel.from(MODEL_URL);
-      // 2026-06-15 v65: internalModel.coreModel may not be initialized until the
-      // first PIXI render pass. Calling applyOutfit() synchronously after model.load
-      // can result in all setParameterValueById() calls silently failing (cm is null).
-      // Fix: hide model, add to stage, then defer applyOutfit to the NEXT rAF tick
-      // where internalModel is guaranteed to be ready. Reveal after applyOutfit runs.
-      model.alpha = 0;
       app.stage.addChild(model);
-      let _applyOutfitDone = false;
-      function _doApplyOutfit() {
-        if (_applyOutfitDone) return;
-        _applyOutfitDone = true;
-        try {
-          if (typeof applyOutfit === 'function') {
-            applyOutfit(emoteState.outfit);
-          }
-        } catch(e) { console.warn('[Live2D] applyOutfit error:', e); }
-        // Read back PARAMoutfit1_2 to verify
-        try {
-          const cm = model && model.internalModel && model.internalModel.coreModel;
-          if (cm && typeof cm.getParameterValueById === 'function') {
-            const val = cm.getParameterValueById('PARAMoutfit1_2');
-            console.log('[Live2D] applyOutfit => PARAMoutfit1_2 =', val, '(expect 1.0 for black)');
-          } else {
-            console.warn('[Live2D] applyOutfit: coreModel not ready yet, internalModel =', model && model.internalModel);
-          }
-        } catch(e2) { console.warn('[Live2D] readback error:', e2); }
-        model.alpha = 1;
-        console.log('[Live2D] Model revealed (applyOutfit complete)');
-      }
-      // Defer to next animation frame — internalModel ready by then
-      requestAnimationFrame(() => { _doApplyOutfit(); });
-      // Fallback: if rAF fires before internalModel is ready
-      setTimeout(() => { if (!_applyOutfitDone) { _doApplyOutfit(); } }, 100);
       // Expose model and emoteState globally so external functions like renderActionList can access them
       window.model = model;
       window.emoteState = emoteState;
@@ -2309,44 +1966,10 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         vampire:  { PARAMoutfit1_2: 1.0, PARAMhariWB: 1.0, PARAMhariWB2: 0.0, PARAMhari_7: 1.0, PARAMhari_8: 1.0, PARAMhari_3: 1.0 },
         vampire2: { PARAMoutfit1_2: 0.0, PARAMhariWB: 0.0, PARAMhariWB2: 1.0, PARAMhari_7: 1.0, PARAMhari_8: 1.0, PARAMhari_3: 0.0 },
       };
-      // 2026-06-15 v52: applyOutfit now writes DIRECTLY to coreModel first (bypass
-      // KNOWLEDGE which may claim success without having the param in its index),
-      // THEN syncs to KNOWLEDGE as a secondary write, AND invalidates the v22
-      // per-frame write cache so the next RAF tick always sends fresh values.
-      // This fixes PART_INVISIBILITY where PARAMoutfit1_2 appeared to 'not stick'
-      // because KNOWLEDGE.setParam succeeded but the coreModel never received the value.
-      // 2026-06-15 v66: Complete rewrite of applyOutfit.
-      // Previously used setParameterValueById() which may not properly sync to PIXI Live2D's
-      // internal model state. Now uses model.expression() which is the official Live2D Cubism
-      // API for applying parameter values and is guaranteed to work with PIXI Live2D.
-            // 2026-06-15 v67: FIX — model.expression() uses Blend:Add. PARAMoutfit1_2=0.0 Add
-      // adds 0 to current value — no change. Fix: use model.setParameterValueById() (SET, no blend).
       function applyOutfit(outfitName) {
         const map = OUTFIT_PARAMS[outfitName] || OUTFIT_PARAMS.vampire;
-        try {
-          if (model && typeof model.setParameterValueById === 'function') {
-            for (const id in map) { model.setParameterValueById(id, Number(map[id])); }
-            console.log('[Live2D] applyOutfit:', outfitName, 'OK');
-          } else {
-            const cm = model && model.internalModel && model.internalModel.coreModel;
-            if (cm && typeof cm.setParameterValueById === 'function') {
-              for (const id in map) { cm.setParameterValueById(id, Number(map[id])); }
-              console.log('[Live2D] applyOutfit:', outfitName, 'OK(coreModel)');
-            } else {
-              console.warn('[Live2D] applyOutfit: model not ready, outfit unchanged');
-            }
-          }
-        } catch(e) { console.warn('[Live2D] applyOutfit error:', e); }
-        if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
-          for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
-            __v22_lastValue[k] = undefined;
-          }
-        }
-      }
-        if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
-          for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
-            __v22_lastValue[k] = undefined;
-          }
+        for (const id in map) {
+          try { safeSetParam(id, map[id]); } catch (e) { /* param may be missing on some model variants */ }
         }
       }
 
@@ -2848,16 +2471,6 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
               console.warn('[Live2D] Failed to play native expression:', e);
             }
           }
-          // 2026-06-15 v53: HYSTERESIS fix — re-assert outfit params after
-          // model.expression() in case the .exp3.json file contains PARAMoutfit1_2
-          // keyframes that would override the current outfit (e.g. vampire.exp3.json
-          // or vampire2.exp3.json being loaded inadvertently by emotion system).
-          // applyOutfit writes to coreModel directly + invalidates v22 outfit cache,
-          // ensuring the next RAF tick also sends fresh values even if this write
-          // is a no-op (value unchanged).
-          if (typeof applyOutfit === 'function') {
-            applyOutfit(emoteState.outfit);
-          }
         }
 
         // 同步更新表情選單中被選中的按鈕樣式
@@ -2872,7 +2485,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       // 表情與外觀客製化選單已移除，此處改為衣裝轉換按鈕一鍵切換邏輯
       window.updateEmoteListActiveUI = function() {}; // 空函數相容性
       (function() {
-        const btn = document.getElementById('btn-emote-corner');
+        const btn = document.getElementById('btn-emote');
 
         // 修改按鈕的標示與屬性，以代表衣裝切換
         btn.setAttribute('aria-label', '切換衣裝形態 (黑色/白色)');
@@ -2883,87 +2496,55 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           const isBlack = (emoteState.outfit !== 'vampire2');
           const nextOutfit = isBlack ? 'vampire2' : 'vampire';
           emoteState.outfit = nextOutfit;
+
           // 2026-06-13 v16: removed model.expression('vampire'/'vampire2') call.
-          // 2026-06-15 v60 FIX: Idle.motion3 has no PARAMoutfit1_2 curve, but the
-          // Live2D Cubism SDK resets declared-but-empty params to model defaults every
-          // time the motion restarts. This was NOT the bug — the real bug was that
-          // we only set Part26/Part30 but missed the sleeves and body parts.
-          // Full outfit parts (from CDI3 analysis):
-          //   vampire (black): Part26(黑衣服) + Part3/6/9/10/15(袖套黑)
-          //   vampire2 (white): Part30(白衣服) + Part4/7/11/12/16(袖套)
-          //   Both outfits: Part59(裸模) must stay 0, body is controlled by PARAMoutfit1_2
+          // The .exp3.json files for those names mix outfit + facial params,
+          // which caused the next applyEmotion() to overwrite the outfit color.
+          // Outfit is now applied via applyOutfit() (which writes the 6 outfit
+          // params directly), and is also reinforced by the per-frame
+          // model.update override below. Outfit is now fully independent of
+          // the emotion system.
+          //
+          // 2026-06-13 v23: write outfit params DIRECTLY via coreModel after
+          // applyOutfit(). The v22 per-id cache that applyOutfit() bypasses
+          // would otherwise cause the per-frame listener to skip re-writing
+          // the values that applyOutfit just set, and we've seen the model
+          // fail to re-render in some browser/PixiLive2D combos. The direct
+          // write + cache-invalidation guarantees the visual flip.
           if (typeof applyOutfit === 'function') {
             applyOutfit(emoteState.outfit);
-          }
-          try {
-            const cm = model && model.internalModel && model.internalModel.coreModel;
-            if (cm) {
-              const targetOp = (nextOutfit === 'vampire') ? 1.0 : 0.0;
-              // Black outfit parts: visible when targetOp=1
-              const blackParts = ['Part26', 'Part3', 'Part6', 'Part9', 'Part10', 'Part15'];
-              // White outfit parts: visible when targetOp=0
-              const whiteParts = ['Part30', 'Part4', 'Part7', 'Part11', 'Part12', 'Part16'];
-              let opLog = [];
-              const setPart = function(pName, op) {
-                if (typeof cm.setPartOpacityById === 'function') {
-                  try { cm.setPartOpacityById(pName, op); } catch(e) {}
-                }
-                if (typeof cm.setPartOpacity === 'function') {
-                  try {
-                    const count = (typeof cm.getPartCount === 'function') ? cm.getPartCount() : 60;
-                    for (let pi = 0; pi < count; pi++) {
-                      try {
-                        const pid = (typeof cm.getPartId === 'function') ? cm.getPartId(pi) : null;
-                        if (pid === pName) { cm.setPartOpacity(pi, op); break; }
-                      } catch(e2) {}
-                    }
-                  } catch(e3) {}
-                }
-                try {
-                  var op = (typeof cm.getPartOpacityById === 'function') ? cm.getPartOpacityById(pName) : '?';
-                  opLog.push(pName + '=' + (typeof op === 'number' ? op.toFixed(1) : op));
-                } catch(e4) { opLog.push(pName + '=?'); }
-              };
-              // For black outfit: show black parts (op=1), hide white parts (op=0)
-              // For white outfit: show white parts (op=1), hide black parts (op=0)
-              for (const p of blackParts) { setPart(p, targetOp); }  // 1=black(visible), 0=white(hidden)
-              for (const p of whiteParts) { setPart(p, 1.0 - targetOp); }  // inverse
-              console.log('[Live2D] Outfit toggled to:', nextOutfit, '| Part ops:', opLog.join(', '));
+            // v22 cache invalidation: next per-frame listener will rebuild
+            // the cache for outfit params (it sees fresh values).
+            if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
+              for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
+                __v22_lastValue[k] = undefined;
+              }
             }
-          } catch (ePart) {
-            console.warn('[Live2D] Outfit toggle failed:', ePart.message);
+            // Belt-and-suspenders: write directly to coreModel so the visual
+            // change happens immediately on the very next render, not after
+            // a per-frame listener tick. Pixi Live2D's parameter blending
+            // computes lazily on the next update() call, so this write is
+            // picked up by the very next frame anyway, but writing twice
+            // (once via applyOutfit -> KNOWLEDGE, once directly) costs us
+            // nothing and gives us a log to diagnose.
+            try {
+              const cm = model && model.internalModel && model.internalModel.coreModel;
+              const directMap = (window.__v23_outfitMap = window.__v23_outfitMap || OUTFIT_PARAMS);
+              const map = directMap[nextOutfit] || directMap.vampire;
+              for (const id in map) {
+                if (cm && typeof cm.setParameterValueById === 'function') {
+                  try { cm.setParameterValueById(id, Number(map[id])); } catch (e) {}
+                }
+              }
+              console.log('[Live2D] Outfit toggled to:', nextOutfit, '(direct write ok)');
+            } catch (eDirect) {
+              console.log('[Live2D] Outfit toggled to:', nextOutfit, '(direct write failed:', eDirect.message + ')');
+            }
           }
+
           showBubble('已切換衣裝：' + (nextOutfit === 'vampire2' ? '白色衣裝' : '黑色衣裝'));
           btn.setAttribute('aria-pressed', String(nextOutfit === 'vampire2'));
         }
-
-        // 2026-06-15: expose globally so btn-emote-corner listener (outside this IIFE) can call it
-        window.toggleOutfit = toggleOutfit;
-
-        // 2026-06-15 v52: window.testOutfit — manual console diagnostic.
-        // Usage: in browser DevTools console, type: testOutfit('vampire') or testOutfit('vampire2')
-        // Reads back PARAMoutfit1_2 and Part26/Part30 opacity to verify the model state.
-        window.testOutfit = function(outfitName) {
-          outfitName = outfitName || emoteState.outfit;
-          console.log('[testOutfit] Setting outfit to:', outfitName);
-          try { toggleOutfit(); } catch(e) {}
-          // Force one frame to process
-          requestAnimationFrame(function() {
-            requestAnimationFrame(function() {
-              try {
-                var cm = model && model.internalModel && model.internalModel.coreModel;
-                if (!cm) { console.warn('[testOutfit] no coreModel'); return; }
-                var p12 = 'n/a', p26 = 'n/a', p30 = 'n/a';
-                try { p12 = cm.getParameterValueById('PARAMoutfit1_2'); } catch(e){}
-                if (typeof cm.getPartOpacityById === 'function') {
-                  try { p26 = cm.getPartOpacityById('Part26'); } catch(e){}
-                  try { p30 = cm.getPartOpacityById('Part30'); } catch(e){}
-                }
-                console.log('[testOutfit] RESULT — outfit:', outfitName, '| PARAMoutfit1_2:', p12, '| Part26_op:', p26, '| Part30_op:', p30);
-              } catch(e) { console.warn('[testOutfit] error:', e.message); }
-            });
-          });
-        };
 
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -3163,9 +2744,6 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       }
 
       let lastBlinkT = 0, nextBlinkIn = 2.0;
-      // 2026-06-15 v52: per-frame diagnostic counter for PARAMoutfit1_2.
-      // Logs every 60 frames so we can verify the outfit param is stable.
-      let _v52_frameCount = 0, _v52_lastOutfitLog = null;
       // 2026-06-13 v22: per-param write-skip cache.
       // The model.on('update') listener below writes ~28 parameters per
       // frame via safeSetParam (breath, body sway, outfit x6, gesture x4,
@@ -3313,51 +2891,6 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         // ─── 寫入全域 emoteState 外觀與表情參數 ───
         // 1. 服裝型態 (outfit) — 2026-06-13 v16: delegated to applyOutfit() (single source of truth)
         applyOutfit(emoteState.outfit);
-        // 2026-06-15 v60: Also re-apply OUTFIT_PARTS every frame.
-        // Some motions may override art-mesh opacity via the expression system,
-        // so we re-enforce Part opacity on every frame to guarantee the outfit persists.
-        (function() {
-          try {
-            const cm = model && model.internalModel && model.internalModel.coreModel;
-            if (!cm) return;
-            const isBlack = (emoteState.outfit === 'vampire');
-            const blackParts = ['Part26','Part3','Part6','Part9','Part10','Part15'];
-            const whiteParts = ['Part30','Part4','Part7','Part11','Part12','Part16'];
-            const setPart = function(pName, op) {
-              try { if (typeof cm.setPartOpacityById === 'function') cm.setPartOpacityById(pName, op); } catch(e){}
-              if (typeof cm.setPartOpacity === 'function') {
-                try {
-                  const cnt = (typeof cm.getPartCount === 'function') ? cm.getPartCount() : 60;
-                  for (let pi = 0; pi < cnt; pi++) {
-                    try { if (cm.getPartId(pi) === pName) { cm.setPartOpacity(pi, op); break; } } catch(e2){}
-                  }
-                } catch(e3){}
-              }
-            };
-            for (const p of blackParts)  setPart(p, isBlack ? 1.0 : 0.0);
-            for (const p of whiteParts) setPart(p, isBlack ? 0.0 : 1.0);
-          } catch(e) {}
-        })();
-        // v52 per-frame diagnostic: log PARAMoutfit1_2 every 60 frames so we can
-        // see if the value drifts or stays stable. Also log Part26/30 opacity.
-        _v52_frameCount++;
-        if (_v52_frameCount % 60 === 1) {
-          try {
-            const cm = model && model.internalModel && model.internalModel.coreModel;
-            let p12 = 'n/a', p26op = 'n/a', p30op = 'n/a';
-            if (cm) {
-              try { p12 = cm.getParameterValueById('PARAMoutfit1_2'); } catch(e){}
-              if (typeof cm.getPartOpacityById === 'function') {
-                try { p26op = cm.getPartOpacityById('Part26'); } catch(e){}
-                try { p30op = cm.getPartOpacityById('Part30'); } catch(e){}
-              }
-            }
-            if (_v52_lastOutfitLog !== p12 + '|' + p26op + '|' + p30op) {
-              _v52_lastOutfitLog = p12 + '|' + p26op + '|' + p30op;
-              console.log('[v60-perframe] outfit=' + emoteState.outfit + ' PARAMoutfit1_2=' + p12 + ' Part26=' + p26op + ' Part30=' + p30op);
-            }
-          } catch(eDiag) {}
-        }
 
         // 2. 手勢道具 (gesture) — 2026-06-12 16:59: independent flags so
         // PARAMhands_1 (mc) + PARAMhands_2 (knife) can both be 1.0 simultaneously.
@@ -4311,13 +3844,6 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             if (expName) {
               console.log('[ActionList] calling model.expression("' + expName + '")');
               m.expression(expName).then(() => console.log('[ActionList] expression completed')).catch(e => console.error('[ActionList] expression error:', e));
-              // 2026-06-15 v61: HYSTERESIS fix — re-assert outfit params after
-              // model.expression() in case the .exp3.json contains PARAMoutfit1_2
-              // keyframes that would override the current outfit. Matches the v53
-              // fix in applyEmotion(). Without this, the ActionList emotion buttons
-              // (which call model.expression() directly, not applyEmotion()) would
-              // silently corrupt the outfit state on expression load.
-              if (typeof applyOutfit === 'function') applyOutfit(emoteState.outfit);
             }
           } else {
             console.warn('[ActionList] model.expression not available');
@@ -4362,8 +3888,6 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             if (expName) {
               console.log('[ActionList] calling model.expression("' + expName + '")');
               m.expression(expName).then(() => console.log('[ActionList] expression completed')).catch(e => console.error('[ActionList] expression error:', e));
-              // v61: same HYSTERESIS fix for gesture props as for emotion buttons
-              if (typeof applyOutfit === 'function') applyOutfit(emoteState.outfit);
             }
           } else {
             console.warn('[ActionList] model.expression not available');

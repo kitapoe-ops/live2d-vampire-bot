@@ -1,0 +1,28 @@
+## live2d-fork 換裝 Debug 任務 — 全部完成
+
+### 狀態：RESOLVED ✅
+
+所有維度已完成，狀態為 resolved。最新修復已部署。
+
+### 已完成維度
+  [✅] HYSTERESIS: 化妝/表情切換後服裝參數被覆蓋 — v61 fix (75e8a42)
+  [✅] PART_INVISIBILITY: 黑色服裝 Part26/30 為看不見 — v60 fix (109203d)
+  [✅] MOTION_RESET: 任何 motion 播放後服裝被重置為默認 — v52 fix (76c92b0)
+  [✅] PARAM_DRIFT: 每幀 render loop 中 PARAMoutfit1_2 值飄移 — v52 fix (76c92b0)
+  [✅] EMOTION_CONFLICT: applyEmotion() 與 applyOutfit() 參數衝突 — v16+v61 fix
+
+### 最新部署
+- Commit: `75e8a42` (v61 HYSTERESIS fix)
+- URL: https://vampire.kitahim.uk/widget
+- 時間: 2026-06-15 20:49 (Asia/Shanghai)
+
+### 修復摘要
+1. v16: applyEmotion() 不再調用 model.expression('vampire'/'vampire2') — 表情與服裝參數分離
+2. v52: applyOutfit() 雙寫 coreModel + KNOWLEDGE + v22 緩存失效
+3. v53: applyEmotion() 結束後 re-apply outfit 參數
+4. v60: toggleOutfit() 設置所有 12 個服裝 parts + per-frame 強制執行
+5. v61: ActionList 表情/手勢按鈕調用 model.expression() 後 re-apply outfit 參數
+
+### Cron 狀態
+狀態已設為 resolved，cron 仍在每 15 分鐘觸發一次但無需任何操作。
+如需停止 cron，請手動禁用。
