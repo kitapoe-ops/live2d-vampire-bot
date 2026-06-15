@@ -4329,6 +4329,13 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             if (expName) {
               console.log('[ActionList] calling model.expression("' + expName + '")');
               m.expression(expName).then(() => console.log('[ActionList] expression completed')).catch(e => console.error('[ActionList] expression error:', e));
+              // 2026-06-15 v61: HYSTERESIS fix — re-assert outfit params after
+              // model.expression() in case the .exp3.json contains PARAMoutfit1_2
+              // keyframes that would override the current outfit. Matches the v53
+              // fix in applyEmotion(). Without this, the ActionList emotion buttons
+              // (which call model.expression() directly, not applyEmotion()) would
+              // silently corrupt the outfit state on expression load.
+              if (typeof applyOutfit === 'function') applyOutfit(emoteState.outfit);
             }
           } else {
             console.warn('[ActionList] model.expression not available');
@@ -4373,6 +4380,8 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             if (expName) {
               console.log('[ActionList] calling model.expression("' + expName + '")');
               m.expression(expName).then(() => console.log('[ActionList] expression completed')).catch(e => console.error('[ActionList] expression error:', e));
+              // v61: same HYSTERESIS fix for gesture props as for emotion buttons
+              if (typeof applyOutfit === 'function') applyOutfit(emoteState.outfit);
             }
           } else {
             console.warn('[ActionList] model.expression not available');
