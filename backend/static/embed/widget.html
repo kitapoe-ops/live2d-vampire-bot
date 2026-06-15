@@ -2940,8 +2940,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           // CDI3 confirms this is "衣服：黑→白" — the rigging parameter for body clothes.
           // vampire2.exp3.json does NOT set PARAMoutfit1_2 (leaves it at 0).
           // 吸血鬼.exp3.json sets PARAMoutfit1_2=1.0 (black clothes).
-          // Since expression('vampire') appears to not load, set it directly.
-          // This should trigger the model's rigging to show/hide body clothes.
+          // This triggers the model's rigging to show/hide body clothes.
           if (cm && typeof cm.setParameterValueById === 'function') {
             try {
               const outfitVal = (nextOutfit === 'vampire') ? 1.0 : 0.0;
@@ -2951,6 +2950,16 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
               console.warn('[Outfit] PARAMoutfit1_2 set failed:', eP.message);
             }
           }
+
+          // v49 FIX: Also stop all motions to prevent any motion from overriding PARAMoutfit1_2.
+          // Idle motion has no PARAMoutfit1_2 curve now (v48 removed it), but for safety.
+          try {
+            const mm = m && m.motionManager;
+            if (mm) {
+              mm.stop && mm.stop();
+              mm.stopAllMotions && mm.stopAllMotions();
+            }
+          } catch(e) {}
 
           // Path 2: Part opacity + MULTIPLY blend for body.
           // For black: Part26=1, Part30=0, with both MULTIPLY=1 (full visibility).
@@ -3045,6 +3054,37 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           showBubble('已切換衣裝：' + (nextOutfit === 'vampire2' ? '白色衣裝' : '黑色衣裝'));
           btn.setAttribute('aria-pressed', String(nextOutfit === 'vampire2'));
         }
+
+        // v49 CONSOLE TEST: Run this in browser DevTools console:
+        //   testOutfit('vampire')   // set to black outfit
+        //   testOutfit('vampire2')  // set to white outfit
+        // This stops all motions first, then sets PARAMoutfit1_2, forces update,
+        // and reads back all relevant Part opacities.
+        window.testOutfit = async function(outfit) {
+          const m = (typeof model !== 'undefined' && model) ? model : window.model;
+          if (!m) { console.error('[testOutfit] model not found'); return; }
+          const cm = m.internalModel && m.internalModel.coreModel;
+          if (!cm) { console.error('[testOutfit] coreModel not found'); return; }
+          // Stop all motions
+          try { const mm = m.motionManager; if (mm) { mm.stop && mm.stop(); mm.stopAllMotions && mm.stopAllMotions(); } } catch(e) {}
+          const before = cm.getParameterValueById ? cm.getParameterValueById('PARAMoutfit1_2') : 'N/A';
+          const targetVal = (outfit === 'vampire') ? 1.0 : 0.0;
+          if (cm.setParameterValueById) cm.setParameterValueById('PARAMoutfit1_2', targetVal);
+          try { m.update && m.update(0); } catch(e) {}
+          const after = cm.getParameterValueById ? cm.getParameterValueById('PARAMoutfit1_2') : 'N/A';
+          const parts = [];
+          try {
+            const cnt = cm.getPartCount ? cm.getPartCount() : 0;
+            for (let i = 0; i < cnt; i++) {
+              const pid = cm.getPartId ? cm.getPartId(i) : '?';
+              const op = cm.getPartOpacity ? cm.getPartOpacity(i) : null;
+              if (['Part18','Part22','Part26','Part30','Part49'].indexOf(pid) >= 0) parts.push({i, id: pid, op});
+            }
+          } catch(e) {}
+          console.log('[testOutfit] outfit=' + outfit + ' target=' + targetVal + ' PARAMbefore=' + before + ' PARAMafter=' + after);
+          console.log('[testOutfit] Parts:', JSON.stringify(parts));
+          console.log('[testOutfit] RESULT: PARAM=' + after + ' === target=' + targetVal + ' ? ' + (after == targetVal ? 'YES' : 'NO (SET FAILED)') + ' | If YES but body invisible = MOC3 rigging broken for Part26');
+        };
 
         // 2026-06-14 v40: expose toggleOutfit globally so line 4127 outer
         // listener can call it. Also add a console.log on every click.
