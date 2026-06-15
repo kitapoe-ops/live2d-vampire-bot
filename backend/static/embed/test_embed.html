@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>吸血鬼 Widget — embed.js 測試頁</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Noto Sans TC", system-ui, sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+  header { padding: 20px 24px 16px; border-bottom: 1px solid #21262d; }
+  header h1 { margin: 0; font-size: 20px; color: #58a6ff; }
+  header p { margin: 6px 0 0; font-size: 13px; color: #8b949e; }
+  code { background: #161b22; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #79c0ff; }
+
+  /* Demo sections */
+  .demo { padding: 24px; border-bottom: 1px solid #21262d; }
+  .demo h2 { margin: 0 0 8px; font-size: 15px; color: #c9d1d9; }
+  .demo p { margin: 0 0 12px; font-size: 13px; color: #8b949e; line-height: 1.6; }
+
+  /* The widget loads as a fixed bubble via embed.js */
+  /* embed.js auto-creates #avatar-widget-root + bubble */
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧛 吸血鬼 Widget — embed.js 測試</h1>
+  <p>通過 <code>data-</code> 属性配置，所有參數傳遞給 widget.html iframe</p>
+</header>
+
+<div class="demo">
+  <h2>用法 1：默認配置（吸血鬼模型）</h2>
+  <p>最簡單的調用方式，只需要在頁面底部加入一行 script標籤：</p>
+  <pre style="background:#161b22;padding:14px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;color:#e6edf3;margin:0">
+&lt;script src="https://vampire.kitahim.uk/static/embed/embed.js"
+  data-model="https://vampire.kitahim.uk/static/live2d/vampire/%E5%90%B0%E8%A1%80%E9%AC%BC.model3.json"
+  data-knowledge="https://vampire.kitahim.uk/static/embed/knowledge.js"
+  data-api="/api/tts"&gt;
+&lt;/script&gt;</pre>
+</div>
+
+<div class="demo">
+  <h2>用法 2：自定義 API endpoint</h2>
+  <p>如果你的後端在不同地址，可以通過 <code>data-api</code> 屬性指定：</p>
+  <pre style="background:#161b22;padding:14px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;color:#e6edf3;margin:0">
+&lt;script src="https://vampire.kitahim.uk/static/embed/embed.js"
+  data-api="https://your-backend.com/api/tts"
+  data-model="https://vampire.kitahim.uk/static/live2d/vampire/%E5%90%B0%E8%A1%80%E9%AC%BC.model3.json"&gt;
+&lt;/script&gt;</pre>
+</div>
+
+<div class="demo">
+  <h2>用法 3：控制 widget 開/關</h2>
+  <p>可以通過 <code>window.AvatarWidget</code> 程序化控制：</p>
+  <pre style="background:#161b22;padding:14px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;color:#e6edf3;margin:0">
+// 關閉 widget
+window.AvatarWidget &amp;&amp; window.AvatarWidget.setOpen(false);
+
+// 打開 widget
+window.AvatarWidget &amp;&amp; window.AvatarWidget.setOpen(true);
+
+// 監聽狀態變化
+window.addEventListener('message', (e) =&gt; {
+  if (e.data.ns === 'avatar-widget-host' &amp;&amp; e.data.type === 'status') {
+    console.log('Widget 狀態:', e.data);
+  }
+});
+</pre>
+</div>
+
+<div class="demo">
+  <h2>iframe + postMessage 通訊</h2>
+  <p>父頁面可以通過 <code>postMessage</code> 向 widget 發送命令：</p>
+  <pre style="background:#161b22;padding:14px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;color:#e6edf3;margin:0">
+const iframe = document.querySelector('#avatar-widget-root iframe');
+iframe.contentWindow.postMessage({
+  ns: 'avatar-widget-host',
+  type: 'react',
+  text: 'Hello widget!',
+  context: { source: 'test' }
+}, '*');
+</pre>
+</div>
+
+<!--
+  加載吸血鬼 Widget（所有參數可選，有默認值）
+-->
+<script src="https://vampire.kitahim.uk/static/embed/embed.js"
+  data-model="https://vampire.kitahim.uk/static/live2d/vampire/%E5%90%B0%E8%A1%80%E9%AC%BC.model3.json"
+  data-knowledge="https://vampire.kitahim.uk/static/embed/knowledge.js"
+  data-api="/api/tts">
+</script>
+
+</body>
+</html>
