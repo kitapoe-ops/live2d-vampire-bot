@@ -833,14 +833,15 @@
   // Sentinel: tracker used by applyKeywordsTrigger for the
   // 'stareyes/circleeyes/hearteyes' eye mode. Default 'normal' eyes.
   let _emoteStateReady = true;
-  // 2026-06-12 17:35: hardcoded MiniMax voice catalog (replaces the broken
-  // /v1/voices fetch). Voice IDs verified on MiniMax T2A v2 in BAZOOKA
-  // backend (backend/app.py VOICE_MAP) 2026-04 to 2026-06. Hoisted to top
-  // so the voice list code (line ~1810) can reference it without TDZ risk.
+  // 2026-06-16 v72: MiniMax voice catalog — dynamically fetched from /api/voices,
+  // with hardcoded fallback if the endpoint is unreachable.
   // Each entry: { id = friendly alias (stored in localStorage),
   //               voice_id = real MiniMax voice_id (sent in API),
   //               lang = BCP-47 tag, name = display name }.
-  const serverVoicesCatalog = [
+  let serverVoicesCatalog = null;  // populated by fetchVoicesCatalog() below
+
+  // Hardcoded fallback (used when /api/voices is unreachable, e.g. CF Pages deployment).
+  const HARDCODED_VOICE_CATALOG = [
     // 粵語 (Cantonese, zh-HK) — primary use case
     {id: 'cantonese-female',  voice_id: 'Cantonese_GentleLady', lang: 'zh-HK', name: '粵語女主持 (Cantonese female host)'},
     {id: 'cantonese-male',    voice_id: 'Cantonese_PlayfulMan', lang: 'zh-HK', name: '粵語男主持 (Cantonese male host)'},
@@ -856,18 +857,45 @@
     {id: 'mandarin-chengshu', voice_id: 'female-tianmei',                lang: 'zh-CN', name: '普通話成熟女性 (Mandarin mature woman)'},
     {id: 'mandarin-announcer',voice_id: 'presenter_male', lang: 'zh-CN', name: '普通話新聞男主播 (Mandarin news announcer)'}
   ];
+
+  // v72: Dynamically fetch voice catalog from backend /api/voices, fall back to hardcoded.
+  async function fetchVoicesCatalog() {
+    try {
+      const r = await fetch('/api/voices');
+      if (!r.ok) throw new Error('http ' + r.status);
+      const j = await r.json();
+      if (j && Array.isArray(j.voices) && j.voices.length > 0) {
+        serverVoicesCatalog = j.voices;
+        console.log('[fetchVoicesCatalog] Loaded', serverVoicesCatalog.length, 'voices from /api/voices');
+        return;
+      }
+      throw new Error('empty or invalid response');
+    } catch (e) {
+      console.warn('[fetchVoicesCatalog] Falling back to hardcoded catalog:', e.message);
+      serverVoicesCatalog = HARDCODED_VOICE_CATALOG;
+    }
+  }
+  fetchVoicesCatalog();  // fire and forget — renderList() checks serverVoicesCatalog when popover opens
+
   const CFG = new URLSearchParams(location.search);
   const isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   const DEFAULT_MODEL = isLocal
     ? '/static/live2d/vampire/vampire.model3.json'
     : './static/live2d/vampire/vampire.model3.json';
-  // 2026-06-16 v40: decodeURIComponent to handle double-encoding from embed.js
-  // VAMP_ENC is stored pre-encoded in embed.js URLSearchParams, which toString()
-  // encodes again. Decoding here restores the original URL for Live2DModel.from().
+  // 2026-06-16 v68: validate model URL to prevent loading non-model paths (e.g. /api/tts).
+  // Reject any URL that doesn't look like a Live2D model (.model3.json or .moc3).
   const MODEL_URL = (function () {
     const raw = CFG.get('model');
-    if (!raw) return DEFAULT_MODEL;
-    try { return decodeURIComponent(raw); } catch (e) { return raw; }
+    let url = DEFAULT_MODEL;
+    if (raw) {
+      try { url = decodeURIComponent(raw); } catch (e) { url = raw; }
+    }
+    // Security check: reject API paths or non-model URLs
+    if (!url || url.startsWith('/api/') || !/\.(model3\.json|moc3)(\?|$)/.test(url)) {
+      console.warn('[Live2D] Invalid model URL "' + url + '" rejected, using default. This can happen if the widget is accessed directly with an incorrect ?model= parameter.');
+      url = DEFAULT_MODEL;
+    }
+    return url;
   })();
   // TTS_ENDPOINT: legacy BAZOOKA proxy path, kept for self-hosted deployments.
   // Cloudflare Pages deployment uses MINIMAX_TTS_DIRECT (browser → api.minimax.chat).
@@ -1706,11 +1734,32 @@
     src.start(0);
   }
 
+  // 2026-06-16 v70: FIX voice selection on Windows Chrome where voices share identical URIs.
+  // Root cause: Microsoft Hanhan/Yating/Zhiwei all share the same voiceURI, so matching by
+  // voiceURI always returns the first match (Yating). Fix: match by voice NAME instead.
   function speakBrowser(text) {
     if (ttsMuted || !('speechSynthesis' in window)) return;
     const u = new SpeechSynthesisUtterance(text);
-    if (!ttVoice) loadVoice();
-    if (ttVoice) u.voice = ttVoice;
+    if (ttVoice) {
+      const allVoices = speechSynthesis.getVoices() || [];
+      // Match by voice NAME since voiceURI is shared among Chinese Microsoft voices on Windows
+      const freshVoice = allVoices.find(v => v.name === ttVoice.name) || null;
+      if (freshVoice) {
+        u.voice = freshVoice;
+        console.log('[speakBrowser] Fresh voice resolved:', freshVoice.name, '(' + freshVoice.lang + ')');
+      } else {
+        loadVoice();
+        const retryVoices = speechSynthesis.getVoices() || [];
+        const retryVoice = retryVoices.find(v => v.name === ttVoice.name) || null;
+        if (retryVoice) {
+          u.voice = retryVoice;
+        } else {
+          console.warn('[speakBrowser] No voice found for name:', ttVoice.name);
+        }
+      }
+    } else {
+      loadVoice();
+    }
     u.lang = (ttVoice && ttVoice.lang) || 'zh-TW';
     u.rate = ttsRate; u.pitch = 1.0;
     u.onboundary = () => { mouthTarget = 0.5 + Math.random() * 0.5; };
@@ -2034,7 +2083,14 @@
     if (DEEPSEEK_KEY) {
       handleDeepSeekStream(text);
     } else {
-      Promise.resolve().then(async () => { speak(await answer(text)); });
+      Promise.resolve().then(async () => {
+        try {
+          speak(await answer(text));
+        } catch (e) {
+          console.error('[handleUser] answer() failed:', e);
+          speak('抱歉，回答出錯了，請再試一次。');
+        }
+      });
     }
   }
 
@@ -2156,6 +2212,12 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             : '未獲授權 🎙️ 請允許瀏覽器使用麥克風，或改用 Google Chrome 🔍';
         } else if (e.error === 'service-not-allowed') {
           hint = '沒聽到聲音 🔇 請再試一次，並靠近一點麥克風 💬';
+        } else if (e.error === 'network') {
+          // 2026-06-16: Google SR backend unreachable — common when browser
+          // cannot reach Google speech services (e.g. China mainland, corporate
+          // firewalls, or iframe network restrictions). Show a clear hint
+          // without triggering the lang-fallback loop.
+          hint = '無法連接到語音服務 🔇 請檢查網絡，或使用打字輸入 💬';
         } else if (e.error === 'no-speech') {
           // 2026-06-13 v13: fix v12 recursive error loop. User #17321
           // console log 顯示 'error' handler took 60463ms (60s blocking!)
@@ -2190,10 +2252,14 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             recognition.lang = window.SR_LANG_CHAIN[0];
             window.SR_FALLBACK_IN_PROGRESS = false;
           }
-        } else {
+        } else if (e.error === 'aborted') {
+          // User cancelled or another recognition started — no message needed
           hint = '';
+        } else {
+          // Unknown error — show generic helpful message
+          hint = '語音辨識發生未知錯誤 😅 請稍後再試，或使用打字輸入 💬';
         }
-        showBubble(hint);
+        if (hint) showBubble(hint);
       };
     recognition.onend   = () => { listening = false; setMic(false); };
     try { recognition.start(); } catch (e) {}
@@ -3746,64 +3812,88 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
       return id.split('_').pop().slice(0, 4);
     }
     function paintBtn() {
-      // Show short label of currently active voice (per route)
+      // Show label of currently active voice with mode indicator
       if (ttsMode === 'neural') {
-        btnLabel.textContent = shortLabel(NEURAL_VOICE);
+        btnLabel.textContent = '💎 ' + shortLabel(NEURAL_VOICE);
       } else {
-        // browser mode: show language tag of selected voice (e.g. 'zh-TW')
+        // browser mode: show voice name (not just lang)
         const v = ttVoice;
-        btnLabel.textContent = v ? (v.lang || '瀏覽器').slice(0, 5) : '瀏覽器';
+        btnLabel.textContent = v ? ('🌐 ' + v.name).slice(0, 12) : '🌐 瀏覽器';
       }
     }
     // Initial label
     paintBtn();
 
-    // Render list based on current TTS route
+    // v71: Render merged voice list - both browser AND neural voices with clear section headers
     async function renderList() {
       popover.innerHTML = '';
-      const isNeural = (ttsMode === 'neural');
-      // Header
-      const header = document.createElement('div');
-      header.className = 'vl-header';
-      // 2026-06-12 17:15: dynamic count now that voice catalog is loaded
-      // directly from MiniMax (was hardcoded "12 個" when the only available
-      // voices came from a 12-item BAZOOKA backend).
-      const neuralCount = (isNeural && serverVoices.length) ? serverVoices.length : null;
-      header.innerHTML = '<span>' + (isNeural ? ('MiniMax 神經語音' + (neuralCount ? ' (' + neuralCount + ' 個)' : '')) : '瀏覽器內建語音') + '</span><span style="font-size:11px;opacity:.7;">' + (isNeural ? '💎 server' : '🌐 free') + '</span>';
-      popover.appendChild(header);
 
-      if (isNeural) {
-        // Fetch server voice list lazily
-        // 2026-06-12 17:12 FIX (BAZOOKA-free): previously fetched the legacy
-        // BAZOOKA backend /api/voices endpoint. On Cloudflare Pages there is
-        // no backend, so the list was always empty. Now we call MiniMax
-        // /v1/voices directly with the user-supplied API key + group_id.
-        // MiniMax returns 300+ system voices. We filter to a curated set
-        // (zh-HK/zh-CN/zh-TW/en-US/en-GB/ja-JP) and group by language.
+      // === BROWSER VOICES SECTION ===
+      const allVoices = (window.speechSynthesis ? speechSynthesis.getVoices() : []);
+      const filtered = allVoices.filter(v => /^(zh|en|ja|ko)/i.test(v.lang || ''));
+      const browserVoices = filtered.length ? filtered : allVoices;
+
+      const header1 = document.createElement('div');
+      header1.className = 'vl-section';
+      header1.textContent = '🌐 瀏覽器內建 (' + browserVoices.length + ')';
+      popover.appendChild(header1);
+
+      if (!browserVoices.length) {
+        const empty1 = document.createElement('div');
+        empty1.className = 'vl-empty';
+        empty1.textContent = '瀏覽器未提供語音';
+        popover.appendChild(empty1);
+      } else {
+        browserVoices.forEach((v) => {
+          const item = document.createElement('div');
+          const isActive = (ttVoice && v.name === ttVoice.name);
+          item.className = 'vl-item' + (isActive ? ' active' : '');
+          item.setAttribute('role', 'option');
+          item.setAttribute('aria-selected', String(isActive));
+          item.dataset.type = 'browser';
+          item.dataset.name = v.name;
+          item.innerHTML = '<div class="vl-name">' + (v.name || '(unnamed)') + '</div><div class="vl-id">' + (v.lang || '') + (v.localService ? ' · local' : ' · remote') + '</div>';
+          item.addEventListener('click', () => {
+            // Switch to browser mode
+            ttsMode = 'browser';
+            try { localStorage.setItem('xiaob_tts_mode', 'browser'); } catch (e) {}
+            ttVoice = v;
+            try { localStorage.setItem(KEY_BROWSER, v.name); } catch (e) {}
+            paintBtn();
+            closePopover();
+            const sample = (/^zh-HK/i.test(v.lang)) ? '你好，我係香港粵語語音。' :
+                           (/^zh-CN/i.test(v.lang)) ? '你好，我係普通話語音。' :
+                           (/^zh-TW/i.test(v.lang)) ? '你好，我係台灣國語語音。' :
+                           (/^en/i.test(v.lang)) ? 'Hello, this is a voice sample.' : v.name;
+            speak(sample);
+          });
+          popover.appendChild(item);
+        });
+      }
+
+      // === MINIMAX NEURAL VOICES SECTION ===
+      const header2 = document.createElement('div');
+      header2.className = 'vl-section';
+      header2.style.marginTop = '10px';
+      const hasMinimaxKey = !!(MINIMAX_TTS_KEY && MINIMAX_GROUP_ID);
+      header2.textContent = '💎 MiniMax 神經語音' + (hasMinimaxKey ? '' : ' (需 API Key)');
+      popover.appendChild(header2);
+
+      if (!hasMinimaxKey) {
+        const empty2 = document.createElement('div');
+        empty2.className = 'vl-empty';
+        empty2.textContent = '請先在設定中輸入 MiniMax API Key + Group ID';
+        popover.appendChild(empty2);
+      } else if (!serverVoicesCatalog) {
+        // Catalog not yet loaded — show loading state and trigger fetch
+        const loading2 = document.createElement('div');
+        loading2.className = 'vl-empty';
+        loading2.textContent = '載入中...';
+        popover.appendChild(loading2);
+        fetchVoicesCatalog().then(() => { if (popover.classList.contains('open')) renderList(); });
+      } else {
+        // Load neural voice catalog if not already loaded
         if (!serverVoices.length) {
-          // 2026-06-12 17:35 FIX (user report 17:27: /v1/voices 404):
-          // MiniMax T2A v2 does NOT expose a public voices listing endpoint.
-          // The BAZOOKA backend had its /api/voices endpoint returning a
-          // hardcoded Python dict (VOICE_CATALOG) of 12 friendly aliases
-          // mapped via VOICE_MAP to real MiniMax voice_ids. We embed the
-          // same data here so the widget can show the same curated list
-          // without any backend. The list can be expanded by adding more
-          // entries (id = friendly alias, voice_id = real MiniMax voice_id).
-          //
-          // The 'id' field is what gets stored as NEURAL_VOICE; the
-          // 'voice_id' field is the actual value sent in voice_setting.voice_id
-          // to MiniMax. If voice_id is omitted, id is used as-is (for raw
-          // MiniMax voice_ids the user might want to pass through).
-          if (!MINIMAX_TTS_KEY || !MINIMAX_GROUP_ID) {
-            // Prompt the user to set up the API key first
-            const empty = document.createElement('div');
-            empty.className = 'vl-empty';
-            empty.textContent = '請先點 💎 設置 MiniMax API Key + Group ID。';
-            popover.appendChild(empty);
-            return;
-          }
-          // Curated voice catalog is defined at top of script (serverVoicesCatalog).
-          // Sort: cantonese first, then mandarin
           const langOrder2 = (v) => {
             const l = (v.lang || '').toLowerCase();
             if (l.startsWith('zh-hk') || l.startsWith('yue')) return 0;
@@ -3811,88 +3901,27 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             return 9;
           };
           serverVoices = serverVoicesCatalog.concat([]).sort((a, b) => langOrder2(a) - langOrder2(b) || a.name.localeCompare(b.name));
-          console.log('[voice-list] loaded ' + serverVoices.length + ' curated voices (hardcoded)');
         }
-        if (!serverVoices.length) {
-          const empty = document.createElement('div');
-          empty.className = 'vl-empty';
-          empty.textContent = '語音目錄未就緒，請稍後重試。';
-          popover.appendChild(empty);
-          return;
-        }
-        // Render neural voices
-        // 2026-06-12 17:35: NEURAL_VOICE now stores the real MiniMax voice_id
-        // (e.g. 'Cantonese_ProfessionalHost（F）'), not the friendly alias.
-        // The voice selector displays the alias (id) for the user but writes
-        // the real voice_id to NEURAL_VOICE on click. fetchMinimaxTtsDirect
-        // reads NEURAL_VOICE directly as voice_setting.voice_id.
-        // For backward compat with localStorage values that were aliases
-        // (pre-17:35 users), we look up the alias in the catalog.
-        const _resolveStored = (stored) => {
-          if (!stored) return 'Cantonese_GentleLady';  // default
-          const hit = serverVoicesCatalog.find(v => v.id === stored || v.voice_id === stored);
-          return hit ? hit.voice_id : stored;  // if no hit, assume it's already a voice_id
-        };
-        // Re-resolve once at boot
-        NEURAL_VOICE = _resolveStored(NEURAL_VOICE);
         serverVoices.forEach((v) => {
           const item = document.createElement('div');
-          const isActive = (v.voice_id === NEURAL_VOICE);
+          const isActive = (ttsMode === 'neural' && v.voice_id === NEURAL_VOICE);
           item.className = 'vl-item' + (isActive ? ' active' : '');
           item.setAttribute('role', 'option');
           item.setAttribute('aria-selected', String(isActive));
+          item.dataset.type = 'neural';
           item.dataset.id = v.id;
           item.dataset.voiceId = v.voice_id;
           item.innerHTML = '<div class="vl-name">' + v.name + '</div><div class="vl-id">' + v.id + ' · ' + v.lang + '</div>';
           item.addEventListener('click', () => {
-            NEURAL_VOICE = v.voice_id;  // store real voice_id, not alias
+            // Switch to neural mode
+            ttsMode = 'neural';
+            try { localStorage.setItem('xiaob_tts_mode', 'neural'); } catch (e) {}
+            NEURAL_VOICE = v.voice_id;
             try { localStorage.setItem(KEY_NEURAL, v.voice_id); } catch (e) {}
             paintBtn();
             closePopover();
-            // Speak a lang-appropriate sample so the user hears the voice
             const sample = (v.lang === 'zh-HK') ? '你好，我係香港粵語語音。' :
                            (v.lang === 'zh-CN') ? '你好，我係普通話語音。' : v.name;
-            speak(sample);
-          });
-          popover.appendChild(item);
-        });
-      } else {
-        // Browser route: list filtered built-in voices (zh-*, en-*, default first)
-        const allVoices = (window.speechSynthesis ? speechSynthesis.getVoices() : []);
-        console.log('[renderList browser mode] speechSynthesis.getVoices() returned:', allVoices.length, 'voices');
-        console.log('[renderList browser mode] all voices:', allVoices.map(v => v.name + '(' + v.lang + ',' + v.voiceURI.substring(0,30) + ')').join(' | '));
-        const filtered = allVoices.filter(v => /^(zh|en|ja|ko)/i.test(v.lang || ''));
-        console.log('[renderList browser mode] filtered (zh/en/ja/ko):', filtered.length, 'voices');
-        const voices = filtered.length ? filtered : allVoices;
-        if (!voices.length) {
-          const empty = document.createElement('div');
-          empty.className = 'vl-empty';
-          empty.textContent = '瀏覽器未提供語音，請用 Chrome / Edge 開啟。';
-          popover.appendChild(empty);
-          return;
-        }
-        // Section: built-in
-        const section = document.createElement('div');
-        section.className = 'vl-section';
-        section.textContent = '瀏覽器內建 (' + voices.length + ')';
-        popover.appendChild(section);
-        voices.forEach((v) => {
-          const item = document.createElement('div');
-          item.className = 'vl-item' + (ttVoice && v.voiceURI === ttVoice.voiceURI ? ' active' : '');
-          item.setAttribute('role', 'option');
-          item.setAttribute('aria-selected', String(ttVoice && v.voiceURI === ttVoice.voiceURI));
-          item.dataset.uri = v.voiceURI;
-          item.innerHTML = '<div class="vl-name">' + (v.name || '(unnamed)') + '</div><div class="vl-id">' + (v.lang || '') + (v.localService ? ' · local' : ' · remote') + '</div>';
-          item.addEventListener('click', () => {
-            console.log('[voice click] Selected voice:', v.name, 'lang:', v.lang, 'voiceURI:', v.voiceURI);
-            ttVoice = v;
-            try { localStorage.setItem(KEY_BROWSER, v.voiceURI); } catch (e) {}
-            paintBtn();
-            closePopover();
-            const sample = (/^zh-HK/i.test(v.lang)) ? '你好，我係香港粵語語音。' :
-                           (/^zh-CN/i.test(v.lang)) ? '你好，我係普通話語音。' :
-                           (/^zh-TW/i.test(v.lang)) ? '你好，我係台灣國語語音。' :
-                           (/^en/i.test(v.lang)) ? 'Hello, this is a voice sample.' : v.name;
             speak(sample);
           });
           popover.appendChild(item);
@@ -3919,8 +3948,15 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
 
     // Restore browser voice choice on boot (if user previously selected in browser mode)
     if (savedBrowserVoiceURI) {
-      const match = (window.speechSynthesis ? speechSynthesis.getVoices() : []).find(v => v.voiceURI === savedBrowserVoiceURI);
-      if (match) ttVoice = match;
+      // v71: match by voice NAME (not URI) since Windows Chrome Chinese voices share identical URIs
+      const allVoices = (window.speechSynthesis ? speechSynthesis.getVoices() : []);
+      const match = allVoices.find(v => v.name === savedBrowserVoiceURI);
+      if (match) {
+        ttVoice = match;
+        console.log('[voice-list] Restored browser voice from localStorage:', ttVoice.name);
+      } else {
+        console.warn('[voice-list] Stored browser voice "' + savedBrowserVoiceURI + '" not found in current voices');
+      }
     }
     if ('speechSynthesis' in window) {
       // Voices may load asynchronously; re-paint when ready

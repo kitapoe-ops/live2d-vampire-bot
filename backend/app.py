@@ -20,7 +20,14 @@ import base64
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, HTTPException, Request
+from fastapi import (
+    FastAPI,
+    WebSocket,
+    WebSocketDisconnect,
+    Query,
+    HTTPException,
+    Request,
+)
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 import requests
@@ -54,11 +61,11 @@ WIDGET_CSP = (
     "media-src 'self' blob: mediastream:; "
     "font-src 'self' data:; "
     "connect-src 'self' "
-                "https://api.deepseek.com "
-                "https://api.minimax.chat "
-                "https://vampire.kitahim.uk "
-                "wss://vampire.kitahim.uk "
-                "https://cdn.jsdelivr.net; "
+    "https://api.deepseek.com "
+    "https://api.minimax.chat "
+    "https://vampire.kitahim.uk "
+    "wss://vampire.kitahim.uk "
+    "https://cdn.jsdelivr.net; "
     "worker-src 'self' blob:; "
     "frame-src 'self' https://vampire.kitahim.uk; "
     "frame-ancestors *; "
@@ -110,6 +117,7 @@ async def add_security_and_cache_headers(request: Request, call_next):
         resp.headers.setdefault("Content-Security-Policy", WIDGET_CSP)
     return resp
 
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -135,6 +143,7 @@ async def validate_ticket(token: str) -> bool:
         TICKET_STORE.pop(token, None)
         return False
     return True
+
 
 # ---------------------------------------------------------------------------
 # Per-IP connection limiter
@@ -163,13 +172,18 @@ TELEMETRY = {
     "total_ws_connections": 0,
     "active_ws_connections": 0,
     "total_frames_pushed": 0,
-    "started_at": time.time()
+    "started_at": time.time(),
 }
 
 
 # ── MiniMax TTS ──────────────────────────────────────────────────────────────
 MINIMAX_TTS_ENDPOINT = "https://api.minimax.chat/v1/t2a_v2"
-MINIMAX_GROUP_ID     = os.getenv("MINIMAX_GROUP_ID") or os.getenv("MINIMAX_TTS_GROUP_ID") or os.getenv("MINIMAX_API_GROUP_ID") or ""
+MINIMAX_GROUP_ID = (
+    os.getenv("MINIMAX_GROUP_ID")
+    or os.getenv("MINIMAX_TTS_GROUP_ID")
+    or os.getenv("MINIMAX_API_GROUP_ID")
+    or ""
+)
 
 # Voice map: Azure-style names + friendly aliases → MiniMax voice_id.
 # Lets the widget keep using familiar names (zh-TW-HsiaoChenNeural, zh-HK-HiuMaanNeural, …)
@@ -178,40 +192,92 @@ MINIMAX_GROUP_ID     = os.getenv("MINIMAX_GROUP_ID") or os.getenv("MINIMAX_TTS_G
 # Note: the F/M suffix in some MiniMax voice_ids uses full-width parentheses.
 VOICE_MAP: Dict[str, str] = {
     # ── Friendly aliases (recommended) ────────────────────────────────
-    "cantonese-female":      "Cantonese_ProfessionalHost（F)",   # 粵語女主持 (default)
-    "cantonese-male":        "Cantonese_ProfessionalHost（M)",   # 粵語男主持
-    "cantonese-gentle":      "Cantonese_GentleLady",              # 粵語溫柔女聲
-    "cantonese-cute":        "Cantonese_CuteGirl",                # 粵語可愛女孩
-    "cantonese-playful":     "Cantonese_PlayfulMan",              # 粵語活潑男聲
-    "cantonese-kind":        "Cantonese_KindWoman",               # 粵語善良女聲
-    "mandarin-female":       "female-tianmei",                    # 普通話甜美女聲
-    "mandarin-male":         "presenter_male",                    # 普通話男主播
-    "mandarin-shaonv":       "female-shaonv",                     # 普通話少女音色
-    "mandarin-yujie":        "female-yujie",                      # 普通話御姐音色
-    "mandarin-chengshu":     "female-chengshu",                   # 普通話成熟女性
+    # Synced with frontend serverVoicesCatalog (widget_fixed.html)
+    # 2026-06-16: Fixed mismatch where frontend sent different voice_ids than backend expected
+    "cantonese-female": "Cantonese_GentleLady",  # 粵語女主持 (default)
+    "cantonese-male": "Cantonese_PlayfulMan",  # 粵語男主持
+    "cantonese-gentle": "Cantonese_GentleLady",  # 粵語溫柔女聲
+    "cantonese-cute": "Cantonese_CuteGirl",  # 粵語可愛女孩
+    "cantonese-playful": "Cantonese_PlayfulMan",  # 粵語活潑男聲
+    "cantonese-kind": "Cantonese_KindWoman",  # 粵語善良女聲
+    "mandarin-female": "female-tianmei",  # 普通話甜美女聲
+    "mandarin-male": "presenter_male",  # 普通話男主播
+    "mandarin-shaonv": "female-tianmei",  # 普通話少女音色
+    "mandarin-yujie": "female-tianmei",  # 普通話御姐音色
+    "mandarin-chengshu": "female-tianmei",  # 普通話成熟女性
+    "mandarin-announcer": "presenter_male",  # 普通話新聞男主播
     # ── Azure-style names (the widget's defaults) ─────────────────────
-    "zh-tw-hsiaochenneural":  "female-tianmei",                   # 台灣女聲
-    "zh-tw-yunjhenneural":   "presenter_male",                   # 台灣男聲
-    "zh-hk-hiumaanneural":   "Cantonese_ProfessionalHost（F)",   # 港式粵語女聲
-    "zh-hk-wanluneural":     "Cantonese_ProfessionalHost（M)",   # 港式粵語男聲
-    "zh-cn-xiaoxiaoneural":  "female-shaonv",                     # 普通話女聲
-    "zh-cn-yunxineural":     "presenter_male",                    # 普通話男聲
-    "zh-cn-yunyangneural":   "Chinese (Mandarin)_Male_Announcer",# 普通話新聞男
+    "zh-tw-hsiaochenneural": "female-tianmei",  # 台灣女聲
+    "zh-tw-yunjhenneural": "presenter_male",  # 台灣男聲
+    "zh-hk-hiumaanneural": "Cantonese_GentleLady",  # 港式粵語女聲
+    "zh-hk-wanluneural": "Cantonese_PlayfulMan",  # 港式粵語男聲
+    "zh-cn-xiaoxiaoneural": "female-tianmei",  # 普通話女聲
+    "zh-cn-yunxineural": "presenter_male",  # 普通話男聲
+    "zh-cn-yunyangneural": "presenter_male",  # 普通話新聞男
 }
 
 # Friendly reverse-lookup: expose `/api/voices` so the widget can list choices
 VOICE_CATALOG = [
-    {"id": "cantonese-female",  "lang": "zh-HK", "name": "粵語女主持 (Cantonese female host)"},
-    {"id": "cantonese-male",    "lang": "zh-HK", "name": "粵語男主持 (Cantonese male host)"},
-    {"id": "cantonese-gentle",  "lang": "zh-HK", "name": "粵語溫柔女聲 (Cantonese gentle lady)"},
-    {"id": "cantonese-cute",    "lang": "zh-HK", "name": "粵語可愛女孩 (Cantonese cute girl)"},
-    {"id": "cantonese-playful", "lang": "zh-HK", "name": "粵語活潑男聲 (Cantonese playful man)"},
-    {"id": "cantonese-kind",    "lang": "zh-HK", "name": "粵語善良女聲 (Cantonese kind woman)"},
-    {"id": "mandarin-female",   "lang": "zh-CN", "name": "普通話甜美女聲 (Mandarin sweet female)"},
-    {"id": "mandarin-male",     "lang": "zh-CN", "name": "普通話男主播 (Mandarin male presenter)"},
-    {"id": "mandarin-shaonv",   "lang": "zh-CN", "name": "普通話少女音色 (Mandarin young girl)"},
-    {"id": "mandarin-yujie",    "lang": "zh-CN", "name": "普通話御姐音色 (Mandarin mature lady)"},
-    {"id": "mandarin-chengshu", "lang": "zh-CN", "name": "普通話成熟女性 (Mandarin mature woman)"},
+    {
+        "id": "cantonese-female",
+        "lang": "zh-HK",
+        "name": "粵語女主持 (Cantonese female host)",
+    },
+    {
+        "id": "cantonese-male",
+        "lang": "zh-HK",
+        "name": "粵語男主持 (Cantonese male host)",
+    },
+    {
+        "id": "cantonese-gentle",
+        "lang": "zh-HK",
+        "name": "粵語溫柔女聲 (Cantonese gentle lady)",
+    },
+    {
+        "id": "cantonese-cute",
+        "lang": "zh-HK",
+        "name": "粵語可愛女孩 (Cantonese cute girl)",
+    },
+    {
+        "id": "cantonese-playful",
+        "lang": "zh-HK",
+        "name": "粵語活潑男聲 (Cantonese playful man)",
+    },
+    {
+        "id": "cantonese-kind",
+        "lang": "zh-HK",
+        "name": "粵語善良女聲 (Cantonese kind woman)",
+    },
+    {
+        "id": "mandarin-female",
+        "lang": "zh-CN",
+        "name": "普通話甜美女聲 (Mandarin sweet female)",
+    },
+    {
+        "id": "mandarin-male",
+        "lang": "zh-CN",
+        "name": "普通話男主播 (Mandarin male presenter)",
+    },
+    {
+        "id": "mandarin-shaonv",
+        "lang": "zh-CN",
+        "name": "普通話少女音色 (Mandarin young girl)",
+    },
+    {
+        "id": "mandarin-yujie",
+        "lang": "zh-CN",
+        "name": "普通話御姐音色 (Mandarin mature lady)",
+    },
+    {
+        "id": "mandarin-chengshu",
+        "lang": "zh-CN",
+        "name": "普通話成熟女性 (Mandarin mature woman)",
+    },
+    {
+        "id": "mandarin-announcer",
+        "lang": "zh-CN",
+        "name": "普通話新聞男主播 (Mandarin news announcer)",
+    },
 ]
 
 # Default voice when client doesn't supply one
@@ -230,16 +296,47 @@ def resolve_voice(voice: str) -> str:
     # Already a raw MiniMax voice_id? Pass through.
     return voice
 
+
 # ---------------------------------------------------------------------------
 # LERP-based parameter generator (mock LLM-driven emotion)
 # ---------------------------------------------------------------------------
 EMOTION_PRESETS = {
-    "neutral":  {"ParamAngleX": 0.0,  "ParamMouthOpenY": 0.0, "ParamEyeLOpen": 1.0, "ParamEyeROpen": 1.0},
-    "happy":    {"ParamAngleX": 5.0,  "ParamMouthOpenY": 0.6, "ParamEyeLOpen": 0.7, "ParamEyeROpen": 0.7},
-    "sad":      {"ParamAngleX": -3.0, "ParamMouthOpenY": 0.1, "ParamEyeLOpen": 0.5, "ParamEyeROpen": 0.5},
-    "angry":    {"ParamAngleX": 2.0,  "ParamMouthOpenY": 0.3, "ParamEyeLOpen": 0.9, "ParamEyeROpen": 0.9},
-    "surprised":{"ParamAngleX": 0.0,  "ParamMouthOpenY": 1.0, "ParamEyeLOpen": 1.2, "ParamEyeROpen": 1.2},
-    "thinking": {"ParamAngleX": -8.0, "ParamMouthOpenY": 0.2, "ParamEyeLOpen": 0.8, "ParamEyeROpen": 0.8}
+    "neutral": {
+        "ParamAngleX": 0.0,
+        "ParamMouthOpenY": 0.0,
+        "ParamEyeLOpen": 1.0,
+        "ParamEyeROpen": 1.0,
+    },
+    "happy": {
+        "ParamAngleX": 5.0,
+        "ParamMouthOpenY": 0.6,
+        "ParamEyeLOpen": 0.7,
+        "ParamEyeROpen": 0.7,
+    },
+    "sad": {
+        "ParamAngleX": -3.0,
+        "ParamMouthOpenY": 0.1,
+        "ParamEyeLOpen": 0.5,
+        "ParamEyeROpen": 0.5,
+    },
+    "angry": {
+        "ParamAngleX": 2.0,
+        "ParamMouthOpenY": 0.3,
+        "ParamEyeLOpen": 0.9,
+        "ParamEyeROpen": 0.9,
+    },
+    "surprised": {
+        "ParamAngleX": 0.0,
+        "ParamMouthOpenY": 1.0,
+        "ParamEyeLOpen": 1.2,
+        "ParamEyeROpen": 1.2,
+    },
+    "thinking": {
+        "ParamAngleX": -8.0,
+        "ParamMouthOpenY": 0.2,
+        "ParamEyeLOpen": 0.8,
+        "ParamEyeROpen": 0.8,
+    },
 }
 
 current_emotion = "neutral"
@@ -332,8 +429,8 @@ async def index():
             "model": "GET /api/v1/models/{name}",
             "ticket": "GET /api/v1/auth/ticket",
             "ws": "WS /api/v1/live2d/control?token=***&model=vampire",
-            "static": "GET /static/live2d/{model}/..."
-        }
+            "static": "GET /static/live2d/{model}/...",
+        },
     }
 
 
@@ -345,7 +442,7 @@ async def health():
         "uptime_sec": uptime_sec,
         "active_connections": TELEMETRY["active_ws_connections"],
         "total_connections": TELEMETRY["total_ws_connections"],
-        "total_frames_pushed": TELEMETRY["total_frames_pushed"]
+        "total_frames_pushed": TELEMETRY["total_frames_pushed"],
     }
 
 
@@ -371,15 +468,17 @@ async def list_models():
         except Exception:
             continue
         refs = data.get("FileReferences", {})
-        models.append({
-            "name": model_dir.name,
-            "path": f"/static/live2d/{model_dir.name}/",
-            "moc": refs.get("Moc", ""),
-            "textures": refs.get("Textures", []),
-            "physics": refs.get("Physics", ""),
-            "display_info": refs.get("DisplayInfo", ""),
-            "version": data.get("Version", 3)
-        })
+        models.append(
+            {
+                "name": model_dir.name,
+                "path": f"/static/live2d/{model_dir.name}/",
+                "moc": refs.get("Moc", ""),
+                "textures": refs.get("Textures", []),
+                "physics": refs.get("Physics", ""),
+                "display_info": refs.get("DisplayInfo", ""),
+                "version": data.get("Version", 3),
+            }
+        )
     return {"models": models}
 
 
@@ -397,21 +496,23 @@ async def get_model(name: str):
         raise HTTPException(status_code=404, detail="model3.json not found")
     with open(model_json, "r", encoding="utf-8") as f:
         data = json.load(f)
-    return {
-        "name": name,
-        "model3_json": data,
-        "directory": str(model_dir.absolute())
-    }
+    return {"name": name, "model3_json": data, "directory": str(model_dir.absolute())}
 
 
 @app.get("/api/voices")
 async def list_voices():
-    """Return the curated voice catalog (friendly IDs + Chinese names)."""
-    return {"default": DEFAULT_VOICE_ID, "voices": VOICE_CATALOG}
+    """Return the curated voice catalog (friendly IDs + Chinese names + MiniMax voice_id)."""
+    voices_with_id = []
+    for v in VOICE_CATALOG:
+        resolved = resolve_voice(v["id"])
+        voices_with_id.append({**v, "voice_id": resolved})
+    return {"default": DEFAULT_VOICE_ID, "voices": voices_with_id}
 
 
 @app.get("/api/tts")
-async def tts_endpoint(voice: str = Query(default=DEFAULT_VOICE_ID), text: str = Query(...)):
+async def tts_endpoint(
+    voice: str = Query(default=DEFAULT_VOICE_ID), text: str = Query(...)
+):
     """MiniMax TTS proxy — GET /api/tts?text=...&voice=...
     Voice param accepts:
       - Friendly alias: 'cantonese-female', 'mandarin-male', etc.
@@ -421,16 +522,18 @@ async def tts_endpoint(voice: str = Query(default=DEFAULT_VOICE_ID), text: str =
     """
     api_key = os.getenv("MINIMAX_API_KEY")
     if not api_key:
-        return Response(status_code=400, media_type="text/plain",
-                         content="MINIMAX_API_KEY not set")
+        return Response(
+            status_code=400, media_type="text/plain", content="MINIMAX_API_KEY not set"
+        )
     if not MINIMAX_GROUP_ID:
-        return Response(status_code=400, media_type="text/plain",
-                         content="MINIMAX_GROUP_ID not set")
+        return Response(
+            status_code=400, media_type="text/plain", content="MINIMAX_GROUP_ID not set"
+        )
     voice_id = resolve_voice(voice)
     try:
         payload = {
             "model": "speech-02-hd",
-            "text": text[:150],   # hard cap at 150 chars (≈ 15-25s of speech)
+            "text": text[:150],  # hard cap at 150 chars (≈ 15-25s of speech)
             "stream": False,
             "voice_setting": {
                 "voice_id": voice_id,
@@ -450,38 +553,41 @@ async def tts_endpoint(voice: str = Query(default=DEFAULT_VOICE_ID), text: str =
         url = f"{MINIMAX_TTS_ENDPOINT}?group_id={MINIMAX_GROUP_ID}"
         resp = requests.post(url, json=payload, headers=headers, timeout=30)
         if resp.status_code != 200:
-            return Response(status_code=502,
-                             media_type="text/plain",
-                             content=f"MiniMax error {resp.status_code}: {resp.text[:200]}")
+            return Response(
+                status_code=502,
+                media_type="text/plain",
+                content=f"MiniMax error {resp.status_code}: {resp.text[:200]}",
+            )
         data = resp.json()
         base_status = data.get("base_resp", {}).get("status_code", 0)
         if base_status != 0:
             msg = data.get("base_resp", {}).get("status_msg", "unknown")
-            return Response(status_code=502,
-                             media_type="text/plain",
-                             content=f"MiniMax voice error (voice_id={voice_id}): {msg}")
+            return Response(
+                status_code=502,
+                media_type="text/plain",
+                content=f"MiniMax voice error (voice_id={voice_id}): {msg}",
+            )
         audio_data = data.get("data", {}).get("audio", "")
         if not audio_data:
-            return Response(status_code=502,
-                             media_type="text/plain",
-                             content="No audio in MiniMax response")
+            return Response(
+                status_code=502,
+                media_type="text/plain",
+                content="No audio in MiniMax response",
+            )
         # MiniMax returns hex-encoded MP3 in data.audio
         audio_bytes = bytes.fromhex(audio_data)
         return Response(content=audio_bytes, media_type="audio/mpeg")
     except Exception as e:
-        return Response(status_code=500, media_type="text/plain",
-                         content=f"TTS error: {e}")
-
+        return Response(
+            status_code=500, media_type="text/plain", content=f"TTS error: {e}"
+        )
 
 
 @app.get("/api/v1/auth/ticket")
 async def issue_ticket(user_id: str = "anonymous"):
     """Issue a one-time ticket for WebSocket auth. 1 hour expiry."""
     ticket = f"tk_{secrets.token_urlsafe(24)}"
-    TICKET_STORE[ticket] = {
-        "user_id": user_id,
-        "expires_at": time.time() + 3600
-    }
+    TICKET_STORE[ticket] = {"user_id": user_id, "expires_at": time.time() + 3600}
     return {"ticket": ticket, "expires_in": 3600, "user_id": user_id}
 
 
@@ -489,7 +595,7 @@ async def issue_ticket(user_id: str = "anonymous"):
 async def ws_live2d_control(
     websocket: WebSocket,
     token: str = Query(default=""),
-    model: str = Query(default="vampire")
+    model: str = Query(default="vampire"),
 ):
     """
     60 FPS Live2D parameter push.
@@ -513,12 +619,9 @@ async def ws_live2d_control(
 
     try:
         # Send initial connection confirmation
-        await websocket.send_json({
-            "type": "connected",
-            "model": model,
-            "fps": 60,
-            "client_ip": client_ip
-        })
+        await websocket.send_json(
+            {"type": "connected", "model": model, "fps": 60, "client_ip": client_ip}
+        )
 
         # 60 FPS push loop
         while True:
@@ -530,11 +633,9 @@ async def ws_live2d_control(
                 next_frame = now + FRAME_TIME
 
             params = lerp_params()
-            await websocket.send_json({
-                "type": "frame",
-                "model": model,
-                "params": params
-            })
+            await websocket.send_json(
+                {"type": "frame", "model": model, "params": params}
+            )
             TELEMETRY["total_frames_pushed"] += 1
 
     except WebSocketDisconnect:
@@ -542,7 +643,9 @@ async def ws_live2d_control(
     except Exception as e:
         print(f"[WS Error] {e}", flush=True)
     finally:
-        TELEMETRY["active_ws_connections"] = max(0, TELEMETRY["active_ws_connections"] - 1)
+        TELEMETRY["active_ws_connections"] = max(
+            0, TELEMETRY["active_ws_connections"] - 1
+        )
         release_connection(client_ip)
         try:
             await websocket.close()
@@ -552,4 +655,5 @@ async def ws_live2d_control(
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

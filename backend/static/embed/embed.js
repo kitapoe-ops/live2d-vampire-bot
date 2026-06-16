@@ -103,7 +103,7 @@
   // 2026-06-13 v2: drop `speech-recognition` token. Chrome console warning
   // "Unrecognized feature: 'speech-recognition'" — it's not in W3C's
   // policy-controlled features list; the `microphone` feature covers SR.
-  iframe.setAttribute('allow', 'microphone *; camera *; autoplay *');
+  iframe.setAttribute('allow', 'microphone *; speech-recognition *; camera *; autoplay *');
   iframe.setAttribute('allowtransparency', 'true');
   iframe.style.cssText = 'width:100%;height:100%;border:0;background:transparent;color-scheme:normal;';
 
