@@ -2422,6 +2422,34 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             console.log('[Live2D] KNOWLEDGE.setIdIndexMap(deferred inject) complete');
           }
           console.log('[Live2D] KNOWLEDGE.setModel(injected) — 140 active + 12 bonus + 14 expression channels registered');
+          
+          // 2026-06-16 v47 BRUTE-FORCE: Scan ALL part indices and test opacity/multiply blend APIs.
+          // This bypasses the 'getPartId returns ?' bug and finds which parts can actually be controlled.
+          setTimeout(() => {
+            const _cm = model && model.internalModel && model.internalModel.coreModel;
+            if (!_cm) { console.warn('[v47-bf] no coreModel'); return; }
+            if (typeof _cm.getPartCount !== 'function') { console.warn('[v47-bf] no getPartCount'); return; }
+            const cnt = _cm.getPartCount();
+            const findings = [];
+            const KEY_PARTS = ['Part26', 'Part30', 'Part59', 'Part3', 'Part4', 'Part6', 'Part7', 'Part9', 'Part10', 'Part11', 'Part12', 'Part15', 'Part16'];
+            for (let i = 0; i < cnt; i++) {
+              const f = { idx: i, id: '?', op: { save: null, set05: null, restored: null }, mul: { save: null, set1: null, restored: null } };
+              try { f.id = (_cm.getPartId(i) && _cm.getPartId(i).getString) ? _cm.getPartId(i).getString() : String(_cm.getPartId(i) || '?'); } catch(e) {}
+              try { f.op.save = _cm.getPartOpacity(i); } catch(e) { f.op.save = 'ERR:'+e.message; }
+              try { f.mul.save = _cm.getPartMultiplyBlend ? _cm.getPartMultiplyBlend(i) : 'NO_API'; } catch(e) { f.mul.save = 'ERR:'+e.message; }
+              try { _cm.setPartOpacity(i, 0.5); f.op.set05 = _cm.getPartOpacity(i); } catch(e) { f.op.set05 = 'ERR:'+e.message; }
+              try { if (_cm.setPartMultiplyBlend) { _cm.setPartMultiplyBlend(i, 1.0); f.mul.set1 = _cm.getPartMultiplyBlend ? _cm.getPartMultiplyBlend(i) : '?'; } } catch(e) { f.mul.set1 = 'ERR:'+e.message; }
+              try { _cm.setPartOpacity(i, f.op.save !== 'ERR:'+f.op.save ? f.op.save : 1.0); } catch(e) {}
+              try { if (_cm.setPartMultiplyBlend) _cm.setPartMultiplyBlend(i, f.mul.save !== 'ERR:'+f.mul.save ? f.mul.save : 1.0); } catch(e) {}
+              try { f.op.restored = _cm.getPartOpacity(i); } catch(e) { f.op.restored = 'ERR:'+e.message; }
+              const opWorks = (f.op.set05 !== 'ERR' && f.op.set05 !== null && f.op.set05 !== 'NO_API') && (Math.abs(f.op.set05 - 0.5) < 0.05);
+              const mulWorks = (f.mul.set1 !== 'ERR' && f.mul.set1 !== 'NO_API' && f.mul.set1 !== '?') && (Math.abs(f.mul.set1 - 1.0) < 0.05);
+              if (opWorks || mulWorks) findings.push({ idx: i, id: f.id, op_works: opWorks, mul_works: mulWorks, op_before: f.op.save, mul_before: f.mul.save });
+            }
+            console.log('[v47-BRUTEFORCE] scanned ' + cnt + ' parts, mutable parts:', JSON.stringify(findings, null, 2));
+            console.log('[v47-BRUTEFORCE] KEY PARTS status:', JSON.stringify(findings.filter(f => KEY_PARTS.indexOf(f.id) >= 0), null, 2));
+          }, 1000);
+          
           return true;
         }
         return false;
