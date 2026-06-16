@@ -497,7 +497,6 @@
       <!-- Visible when stage is shown: -->
       <button class="ctrl corner-btn" id="btn-mic" data-mic-btn="1" aria-label="開始語音對話" title="開始語音對話"><span aria-hidden="true">🎤</span></button>
       <button class="ctrl corner-btn" id="btn-actions" aria-label="動作列表" title="動作列表"><span aria-hidden="true">📋</span></button>
-      <button class="ctrl corner-btn" id="btn-emote-corner" aria-label="切換衣裝" title="切換衣裝"><span aria-hidden="true">🧥</span></button>
       <button class="ctrl corner-btn" id="btn-settings" aria-label="開啟設定面板" title="設定" aria-haspopup="dialog" aria-expanded="false"><span aria-hidden="true">⚙️</span></button>
       <button class="ctrl corner-btn" id="btn-close" aria-label="收起助理" title="收起助理"><span aria-hidden="true">✕</span></button>
       <!-- Visible when stage is hidden (restore button): -->
@@ -2987,8 +2986,10 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
 
       // 表情與外觀客製化選單已移除，此處改為衣裝轉換按鈕一鍵切換邏輯
       window.updateEmoteListActiveUI = function() {}; // 空函數相容性
+      // 換裝按鈕已移除（2026-06-16），以下 IIFE 保留但禁用
       (function() {
         const btn = document.getElementById('btn-emote-corner');
+        if (!btn) return; // 按鈕已移除，提前退出
 
         // 修改按鈕的標示與屬性，以代表衣裝切換
         btn.setAttribute('aria-label', '切換衣裝形態 (黑色/白色)');
@@ -4469,11 +4470,6 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         renderActionList(popover);
       }
     }
-  });
-  // 2026-06-13 v31: outfit toggle button in corner
-  document.getElementById('btn-emote-corner').addEventListener('click', (e) => {
-    e.stopPropagation();
-    try { toggleOutfit && toggleOutfit(); } catch (eToggle) {}
   });
   // 2026-06-13 v31: render action list in emote-list popover
   function renderActionList(popover) {
