@@ -3102,6 +3102,32 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           });
         };
 
+        // 2026-06-16: Debug function to list ALL parts in the model
+        // Usage: in browser DevTools console, type: listParts()
+        window.listParts = function() {
+          try {
+            var cm = model && model.internalModel && model.internalModel.coreModel;
+            if (!cm) { console.warn('[listParts] no coreModel'); return; }
+            var cnt = (typeof cm.getPartCount === 'function') ? cm.getPartCount() : 0;
+            console.log('[listParts] Total parts:', cnt);
+            var parts = [];
+            for (var i = 0; i < cnt; i++) {
+              var pid = (typeof cm.getPartId === 'function') ? cm.getPartId(i) : '?';
+              var pidStr = (pid && typeof pid.getString === 'function') ? pid.getString() : String(pid);
+              var op = null;
+              if (typeof cm.getPartOpacity === 'function') {
+                try { op = cm.getPartOpacity(i); } catch(e) { op = 'err'; }
+              }
+              parts.push({ i: i, id: pidStr, op: op });
+            }
+            console.log('[listParts] All parts:', JSON.stringify(parts, null, 2));
+            // Also try getPartIds (PixiLive2D wrapper)
+            if (typeof cm.getPartIds === 'function') {
+              try { console.log('[listParts] getPartIds():', cm.getPartIds()); } catch(e) {}
+            }
+          } catch(e) { console.error('[listParts] error:', e); }
+        };
+
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           toggleOutfit();
