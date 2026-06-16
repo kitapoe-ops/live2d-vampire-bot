@@ -3814,6 +3814,7 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
           item.dataset.uri = v.voiceURI;
           item.innerHTML = '<div class="vl-name">' + (v.name || '(unnamed)') + '</div><div class="vl-id">' + (v.lang || '') + (v.localService ? ' · local' : ' · remote') + '</div>';
           item.addEventListener('click', () => {
+            console.log('[voice click] Selected voice:', v.name, 'lang:', v.lang, 'voiceURI:', v.voiceURI);
             ttVoice = v;
             try { localStorage.setItem(KEY_BROWSER, v.voiceURI); } catch (e) {}
             paintBtn();

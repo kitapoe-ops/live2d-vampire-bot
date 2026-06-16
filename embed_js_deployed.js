@@ -5,7 +5,7 @@
  *
  * Usage on any website:
  *   <script src="https://vampire.kitahim.uk/static/embed/embed.js"
- *     data-model="https://vampire.kitahim.uk/static/live2d/vampire/%E5%90%B8%E8%A1%80%E9%AC%BC.model3.json"
+ *     data-model="https://vampire.kitahim.uk/static/live2d/vampire/vampire.model3.json"
  *     data-knowledge="https://vampire.kitahim.uk/static/embed/knowledge.js"
  *     data-api="/api/tts"></script>
  *
@@ -53,20 +53,14 @@
     if (v) cfg.set(k, v);
   });
   // Default to vampire model. If running locally on localhost/127.0.0.1, use relative path to prevent CORS issues.
-  // 2026-06-13 v24: hardcode the URL-encoded form (%E5%90%B8%E8%A1%80%E9%AC%BC) instead of
-  // calling encodeURIComponent('吸血鬼') at runtime. This sidesteps any encoding
-  // bug in the host environment's JavaScript engine (e.g. legacy IE, a CSP
-  // that strips non-ASCII source, or a static analysis tool that misrenders
-  // CJK characters in the source file as mojibake like 𢙺銵擛 and 'fixes'
-  // them to garbage). The hardcoded form is byte-identical to what
-  // encodeURIComponent('吸血鬼') produces.
+  // 2026-06-16 v42: use 'vampire.model3.json' instead of the Chinese filename
+  // '吸血鬼.model3.json' because the deployed server only has the ASCII filename.
   if (!cfg.has('model')) {
-    var VAMP_ENC = '%E5%90%B8%E8%A1%80%E9%AC%BC';
     var isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
     if (isLocal) {
-      cfg.set('model', '/static/live2d/vampire/' + VAMP_ENC + '.model3.json');
+      cfg.set('model', '/static/live2d/vampire/vampire.model3.json');
     } else {
-      cfg.set('model', 'https://vampire.kitahim.uk/static/live2d/vampire/' + VAMP_ENC + '.model3.json');
+      cfg.set('model', 'https://vampire.kitahim.uk/static/live2d/vampire/vampire.model3.json');
     }
   }
   if (!cfg.has('knowledge')) {
