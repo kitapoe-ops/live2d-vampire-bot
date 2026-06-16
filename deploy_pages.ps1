@@ -14,6 +14,13 @@ Write-Host ""
 
 Set-Location 'C:\Users\kitap\.openclaw\workspace\live2d-fork'
 
+# 2026-06-16: Build dist-pages/ from source before deploying
+# This ensures backend/static/embed/widget.html changes are included
+Write-Host "=== Building dist-pages/ from source ===" -ForegroundColor Cyan
+python build_pages_dist.py
+if ($LASTEXITCODE -ne 0) { throw "build_pages_dist.py failed" }
+Write-Host ""
+
 # Run wrangler with env vars in-process (per 6-08 protocol, no PS-escaped token)
 $env:CLOUDFLARE_API_TOKEN = $token
 $env:CLOUDFLARE_ACCOUNT_ID = $accountId
