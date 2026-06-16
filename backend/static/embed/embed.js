@@ -40,7 +40,7 @@
   // (bypass any Cloudflare/browser cache that may hold stale polling code)
   // 2026-06-14 v38: bump to force fresh fetch after user feedback that
   // drag + react handler appeared broken (likely stale widget.html cache).
-  var _buildV = '20260616v41';
+  var _buildV = '20260616v42';
   if (widgetUrl.indexOf('?') < 0) widgetUrl += '?v=' + _buildV;
   else widgetUrl += '&v=' + _buildV;
   var startOpen = (me && me.getAttribute('data-open') !== 'false');

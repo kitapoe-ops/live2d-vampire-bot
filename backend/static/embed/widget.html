@@ -2344,6 +2344,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
             }
           }
 
+        } catch (e) {}
       }
 
       // 重寫 model.update 以確保在 Motion/Expression 計算完畢後強制套用衣裝參數
