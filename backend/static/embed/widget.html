@@ -2301,6 +2301,23 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
       window.model = model;
       window.emoteState = emoteState;
       console.log('[Live2D] model and emoteState exposed to window');
+      
+      // 2026-06-16 AUTO DEBUG: List all parts in the model on load
+      setTimeout(function() {
+        try {
+          var cm = model && model.internalModel && model.internalModel.coreModel;
+          if (!cm) { console.warn('[autoParts] no coreModel'); return; }
+          var cnt = (typeof cm.getPartCount === 'function') ? cm.getPartCount() : 0;
+          console.log('[autoParts] Total parts:', cnt);
+          var parts = [];
+          for (var i = 0; i < cnt; i++) {
+            var pid = (typeof cm.getPartId === 'function') ? cm.getPartId(i) : '?';
+            var pidStr = (pid && typeof pid.getString === 'function') ? pid.getString() : String(pid);
+            parts.push(i + ':' + pidStr);
+          }
+          console.log('[autoParts] All Part IDs:', JSON.stringify(parts));
+        } catch(e) { console.error('[autoParts] error:', e); }
+      }, 3000); // Wait 3s for model to fully initialize
 
       // 2026-06-13 v16: SINGLE SOURCE OF TRUTH for outfit params.
       // Per user report: different emotions (especially hearteyes / sad /
