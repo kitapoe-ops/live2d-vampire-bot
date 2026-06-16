@@ -1413,6 +1413,14 @@
 
   function loadVoice() {
     const vs = speechSynthesis.getVoices();
+    console.log('[loadVoice] speechSynthesis.getVoices() returned:', vs.length, 'voices');
+    if (vs.length === 0) {
+      console.warn('[loadVoice] WARNING: No voices loaded yet! Voices may load asynchronously.');
+      console.warn('[loadVoice] Browser:', navigator.userAgent);
+      console.warn('[loadVoice] speechSynthesis supported:', 'speechSynthesis' in window);
+    } else {
+      console.log('[loadVoice] Available voices:', vs.map(v => v.name + '(' + v.lang + ')').join(', '));
+    }
     const pick = (re) => vs.find(v => re.test(v.name + ' ' + v.lang) && !/Google/i.test(v.name));
     ttVoice =
          pick(/(HsiaoChen|HsiaoYu|曉臻|曉雨).*zh/i)
@@ -2880,61 +2888,193 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           const isBlack = (emoteState.outfit !== 'vampire2');
           const nextOutfit = isBlack ? 'vampire2' : 'vampire';
           emoteState.outfit = nextOutfit;
-          // 2026-06-13 v16: removed model.expression('vampire'/'vampire2') call.
-          // 2026-06-15 v60 FIX: Idle.motion3 has no PARAMoutfit1_2 curve, but the
-          // Live2D Cubism SDK resets declared-but-empty params to model defaults every
-          // time the motion restarts. This was NOT the bug — the real bug was that
-          // we only set Part26/Part30 but missed the sleeves and body parts.
-          // Full outfit parts (from CDI3 analysis):
-          //   vampire (black): Part26(黑衣服) + Part3/6/9/10/15(袖套黑)
-          //   vampire2 (white): Part30(白衣服) + Part4/7/11/12/16(袖套)
-          //   Both outfits: Part59(裸模) must stay 0, body is controlled by PARAMoutfit1_2
-          if (typeof applyOutfit === 'function') {
-            applyOutfit(emoteState.outfit);
-          }
-          try {
-            const cm = model && model.internalModel && model.internalModel.coreModel;
-            if (cm) {
-              const targetOp = (nextOutfit === 'vampire') ? 1.0 : 0.0;
-              // Black outfit parts: visible when targetOp=1
-              const blackParts = ['Part26', 'Part3', 'Part6', 'Part9', 'Part10', 'Part15'];
-              // White outfit parts: visible when targetOp=0
-              const whiteParts = ['Part30', 'Part4', 'Part7', 'Part11', 'Part12', 'Part16'];
-              let opLog = [];
-              const setPart = function(pName, op) {
-                if (typeof cm.setPartOpacityById === 'function') {
-                  try { cm.setPartOpacityById(pName, op); } catch(e) {}
-                }
-                if (typeof cm.setPartOpacity === 'function') {
-                  try {
-                    const count = (typeof cm.getPartCount === 'function') ? cm.getPartCount() : 60;
-                    for (let pi = 0; pi < count; pi++) {
-                      try {
-                        const pid = (typeof cm.getPartId === 'function') ? cm.getPartId(pi) : null;
-                        if (pid === pName) { cm.setPartOpacity(pi, op); break; }
-                      } catch(e2) {}
-                    }
-                  } catch(e3) {}
-                }
-                try {
-                  var op = (typeof cm.getPartOpacityById === 'function') ? cm.getPartOpacityById(pName) : '?';
-                  opLog.push(pName + '=' + (typeof op === 'number' ? op.toFixed(1) : op));
-                } catch(e4) { opLog.push(pName + '=?'); }
-              };
-              // For black outfit: show black parts (op=1), hide white parts (op=0)
-              // For white outfit: show white parts (op=1), hide black parts (op=0)
-              for (const p of blackParts) { setPart(p, targetOp); }  // 1=black(visible), 0=white(hidden)
-              for (const p of whiteParts) { setPart(p, 1.0 - targetOp); }  // inverse
-              console.log('[Live2D] Outfit toggled to:', nextOutfit, '| Part ops:', opLog.join(', '));
+
+          // 2026-06-15 v44: fix for body Part26 still not responding after v42.
+          // User feedback: '?ªæ?黑色?­å·¾ï¼Œå…¶ä»–é??²è¡£?è??æ?沒æ?顯示'
+          // (headscarf shows, body black clothes stay transparent).
+          // Hypothesis: Part26 is in MULTIPLY blend mode. setPartOpacityById
+          // alone sets the opacity layer, but if MULTIPLY=0 the texture is
+          // multiplied by 0 (invisible) regardless of opacity.
+          // Fix: also call setPartMultiplyBlendById to force visibility.
+          const m = (typeof model !== 'undefined' && model) ? model : window.model;
+          const cm = m && m.internalModel && m.internalModel.coreModel;
+
+          // Path 1: native model.expression() ??sets hair params (always works).
+          let usedExpression = false;
+          if (m && typeof m.expression === 'function') {
+            try {
+              m.expression(nextOutfit);
+              console.log('[Outfit] native expression(\'' + nextOutfit + '\') triggered (hair)');
+              usedExpression = true;
+            } catch (eExp) {
+              console.warn('[Outfit] native expression failed:', eExp.message);
             }
-          } catch (ePart) {
-            console.warn('[Live2D] Outfit toggle failed:', ePart.message);
           }
-          showBubble('已切換衣裝：' + (nextOutfit === 'vampire2' ? '白色衣裝' : '黑色衣裝'));
+
+          // Path 1B (v47 CRITICAL FIX): Directly set PARAMoutfit1_2.
+          // CDI3 confirms this is "è¡??:é??'白" ??the rigging parameter for body clothes.
+          // vampire2.exp3.json does NOT set PARAMoutfit1_2 (leaves it at 0).
+          // ?¸è?é¬?exp3.json sets PARAMoutfit1_2=1.0 (black clothes).
+          // This triggers the model's rigging to show/hide body clothes.
+          if (cm && typeof cm.setParameterValueById === 'function') {
+            try {
+              const outfitVal = (nextOutfit === 'vampire') ? 1.0 : 0.0;
+              cm.setParameterValueById('PARAMoutfit1_2', outfitVal);
+              console.log('[Outfit] PARAMoutfit1_2=' + outfitVal + ' set directly (body clothes rigging)');
+            } catch (eP) {
+              console.warn('[Outfit] PARAMoutfit1_2 set failed:', eP.message);
+            }
+          }
+
+          // v50 FIX: Also stop all motions to prevent any motion from overriding PARAMoutfit1_2.
+          // Idle motion has no PARAMoutfit1_2 curve now (v49 removed it), but for safety.
+          try {
+            const mm = m && m.motionManager;
+            if (mm) {
+              mm.stop && mm.stop();
+              mm.stopAllMotions && mm.stopAllMotions();
+            }
+          } catch(e) {}
+
+          // Path 2: Part opacity + MULTIPLY blend for body.
+          // For black: Part26=1, Part30=0, with both MULTIPLY=1 (full visibility).
+          // For white: Part26=0, Part30=1, with both MULTIPLY=1.
+          const blackOp = (nextOutfit === 'vampire') ? 1.0 : 0.0;
+          const whiteOp = (nextOutfit === 'vampire') ? 0.0 : 1.0;
+          if (cm) {
+            const log = {};
+            // Opacity (try multiple ID formats in case 'Part26' is wrong)
+            const partIdVariants = {
+              'Part26': ['Part26', 'part26', 'part_26', '26', 'PART_26', 'Part_26', 'Black_Clothes', 'black_clothes_damaged'],
+              'Part30': ['Part30', 'part30', 'part_30', '30', 'PART_30', 'Part_30', 'White_Clothes', 'white_clothes_damaged'],
+            };
+            for (const partKey of ['Part26', 'Part30']) {
+              const targetOp = (partKey === 'Part26') ? blackOp : whiteOp;
+              let applied = false;
+              for (const idTry of partIdVariants[partKey]) {
+                if (typeof cm.setPartOpacityById === 'function') {
+                  try { cm.setPartOpacityById(idTry, targetOp); } catch (e) {}
+                }
+                // Also try numeric index-based setPartOpacity
+                if (typeof cm.getPartId === 'function' && typeof cm.getPartCount === 'function') {
+                  try {
+                    const cnt = cm.getPartCount();
+                    for (let i = 0; i < cnt; i++) {
+                      const realId = cm.getPartId(i);
+                      if (realId === idTry) {
+                        if (typeof cm.setPartOpacity === 'function') {
+                          cm.setPartOpacity(i, targetOp);
+                          log[partKey + '[idx' + i + ']'] = targetOp;
+                          applied = true;
+                        }
+                        break;
+                      }
+                    }
+                  } catch (e) {}
+                }
+              }
+              if (!applied) log[partKey] = 'no working ID found';
+            }
+            // MULTIPLY blend mode (v44 new)
+            if (typeof cm.setPartMultiplyBlendById === 'function') {
+              try {
+                cm.setPartMultiplyBlendById('Part26', 1.0);
+                cm.setPartMultiplyBlendById('Part30', 1.0);
+                log['multiply'] = 'Part26=1, Part30=1 (forced)';
+              } catch (eM) {
+                log['multiply'] = 'failed: ' + eM.message;
+              }
+            }
+            console.log('[Outfit] part set log:', JSON.stringify(log));
+          }
+
+          // Path 3: applyOutfit() so per-frame render loop stays in sync.
+          if (typeof applyOutfit === 'function') {
+            try {
+              applyOutfit(emoteState.outfit);
+              if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
+                for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
+                  __v22_lastValue[k] = undefined;
+                }
+              }
+              console.log('[Outfit] applyOutfit(' + emoteState.outfit + ') reinforced');
+            } catch (eA) {
+              console.error('[Outfit] applyOutfit failed:', eA.message);
+            }
+          }
+
+          // Diagnostic readback
+          if (cm) {
+            try {
+              const readBack = {};
+              for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
+                if (typeof cm.getParameterValueById === 'function') {
+                  readBack[k] = cm.getParameterValueById(k);
+                }
+              }
+              if (typeof cm.getPartOpacityById === 'function') {
+                readBack['Part26_op'] = cm.getPartOpacityById('Part26');
+                readBack['Part30_op'] = cm.getPartOpacityById('Part30');
+              }
+              if (typeof cm.getPartMultiplyBlendById === 'function') {
+                readBack['Part26_mul'] = cm.getPartMultiplyBlendById('Part26');
+                readBack['Part30_mul'] = cm.getPartMultiplyBlendById('Part30');
+              }
+              console.log('[Outfit] readback:', JSON.stringify(readBack));
+            } catch (eRb) {
+              console.warn('[Outfit] readback failed:', eRb.message);
+            }
+          }
+
+          showBubble('å·²å??›è¡£è£ï?' + (nextOutfit === 'vampire2' ? '?½è‰²è¡??' : '黑色è¡??'));
           btn.setAttribute('aria-pressed', String(nextOutfit === 'vampire2'));
         }
 
-        // 2026-06-15: expose globally so btn-emote-corner listener (outside this IIFE) can call it
+        // v50 ENHANCED TEST: Full diagnostic with ALL parts + multiply blend.
+        // Run in browser DevTools console:
+        //   testOutfit('vampire')   // set to black outfit
+        //   testOutfit('vampire2')  // set to white outfit
+        // Stop all motions ??set PARAMoutfit1_2 ??force update ??read ALL parts
+        window.testOutfit = async function(outfit) {
+          const m = (typeof model !== 'undefined' && model) ? model : window.model;
+          if (!m) { console.error('[testOutfit] model not found'); return; }
+          const cm = m.internalModel && m.internalModel.coreModel;
+          if (!cm) { console.error('[testOutfit] coreModel not found'); return; }
+          // Stop all motions
+          try { const mm = m.motionManager; if (mm) { mm.stop && mm.stop(); mm.stopAllMotions && mm.stopAllMotions(); } } catch(e) {}
+          const before = cm.getParameterValueById ? cm.getParameterValueById('PARAMoutfit1_2') : 'N/A';
+          const targetVal = (outfit === 'vampire') ? 1.0 : 0.0;
+          if (cm.setParameterValueById) cm.setParameterValueById('PARAMoutfit1_2', targetVal);
+          try { m.update && m.update(0); } catch(e) {}
+          const after = cm.getParameterValueById ? cm.getParameterValueById('PARAMoutfit1_2') : 'N/A';
+          console.log('[testOutfit] outfit=' + outfit + ' target=' + targetVal + ' PARAMbefore=' + before + ' PARAMafter=' + after);
+          // Scan ALL parts and report id, opacity, multiply-blend
+          const allParts = [];
+          const KEY_PARTS = ['Part18','Part22','Part26','Part29','Part30','Part33','Part48','Part49','Part54','Part58','Part59','Part60'];
+          try {
+            const cnt = cm.getPartCount ? cm.getPartCount() : 0;
+            for (let i = 0; i < cnt; i++) {
+              const pid = cm.getPartId ? cm.getPartId(i) : '?';
+              const pidStr = (pid && typeof pid.getString === 'function') ? pid.getString() : String(pid);
+              let op = 'ERR', mul = 'ERR';
+              try { op = cm.getPartOpacity(i); } catch(e) { op = 'ERR:' + e.message; }
+              try { mul = cm.getPartMultiplyBlend ? cm.getPartMultiplyBlend(i) : 'NO_API'; } catch(e) { mul = 'ERR'; }
+              if (KEY_PARTS.indexOf(pidStr) >= 0 || i < 35) {
+                allParts.push({ i, id: pidStr, op, mul });
+              }
+            }
+          } catch(e) { console.error('[testOutfit] part scan error:', e); }
+          console.log('[testOutfit] KEY PARTS:', JSON.stringify(allParts.filter(p => KEY_PARTS.indexOf(p.id) >= 0), null, 0));
+          console.log('[testOutfit] ALL PARTS[0-34]:', JSON.stringify(allParts.filter(p => p.i < 35), null, 0));
+          const ok = (after == targetVal);
+          console.log('[testOutfit] RESULT:', ok ? 'PARAM SET OK' : 'PARAM SET FAILED', '| outfit=' + outfit + ' ??' + (ok ? (targetVal === 1.0 ? 'BLACK' : 'WHITE') : 'UNCHANGED'));
+          if (ok && targetVal === 1.0) {
+            console.warn('[testOutfit] If BLACK but body invisible: MOC3 rigging PARAMoutfit1_2 may NOT control Part26 opacity. Check Part59 (nude body) opacity ??if Part59.op=1 and Part26.op=0 ??outfit part is Part59, NOT Part26.');
+          }
+        };
+
+        // 2026-06-14 v40: expose toggleOutfit globally so line 4127 outer
+        // listener can call it. Also add a console.log on every click.
         window.toggleOutfit = toggleOutfit;
 
         // 2026-06-15 v52: window.testOutfit — manual console diagnostic.
@@ -3649,7 +3789,10 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
       } else {
         // Browser route: list filtered built-in voices (zh-*, en-*, default first)
         const allVoices = (window.speechSynthesis ? speechSynthesis.getVoices() : []);
+        console.log('[renderList browser mode] speechSynthesis.getVoices() returned:', allVoices.length, 'voices');
+        console.log('[renderList browser mode] all voices:', allVoices.map(v => v.name + '(' + v.lang + ',' + v.voiceURI.substring(0,30) + ')').join(' | '));
         const filtered = allVoices.filter(v => /^(zh|en|ja|ko)/i.test(v.lang || ''));
+        console.log('[renderList browser mode] filtered (zh/en/ja/ko):', filtered.length, 'voices');
         const voices = filtered.length ? filtered : allVoices;
         if (!voices.length) {
           const empty = document.createElement('div');
