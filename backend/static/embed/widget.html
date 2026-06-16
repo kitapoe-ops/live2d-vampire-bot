@@ -862,7 +862,14 @@
   const DEFAULT_MODEL = isLocal
     ? '/static/live2d/vampire/vampire.model3.json'
     : './static/live2d/vampire/vampire.model3.json';
-  const MODEL_URL = CFG.get('model') || DEFAULT_MODEL;
+  // 2026-06-16 v40: decodeURIComponent to handle double-encoding from embed.js
+  // VAMP_ENC is stored pre-encoded in embed.js URLSearchParams, which toString()
+  // encodes again. Decoding here restores the original URL for Live2DModel.from().
+  const MODEL_URL = (function () {
+    const raw = CFG.get('model');
+    if (!raw) return DEFAULT_MODEL;
+    try { return decodeURIComponent(raw); } catch (e) { return raw; }
+  })();
   // TTS_ENDPOINT: legacy BAZOOKA proxy path, kept for self-hosted deployments.
   // Cloudflare Pages deployment uses MINIMAX_TTS_DIRECT (browser → api.minimax.chat).
   // The endpoint is selected by presence of MINIMAX_API_KEY in localStorage.
@@ -2336,18 +2343,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
               console.warn('[Live2D] applyOutfit: model not ready, outfit unchanged');
             }
           }
-        } catch(e) { console.warn('[Live2D] applyOutfit error:', e); }
-        if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
-          for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
-            __v22_lastValue[k] = undefined;
-          }
-        }
-      }
-        if (typeof __v22_lastValue !== 'undefined' && __v22_lastValue) {
-          for (const k of ['PARAMoutfit1_2', 'PARAMhariWB', 'PARAMhariWB2', 'PARAMhari_7', 'PARAMhari_8', 'PARAMhari_3']) {
-            __v22_lastValue[k] = undefined;
-          }
-        }
+
       }
 
       // 重寫 model.update 以確保在 Motion/Expression 計算完畢後強制套用衣裝參數
