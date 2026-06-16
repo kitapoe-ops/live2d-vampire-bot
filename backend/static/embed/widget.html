@@ -2217,7 +2217,7 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
           // cannot reach Google speech services (e.g. China mainland, corporate
           // firewalls, or iframe network restrictions). Show a clear hint
           // without triggering the lang-fallback loop.
-          hint = '無法連接到語音服務 🔇 請檢查網絡，或使用打字輸入 💬';
+          hint = '無法連接語音服務 🔇 通常係因為網絡連唔到 Google 語音伺服器（可能需要開 VPN / 科學上網）。請檢查網絡，或直接打字 💬';
         } else if (e.error === 'no-speech') {
           // 2026-06-13 v13: fix v12 recursive error loop. User #17321
           // console log 顯示 'error' handler took 60463ms (60s blocking!)
