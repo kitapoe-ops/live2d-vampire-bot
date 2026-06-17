@@ -1808,8 +1808,10 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
 
   // 停止當前 TTS 播放（包裝 TtsService.stop）
   function stopSpeaking() {
-    const tts = getTtsService();
-    tts.stop();
+    // Use window.TtsService.stop() which is exported from the TtsService IIFE
+    if (window.TtsService) {
+      window.TtsService.stop();
+    }
     isSpeaking = false;
     useAudioMouth = false;
     audioMouth = 0;

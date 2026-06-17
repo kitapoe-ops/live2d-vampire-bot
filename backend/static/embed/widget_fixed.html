@@ -1519,7 +1519,12 @@
   if ('speechSynthesis' in window) { speechSynthesis.onvoiceschanged = loadVoice; loadVoice(); }
 
   function stopSpeaking() {
-    try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
+    // Use window.TtsService.stop() for consistency
+    if (window.TtsService) {
+      window.TtsService.stop();
+    } else {
+      try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
+    }
     try { clearInterval(speakBrowser._poll); } catch (e) {}
     if (currentRaf) { cancelAnimationFrame(currentRaf); currentRaf = 0; }
     if (currentSource) { try { currentSource.onended = null; currentSource.stop(); } catch (e) {} currentSource = null; }
