@@ -4147,6 +4147,8 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
       ttsSel.addEventListener('change', () => {
         ttsMode = ttsSel.value;
         try { localStorage.setItem('xiaob_tts_mode', ttsMode); } catch (e) {}
+        // Sync to TtsService module
+        if (window.TtsService) window.TtsService.setMode(ttsMode);
         neuralDisabled = false;
         if (ttsMode === 'neural' && !MINIMAX_TTS_KEY) openMinimaxKeyModal();
         try { window.dispatchEvent(new CustomEvent('xiaob:ttsModeChange', { detail: { mode: ttsMode } })); } catch (e) {}
@@ -4159,6 +4161,8 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
       voiceSel.addEventListener('change', () => {
         NEURAL_VOICE = voiceSel.value;
         try { localStorage.setItem('xiaob_voice_id', NEURAL_VOICE); } catch (e) {}
+        // Sync to TtsService module
+        if (window.TtsService) window.TtsService.setNeuralVoice(NEURAL_VOICE);
         showBubble('已切換語音: ' + (voiceSel.selectedOptions[0]?.textContent || NEURAL_VOICE));
       });
     }
