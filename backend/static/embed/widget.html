@@ -2218,7 +2218,7 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
     }
     // Stop any ongoing recognition (Google SR or Vosk)
     if (listening) {
-      if (recognition) { try { recognition.stop(); } catch (e) {} }
+      if (speech) { speech.stop(); }
       stopVoskRecognition();
       return;
     }
@@ -2230,129 +2230,14 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
       return;
     }
     speech.setLanguageChain(['zh-HK', 'zh-CN', 'en-US']);
+    // 2026-06-17: FIX - ReliableGoogleSpeech.start() 已在內部建立 recognition
+    // 並設定 onstart/onresult/onerror。移除這裡多餘的 recognition.onresult/
+    // recognition.onerror 設定（原本會在 null.recognition 上設定導致崩潰）。
+    // 錯誤診斷已移至 ReliableGoogleSpeech.onerror 內部處理。
     speech.start();
-    recognition.onresult = (e) => {
-      let txt = ''; for (const r of e.results) txt += r[0].transcript;
-      const last = e.results[e.results.length - 1];
-      if (last.isFinal) handleUser(txt.trim());
-      else showBubble('「' + txt + '」…');
-    };
-          recognition.onerror = (e) => {
-        listening = false; setMic(false);
-        // Mobile-specific error guidance (2026-06-13):
-        // - 'not-allowed': permission denied by user OR blocked by Permissions-Policy
-        // - 'service-not-allowed': SR backend offline (rare on desktop, common on mobile)
-        // - 'no-speech': user didn't speak within timeout
-        // 2026-06-13 v3: rich diagnostic dump — log e.error, e.message, UA, permission state,
-        // iframe allow attribute, host page location to console + localStorage.
-        // Goal: identify whether the 'not-allowed' on Android Chrome is:
-        //   (A) site-level mic permission denied, OR
-        //   (B) Android OS Google App mic permission denied, OR
-        //   (C) SpeechRecognition backend offline (network / Google App issue)
-        const _diag = {
-          ts: new Date().toISOString(),
-          event_error: e.error || '(none)',
-          event_message: e.message || '(none)',
-          ua: navigator.userAgent,
-          url: location.href,
-          is_secure: location.protocol === 'https:',
-          has_SR: !!window.SpeechRecognition,
-          has_webkitSR: !!window.webkitSpeechRecognition,
-          has_mediaDevices: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
-          is_embedded: window.self !== window.top,
-          recognition_lang: (typeof recognition !== 'undefined' && recognition.lang) ? recognition.lang : '(unset)',
-          sr_lang_chain: window.SR_LANG_CHAIN || null,
-          sr_lang_index: window.SR_LANG_INDEX || 0,
-        };
-        // Async permission check (best effort)
-        if (navigator.permissions && navigator.permissions.query) {
-          navigator.permissions.query({ name: 'microphone' }).then(p => {
-            _diag.perm_mic_state = p.state;
-            console.error('[mic-diagnostic]', JSON.stringify(_diag, null, 2));
-            try { localStorage.setItem('xiaob_mic_diag', JSON.stringify(_diag)); } catch (er) {}
-          }).catch(er => {
-            _diag.perm_mic_error = String(er);
-            console.error('[mic-diagnostic]', JSON.stringify(_diag, null, 2));
-            try { localStorage.setItem('xiaob_mic_diag', JSON.stringify(_diag)); } catch (er2) {}
-          });
-        } else {
-          console.error('[mic-diagnostic]', JSON.stringify(_diag, null, 2));
-          try { localStorage.setItem('xiaob_mic_diag', JSON.stringify(_diag)); } catch (er) {}
-        }
-        let hint = '瀏覽器不支援語音辨識 😅 請改用 Google Chrome / Edge 桌面版，或直接打字 💬';
-        if (e.error === 'not-allowed') {
-          // 2026-06-13 v11: per-browser specific hint (Brave/Edge/Firefox all
-          // expose SR API but lack Google speech backend → 'not-allowed' is the
-          // expected result. We tell the user exactly which browser they used
-          // and that Chrome is the only Chromium-based browser with working
-          // speech backend on Android).
-          let browserName = '你嘅瀏覽器';
-          if (BROWSER.isBrave) browserName = 'Brave';
-          else if (BROWSER.isEdge) browserName = 'Microsoft Edge';
-          else if (BROWSER.isFirefox) browserName = 'Firefox';
-          else if (BROWSER.isSamsung) browserName = 'Samsung Internet';
-          else if (BROWSER.isOpera) browserName = 'Opera';
-          else if (BROWSER.isChrome) browserName = 'Google Chrome';
-          const chromeOnly = (BROWSER.isBrave || BROWSER.isEdge || BROWSER.isFirefox || BROWSER.isSamsung || BROWSER.isOpera);
-          hint = chromeOnly
-            ? browserName + ' 缺少 Google 語音後端 🎙️ 請改用 Google Chrome 桌面版或 Android 版 💬'
-            : '未獲授權 🎙️ 請允許瀏覽器使用麥克風，或改用 Google Chrome 🔍';
-        } else if (e.error === 'service-not-allowed') {
-          hint = '沒聽到聲音 🔇 請再試一次，並靠近一點麥克風 💬';
-        } else if (e.error === 'network') {
-          // 2026-06-16: Google SR backend unreachable — common when browser
-          // cannot reach Google speech services (e.g. China mainland, corporate
-          // firewalls, or iframe network restrictions).
-          // 2026-06-17: Fallback to Vosk offline speech recognition
-          console.log('[SR] Network error - falling back to Vosk offline recognition');
-          showBubble('正在切換到離線語音識別 📡');
-          setTimeout(() => { startVoskRecognition(); }, 300);
-          return;
-        } else if (e.error === 'no-speech') {
-          // 2026-06-13 v13: fix v12 recursive error loop. User #17321
-          // console log 顯示 'error' handler took 60463ms (60s blocking!)
-          // 因為 v12 喺 onerror 內直接 call recognition.start(), 但 SR
-          // 內部 state 仲 transitioning, onerror 觸發後再 start() 會
-          // queue 喺錯誤 stack 60s timeout. Fix: 用 setTimeout delay 200ms
-          // 等 onend 完成, 加 abort flag 避免無限 loop, 限制 fallback
-          // 最多 1 次 (避免 3 個 lang 連環 no-speech).
-          if (window.SR_FALLBACK_IN_PROGRESS) {
-            // 已經有 fallback 進行中, 唔再 trigger (避免 recursive)
-            return;
-          }
-          window.SR_FALLBACK_IN_PROGRESS = true;
-          const idx = (window.SR_LANG_INDEX || 0) + 1;
-          if (idx < window.SR_LANG_CHAIN.length && idx <= 1) {
-            // 限制 fallback 最多 1 次 (從 zh-HK → zh-CN, 唔 try en-US)
-            window.SR_LANG_INDEX = idx;
-            hint = '冇聽到 ' + window.SR_LANG_CHAIN[idx - 1] + ' 嘅語音 🎙️ 試下用 ' + window.SR_LANG_CHAIN[idx] + ' 講，或靠近麥克風';
-            setTimeout(() => {
-              try {
-                recognition.lang = window.SR_LANG_CHAIN[idx];
-                recognition.start();
-              } catch (er) {
-                console.warn('[mic-fallback-failed]', er);
-              } finally {
-                window.SR_FALLBACK_IN_PROGRESS = false;
-              }
-            }, 200);
-          } else {
-            hint = '冇收到語音輸入 🔇 請確認 mic 已經 unmute, 對住 mic 大聲啲講嘢. 如果用廣東話, 請去 Settings → System → Languages → Offline speech recognition → 下載 中文 (香港) language pack.';
-            window.SR_LANG_INDEX = 0;
-            recognition.lang = window.SR_LANG_CHAIN[0];
-            window.SR_FALLBACK_IN_PROGRESS = false;
-          }
-        } else if (e.error === 'aborted') {
-          // User cancelled or another recognition started — no message needed
-          hint = '';
-        } else {
-          // Unknown error — show generic helpful message
-          hint = '語音辨識發生未知錯誤 😅 請稍後再試，或使用打字輸入 💬';
-        }
-        if (hint) showBubble(hint);
-      };
-    recognition.onend   = () => { listening = false; setMic(false); };
-    try { recognition.start(); } catch (e) {}
+    // 2026-06-17: Vosk fallback is now triggered from ReliableGoogleSpeech.onerror
+    // when e.error === 'network' (see ReliableGoogleSpeech class). No duplicate
+    // network fallback needed here.
   }
 
   async function bootAvatar() {
