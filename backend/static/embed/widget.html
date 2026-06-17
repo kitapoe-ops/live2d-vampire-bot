@@ -1012,6 +1012,8 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
         if (e.error === 'no-speech' && this.langIndex < this.langChain.length - 1) {
           this.langIndex++;
           this.recognition.lang = this.langChain[this.langIndex];
+          // 2026-06-17: 先 stop() 再 start()，避免 'recognition has already started' 错误
+          try { this.recognition.stop(); } catch (e) {}
           this.recognition.start();
         } else {
           // 触发外部错误处理
