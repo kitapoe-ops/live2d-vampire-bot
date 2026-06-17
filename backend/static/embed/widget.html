@@ -1016,8 +1016,8 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
           try { this.recognition.stop(); } catch (e) {}
           this.recognition.start();
         } else {
-          // 触发外部错误处理
-          if (typeof onRecognitionError === 'function') onRecognitionError(e);
+          // 2026-06-17: onRecognitionError 未定义，移除调用以避免 ReferenceError
+          console.warn('[ReliableGoogleSpeech] unhandled error:', e.error);
         }
       };
       this.recognition.start();
