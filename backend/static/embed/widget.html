@@ -1788,7 +1788,9 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
     showBubble(stripped);
     postToParent('speaking', { text: stripped });
     if (ttsMuted) return;
-    stopSpeaking();
+    
+    // NOTE: 不在此處呼叫 stopSpeaking() 以避免 Chrome/Edge speechSynthesis 的
+    // 多重 cancel bug。TtsService.speak()/speakBrowser() 已在內部處理 cleanup。
     
     // 使用 window.TtsService 處理 TTS（window.TtsService 是在 module script 中暴露的全域包裝器）
     const tts = window.TtsService;

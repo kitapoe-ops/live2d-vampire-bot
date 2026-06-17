@@ -496,7 +496,12 @@ export class TtsService {
     const seq = this.speakSeq;
     
     // Stop any current speech
-    this.stop();
+    // NOTE: For browser mode, speakBrowser() calls cancel() internally.
+    // We skip stop() here to avoid the Chromium speechSynthesis bug where
+    // multiple cancel() calls before speak() silently swallow utterances.
+    if (this.ttsMode !== 'browser') {
+      this.stop();
+    }
     
     try {
       if (this.ttsMode === 'neural') {
