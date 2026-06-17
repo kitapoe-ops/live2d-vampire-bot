@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page.title">🧛 吸血鬼 — AI 虛擬人助理 | Vampire.kitahim.uk</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%235b54e8%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22central%22%20font-size%3D%2242%22%20font-family%3D%22Apple%20Color%20Emoji%2CSegoe%20UI%20Emoji%2Csans-serif%22%3E%F0%9F%A7%9B%3C%2Ftext%3E%3C%2Fsvg%3E" />
+<meta name="description" content="將智能虛擬人嵌入你的網站，一行代碼即可擁有會聽、會說、會反應的 AI 助理。支援粵語、普通話，即刻提升用戶體驗。" />
+<meta name="keywords" content="Live2D, AI虛擬人, 語音助理, 粵語TTS, MiniMax, DeepSeek, 吸血鬼" />
+<meta property="og:title" content="🧛 吸血鬼 — AI 虛擬人助理" />
+<meta property="og:description" content="將智能虛擬人嵌入你的網站，一行代碼即可擁有會聽、會說、會反應的 AI 助理。" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://vampire.kitahim.uk/" />
+<style>
+/* ============================================================
+   🌙 吸血鬼 WebUI — 暗黑主題 + 三語言支援
+   ============================================================ */
+
+/* --- CSS Variables --- */
+:root {
+  --vampire-bg: #0a0a14;
+  --vampire-bg2: #111122;
+  --vampire-card: #16162a;
+  --vampire-card-hover: #1c1c38;
+  --vampire-purple: #5b54e8;
+  --vampire-purple-light: #7d78f0;
+  --vampire-purple-glow: rgba(91, 84, 232, 0.25);
+  --vampire-gold: #FFD700;
+  --vampire-gold-dim: #b8960f;
+  --vampire-blood: #8B0000;
+  --vampire-blood-light: #cc2222;
+  --vampire-text: #e8e8f0;
+  --vampire-text-dim: #8888a0;
+  --vampire-text-muted: #555570;
+  --vampire-border: rgba(91, 84, 232, 0.15);
+  --vampire-border-hover: rgba(91, 84, 232, 0.4);
+  --vampire-glow-soft: 0 0 20px rgba(91, 84, 232, 0.08);
+  --vampire-glow-strong: 0 0 30px rgba(91, 84, 232, 0.2);
+  --font-sans: "Noto Sans TC", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+}
+
+/* --- Reset & Base --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-sans);
+  background: var(--vampire-bg);
+  color: var(--vampire-text);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* --- Animated Background --- */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(91, 84, 232, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139, 0, 0, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(255, 215, 0, 0.03) 0%, transparent 50%);
+}
+
+/* Floating particles */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(91,84,232,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 60%, rgba(91,84,232,0.2) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 50% 10%, rgba(255,215,0,0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 40%, rgba(91,84,232,0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 70%, rgba(139,0,0,0.15) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 15% 85%, rgba(91,84,232,0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 90%, rgba(255,215,0,0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 15%, rgba(91,84,232,0.2) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 40% 35%, rgba(91,84,232,0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 50%, rgba(139,0,0,0.1) 0%, transparent 100%);
+  animation: particleFloat 20s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes particleFloat {
+  0%   { transform: translateY(0) scale(1); opacity: 0.6; }
+  50%  { transform: translateY(-20px) scale(1.05); opacity: 0.8; }
+  100% { transform: translateY(10px) scale(0.95); opacity: 0.6; }
+}
+
+/* --- Navigation --- */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: rgba(10, 10, 20, 0.85);
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  border-bottom: 1px solid var(--vampire-border);
+  transition: background 0.3s;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--vampire-text);
+  text-decoration: none;
+}
+.nav-logo span { background: linear-gradient(135deg, var(--vampire-purple), var(--vampire-gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.nav-langs {
+  display: flex;
+  gap: 4px;
+}
+.nav-lang-btn {
+  appearance: none;
+  border: 1px solid var(--vampire-border);
+  background: transparent;
+  color: var(--vampire-text-dim);
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-sans);
+}
+.nav-lang-btn:hover {
+  border-color: var(--vampire-purple);
+  color: var(--vampire-text);
+  background: rgba(91, 84, 232, 0.1);
+}
+.nav-lang-btn.active {
+  border-color: var(--vampire-purple);
+  color: #fff;
+  background: var(--vampire-purple);
+  box-shadow: 0 0 12px var(--vampire-purple-glow);
+}
+
+/* --- Hero Section --- */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 100px 24px 60px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg at 50% 50%, transparent, rgba(91,84,232,0.03), transparent, rgba(139,0,0,0.02), transparent);
+  animation: heroRotate 30s linear infinite;
+  pointer-events: none;
+}
+@keyframes heroRotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.hero-icon {
+  font-size: 72px;
+  margin-bottom: 16px;
+  animation: heroFloat 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 30px rgba(91,84,232,0.3));
+}
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+.hero h1 {
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #e8e8f0 0%, var(--vampire-purple-light) 50%, var(--vampire-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  max-width: 700px;
+}
+.hero p {
+  font-size: clamp(15px, 2vw, 18px);
+  color: var(--vampire-text-dim);
+  max-width: 600px;
+  margin-bottom: 32px;
+  line-height: 1.7;
+}
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.25s;
+  border: none;
+  font-family: var(--font-sans);
+}
+.hero-btn.primary {
+  background: linear-gradient(135deg, var(--vampire-purple), #4a44d0);
+  color: #fff;
+  box-shadow: 0 4px 20px var(--vampire-purple-glow);
+}
+.hero-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(91, 84, 232, 0.4);
+}
+.hero-btn.secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--vampire-text);
+  border: 1px solid var(--vampire-border);
+}
+.hero-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--vampire-purple);
+  transform: translateY(-2px);
+}
+.hero-btn.gold {
+  background: linear-gradient(135deg, var(--vampire-gold), #e6c200);
+  color: #1a1a1a;
+  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.25);
+}
+.hero-btn.gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(255, 215, 0, 0.35);
+}
+
+/* --- Section Common --- */
+.section {
+  padding: 80px 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.section-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+.section-header h2 {
+  font-size: clamp(24px, 3.5vw, 36px);
+  font-weight: 800;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--vampire-purple-light), var(--vampire-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.section-header p {
+  color: var(--vampire-text-dim);
+  font-size: 16px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* --- Features Grid --- */
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .features { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .features { grid-template-columns: 1fr; }
+}
+.feature-card {
+  background: var(--vampire-card);
+  border: 1px solid var(--vampire-border);
+  border-radius: 18px;
+  padding: 28px 24px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--vampire-purple), var(--vampire-gold));
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.feature-card:hover {
+  background: var(--vampire-card-hover);
+  border-color: var(--vampire-border-hover);
+  transform: translateY(-4px);
+  box-shadow: var(--vampire-glow-strong);
+}
+.feature-card:hover::before { opacity: 1; }
+.feature-icon {
+  font-size: 36px;
+  margin-bottom: 14px;
+  display: block;
+}
+.feature-card h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--vampire-text);
+}
+.feature-card p {
+  font-size: 14px;
+  color: var(--vampire-text-dim);
+  line-height: 1.6;
+}
+.feature-card .feature-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.feature-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(91, 84, 232, 0.12);
+  color: var(--vampire-purple-light);
+  border: 1px solid rgba(91, 84, 232, 0.2);
+}
+
+/* --- Steps / How-to --- */
+.steps-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+.step-item {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: var(--vampire-card);
+  border: 1px solid var(--vampire-border);
+  border-radius: 16px;
+  padding: 20px 24px;
+  transition: all 0.3s;
+}
+.step-item:hover {
+  border-color: var(--vampire-border-hover);
+  box-shadow: var(--vampire-glow-soft);
+  transform: translateX(4px);
+}
+.step-num {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--vampire-purple), #4a44d0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 0 12px var(--vampire-purple-glow);
+}
+.step-content { flex: 1; }
+.step-content h4 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--vampire-text);
+}
+.step-content p {
+  font-size: 13.5px;
+  color: var(--vampire-text-dim);
+  line-height: 1.6;
+}
+.step-content .step-hint {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(91, 84, 232, 0.1);
+  color: var(--vampire-purple-light);
+}
+
+/* --- Tech Stack --- */
+.tech-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 32px;
+}
+.tech-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--vampire-card);
+  border: 1px solid var(--vampire-border);
+  color: var(--vampire-text-dim);
+  transition: all 0.25s;
+}
+.tech-pill:hover {
+  border-color: var(--vampire-purple);
+  color: var(--vampire-purple-light);
+  box-shadow: 0 0 16px var(--vampire-purple-glow);
+  transform: translateY(-2px);
+}
+.tech-pill .pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.pill-dot.purple { background: var(--vampire-purple); }
+.pill-dot.gold   { background: var(--vampire-gold); }
+.pill-dot.blood  { background: var(--vampire-blood-light); }
+.pill-dot.green  { background: #27ae60; }
+.pill-dot.cyan   { background: #00bcd4; }
+
+/* --- Embed Code Block --- */
+.code-block {
+  background: #0d0d1a;
+  border: 1px solid var(--vampire-border);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin: 0 auto;
+  max-width: 700px;
+  position: relative;
+}
+.code-block code {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #a8d8ea;
+  word-break: break-all;
+}
+.code-block .code-comment { color: #6a9955; }
+.code-block .code-tag     { color: #569cd6; }
+.code-block .code-attr    { color: #9cdcfe; }
+.code-block .code-string  { color: #ce9178; }
+.code-block .copy-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  appearance: none;
+  border: 1px solid var(--vampire-border);
+  background: rgba(255,255,255,0.05);
+  color: var(--vampire-text-dim);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-sans);
+}
+.code-block .copy-btn:hover {
+  background: rgba(91,84,232,0.15);
+  color: var(--vampire-purple-light);
+  border-color: var(--vampire-purple);
+}
+
+/* --- Embed Options --- */
+.embed-options {
+  max-width: 700px;
+  margin: 20px auto 0;
+  background: var(--vampire-card);
+  border: 1px solid var(--vampire-border);
+  border-radius: 14px;
+  padding: 20px 24px;
+}
+.embed-options h4 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--vampire-text);
+}
+.embed-options pre {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--vampire-text-dim);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* --- Deployment Info --- */
+.deploy-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+}
+.deploy-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(91, 84, 232, 0.08);
+  border: 1px solid rgba(91, 84, 232, 0.15);
+  color: var(--vampire-text-dim);
+}
+
+/* --- Reactive API Test Section --- */
+#react-smoke-test {
+  border-left: 3px solid var(--vampire-purple);
+  background: var(--vampire-card);
+  border-radius: 18px;
+  padding: 28px 26px;
+  margin-top: 32px;
+}
+#react-smoke-test h2 {
+  font-size: 19px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--vampire-text);
+}
+#react-smoke-test .note {
+  font-size: 13px;
+  color: var(--vampire-text-dim);
+  line-height: 1.7;
+}
+#react-smoke-test textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--vampire-border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  background: rgba(10, 10, 20, 0.6);
+  color: var(--vampire-text);
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+#react-smoke-test textarea:focus {
+  outline: none;
+  border-color: var(--vampire-purple);
+  box-shadow: 0 0 0 3px var(--vampire-purple-glow);
+}
+#react-smoke-test button {
+  padding: 8px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  font-family: var(--font-sans);
+}
+#react-smoke-test .btn-primary {
+  background: var(--vampire-purple);
+  color: #fff;
+}
+#react-smoke-test .btn-primary:hover {
+  box-shadow: 0 0 16px var(--vampire-purple-glow);
+  transform: translateY(-1px);
+}
+#react-smoke-test .btn-success { background: #27ae60; color: #fff; }
+#react-smoke-test .btn-danger  { background: #e74c3c; color: #fff; }
+#react-smoke-test .btn-outline {
+  background: transparent;
+  color: var(--vampire-purple-light);
+  border: 1px solid var(--vampire-purple);
+}
+#react-smoke-test .btn-outline:hover {
+  background: rgba(91,84,232,0.1);
+}
+#react-smoke-test h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--vampire-text);
+  margin: 20px 0 8px;
+}
+
+/* --- Footer --- */
+.footer {
+  text-align: center;
+  padding: 40px 24px;
+  border-top: 1px solid var(--vampire-border);
+  color: var(--vampire-text-muted);
+  font-size: 13px;
+}
+.footer a {
+  color: var(--vampire-purple-light);
+  text-decoration: none;
+}
+.footer a:hover { text-decoration: underline; }
+.footer .footer-bmac {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--vampire-gold), #e6c200);
+  color: #1a1a1a;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  margin-bottom: 16px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.footer .footer-bmac:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+}
+
+/* --- Scroll Animations --- */
+.fade-in {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .nav { padding: 10px 16px; }
+  .nav-logo { font-size: 16px; }
+  .nav-lang-btn { padding: 4px 10px; font-size: 12px; }
+  .hero { padding: 80px 16px 40px; }
+  .hero-icon { font-size: 56px; }
+  .hero-btn { padding: 12px 22px; font-size: 14px; }
+  .section { padding: 48px 16px; }
+  .step-item { padding: 16px 18px; }
+  .code-block { padding: 16px; }
+  .code-block code { font-size: 12px; }
+}
+
+/* --- kbd style --- */
+kbd {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--vampire-border);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--vampire-text-dim);
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     Navigation Bar
+     ============================================================ -->
+<nav class="nav" role="navigation" aria-label="導航">
+  <a href="#" class="nav-logo">
+    <span>🌙</span>
+    <span>Vampire</span>
+  </a>
+  <div class="nav-langs" role="tablist" aria-label="語言切換">
+    <button class="nav-lang-btn active" data-lang="zh-TW" role="tab" aria-selected="true">繁中</button>
+    <button class="nav-lang-btn" data-lang="zh-CN" role="tab" aria-selected="false">简体</button>
+    <button class="nav-lang-btn" data-lang="en" role="tab" aria-selected="false">EN</button>
+  </div>
+</nav>
+
+<!-- ============================================================
+     Hero Section
+     ============================================================ -->
+<section class="hero" id="hero">
+  <div class="hero-icon">🧛</div>
+  <h1 data-i18n="hero.title">吸血鬼 — 會說話的 AI 虛擬人助理</h1>
+  <p data-i18n="hero.subtitle">將智能虛擬人嵌入你的網站，一行代碼即可擁有會聽、會說、會反應的 AI 助理<br/>支援粵語、普通話，即刻提升用戶體驗</p>
+  <div class="hero-actions">
+    <a href="#widget-demo" class="hero-btn primary" data-i18n="hero.tryBtn">💬 即時體驗</a>
+    <a href="#embed-code" class="hero-btn secondary" data-i18n="hero.codeBtn">📋 查看代碼</a>
+    <a href="https://www.buymeacoffee.com/kitahim" target="_blank" rel="noopener noreferrer" class="hero-btn gold" data-i18n="hero.bmacBtn">☕ Buy me a coffee</a>
+  </div>
+</section>
+
+<!-- ============================================================
+     Features Section
+     ============================================================ -->
+<section class="section" id="features">
+  <div class="section-header fade-in">
+    <h2 data-i18n="features.title">核心功能</h2>
+    <p data-i18n="features.subtitle">六大功能，讓你的網站擁有智能互動體驗</p>
+  </div>
+  <div class="features">
+
+    <!-- Feature 1: Voice Input -->
+    <div class="feature-card fade-in">
+      <span class="feature-icon">🎤</span>
+      <h3 data-i18n="feature1.title">智能語音輸入</h3>
+      <p data-i18n="feature1.desc">告別打字時代。支援中文、英文、粵語即時語音識別，一鍵開始，隨時暫停。</p>
+      <div class="feature-tags">
+        <span class="feature-tag">Speech Recognition</span>
+        <span class="feature-tag">Web Speech API</span>
+      </div>
+    </div>
+
+    <!-- Feature 2: Voice Synthesis -->
+    <div class="feature-card fade-in">
+      <span class="feature-icon">🗣️</span>
+      <h3 data-i18n="feature2.title">自然語音合成</h3>
+      <p data-i18n="feature2.desc">雙引擎 TTS 系統：瀏覽器引擎完全免費無需設定；MiniMax 神經引擎提供 HD 粵語/普通話，12 種聲線任選。</p>
+      <div class="feature-tags">
+        <span class="feature-tag">Web Speech API</span>
+        <span class="feature-tag">MiniMax Neural</span>
+        <span class="feature-tag">Cantonese HD</span>
+      </div>
+    </div>
+
+    <!-- Feature 3: AI Brain -->
+    <div class="feature-card fade-in">
+      <span class="feature-icon">🧠</span>
+      <h3 data-i18n="feature3.title">AI 智能大腦</h3>
+      <p data-i18n="feature3.desc">DeepSeek LLM 加持，理解上下文、生成自然回覆。可選本地知識庫問答模式，無需 API Key 也可使用。</p>
+      <div class="feature-tags">
+        <span class="feature-tag">DeepSeek LLM</span>
+        <span class="feature-tag">Knowledge Base</span>
+      </div>
+    </div>
+
+    <!-- Feature 4: Expressions -->
+    <div class="feature-card fade-in">
+      <span class="feature-icon">🎭</span>
+      <h3 data-i18n="feature4.title">豐富表情動作</h3>
+      <p data-i18n="feature4.desc">12 種表情 + 4 種手勢道具，開心、害羞、憤怒、驚訝⋯根據對話內容自動切換，生動自然。</p>
+      <div class="feature-tags">
+        <span class="feature-tag">Live2D Cubism 5</span>
+        <span class="feature-tag">Auto Emotion</span>
+      </div>
+    </div>
+
+    <!-- Feature 5: One-Line Embed -->
+    <div class="feature-card fade-in">
+      <span class="feature-icon">📦</span>
+      <h3 data-i18n="feature5.title">一行代碼嵌入</h3>
+      <p data-i18n="feature5.desc">一行 script 標籤即可在任何網站展示吸血鬼助理。支援自訂模型、聲線、知識庫，靈活配置。</p>
+      <div class="feature-tags">
+        <span class="feature-tag">Script Tag</span>
+        <span class="feature-tag">iframe Embed</span>
+        <span class="feature-tag">Customizable</span>
+      </div>
+    </div>
+
+    <!-- Feature 6: Reactive API -->
+    <div class="feature-card fade-in">
+      <span class="feature-icon">🔗</span>
+      <h3 data-i18n="feature6.title">Reactive API</h3>
+      <p data-i18n="feature6.desc">與你的應用深度整合。透過 postMessage 觸發表情、回覆、動作，適合教育遊戲、客服系統、問答模塊。</p>
+      <div class="feature-tags">
+        <span class="feature-tag">postMessage</span>
+        <span class="feature-tag">Event-Driven</span>
+        <span class="feature-tag">Integration</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+     How-to Steps Section
+     ============================================================ -->
+<section class="section" style="background: var(--vampire-bg2); border-radius: 0; max-width: 100%; padding-left: 24px; padding-right: 24px;">
+  <div style="max-width: 1100px; margin: 0 auto;">
+    <div class="section-header fade-in">
+      <h2 data-i18n="steps.title">怎麼開始</h2>
+      <p data-i18n="steps.subtitle">五個步驟，輕鬆上手</p>
+    </div>
+    <div class="steps-container">
+
+      <!-- Step 1 -->
+      <div class="step-item fade-in">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h3 data-i18n="steps.step1.title">體驗虛擬人</h3>
+          <p data-i18n="steps.step1.desc">點擊右下角按鈕，召喚吸血鬼少女。拖曳移動、雙擊切換表情，感受 Live2D 的流暢動態。</p>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-item fade-in">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3 data-i18n="steps.step2.title">選擇輸入方式</h3>
+          <p data-i18n="steps.step2.desc">支援文字聊天與語音輸入。開啟麥克風權限後，可直接對虛擬人說話，AI 會即時回應。</p>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-item fade-in">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h3 data-i18n="steps.step3.title">切換語音模式</h3>
+          <p data-i18n="steps.step3.desc">在設定中選擇瀏覽器 TTS（免費）或 MiniMax Neural TTS（HD 粵語/國語，12 種聲線）。後者需自備 API Key。</p>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step-item fade-in">
+        <div class="step-number">4</div>
+        <div class="step-content">
+          <h3 data-i18n="steps.step4.title">自訂設定</h3>
+          <p data-i18n="steps.step4.desc">調整模型縮放、透明度、語速、音量，或上傳自訂知識庫，打造專屬的 AI 夥伴。</p>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="step-item fade-in">
+        <div class="step-number">5</div>
+        <div class="step-content">
+          <h3 data-i18n="steps.step5.title">嵌入網站</h3>
+          <p data-i18n="steps.step5.desc">複製下方嵌入代碼，將虛擬人加入你的網站。支援多種 data-* 參數，無需後端即可運作。</p>
+        </div>
+      </div>
+    </div><!-- /steps-container -->
+  </div>
+</section>
+
+<!-- ============================================================
+     Tech Stack Section
+     ============================================================ -->
+<section class="section" id="tech-stack">
+  <div class="section-header fade-in">
+    <h2 data-i18n="tech.title">技術棧</h2>
+    <p data-i18n="tech.subtitle">驅動虛擬人的核心技術</p>
+  </div>
+  <div class="tech-pills fade-in">
+    <span class="pill pill-blue">Live2D Cubism 5</span>
+    <span class="pill pill-purple">DeepSeek LLM</span>
+    <span class="pill pill-green">MiniMax TTS</span>
+    <span class="pill pill-orange">Web Speech API</span>
+    <span class="pill pill-pink">FastAPI</span>
+    <span class="pill pill-cyan">Cloudflare Pages</span>
+    <span class="pill pill-red">WebSocket</span>
+    <span class="pill pill-indigo">postMessage API</span>
+  </div>
+</section>
+
+<!-- ============================================================
+     Embed Code Section
+     ============================================================ -->
+<section class="section" style="background: var(--vampire-bg2); border-radius: 0; max-width: 100%; padding-left: 24px; padding-right: 24px;">
+  <div style="max-width: 1100px; margin: 0 auto;">
+    <div class="section-header fade-in">
+      <h2 data-i18n="embed.title">嵌入你的網站</h2>
+      <p data-i18n="embed.subtitle">複製以下代碼，貼到任何 HTML 頁面即可使用</p>
+    </div>
+
+    <div class="embed-box fade-in">
+      <div class="embed-box-header">
+        <span data-i18n="embed.label">嵌入代碼</span>
+        <button class="copy-btn" onclick="copyEmbedCode()" aria-label="複製代碼">
+          <span id="copy-label" data-i18n="embed.copy">📋 複製</span>
+        </button>
+      </div>
+      <pre class="embed-code"><code id="embed-code-snippet"><!-- Vampire Live2D Widget -->
+<div id="vampire-live2d-root"></div>
+<script src="https://vampire.kitahim.uk/embed.js"
+        data-live2d-widget
+        data-position="bottom-right"
+        data-size="280"
+        data-theme="dark"
+        data-greeting="你好，我是吸血鬼少女！"
+        data-lang="zh-TW"
+        defer></script></code></pre>
+    </div>
+
+    <div class="embed-options fade-in">
+      <h3 data-i18n="embed.options.title">📌 可用參數</h3>
+      <div class="options-grid">
+        <div class="option-item">
+          <code>data-position</code>
+          <span data-i18n="embed.options.position">bottom-right / bottom-left / top-right / top-left</span>
+        </div>
+        <div class="option-item">
+          <code>data-size</code>
+          <span data-i18n="embed.options.size">Widget 寬度（px），預設 280</span>
+        </div>
+        <div class="option-item">
+          <code>data-theme</code>
+          <span data-i18n="embed.options.theme">dark / light，預設 dark</span>
+        </div>
+        <div class="option-item">
+          <code>data-greeting</code>
+          <span data-i18n="embed.options.greeting">自訂初次見面問候語</span>
+        </div>
+        <div class="option-item">
+          <code>data-lang</code>
+          <span data-i18n="embed.options.lang">zh-TW / zh-CN / en，預設 zh-TW</span>
+        </div>
+        <div class="option-item">
+          <code>data-backend</code>
+          <span data-i18n="embed.options.backend">自訂後端 URL（可選）</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     Deployment Info Section
+     ============================================================ -->
+<section class="section" id="deploy">
+  <div class="section-header fade-in">
+    <h2 data-i18n="deploy.title">部署資訊</h2>
+    <p data-i18n="deploy.subtitle">快速了解專案架構</p>
+  </div>
+  <div class="deploy-pills fade-in">
+    <span class="pill pill-blue">🌐 Cloudflare Pages</span>
+    <span class="pill pill-purple">🐍 FastAPI Backend</span>
+    <span class="pill pill-green">🔗 Cloudflare Tunnel</span>
+    <span class="pill pill-orange">📦 NSSM Service</span>
+    <span class="pill pill-pink">🗄️ SQLite</span>
+    <span class="pill pill-cyan">🖼️ Live2D Static</span>
+  </div>
+</section>
+
+<!-- ============================================================
+     Reactive API Test Section
+     ============================================================ -->
+<section class="section" style="background: var(--vampire-bg2); border-radius: 0; max-width: 100%; padding-left: 24px; padding-right: 24px;">
+  <div style="max-width: 1100px; margin: 0 auto;">
+    <div class="section-header fade-in">
+      <h2 data-i18n="api.title">Reactive API 測試</h2>
+      <p data-i18n="api.subtitle">透過 postMessage 與虛擬人互動（需已載入 Widget）</p>
+    </div>
+
+    <div class="api-test fade-in">
+      <div class="api-test-row">
+        <label data-i18n="api.diary">📝 日記模式</label>
+        <input type="text" id="diary-input" placeholder="輸入日記內容…" data-i18n-placeholder="api.diary_placeholder" />
+        <button onclick="sendDiary()" data-i18n="api.send">發送</button>
+      </div>
+      <div class="api-test-row">
+        <label data-i18n="api.quiz">❓ 隨堂測驗</label>
+        <button onclick="sendQuiz('math')" data-i18n="api.quiz_math">數學題</button>
+        <button onclick="sendQuiz('history')" data-i18n="api.quiz_history">歷史題</button>
+        <button onclick="sendQuiz('custom')" data-i18n="api.quiz_custom">自訂題</button>
+      </div>
+      <div class="api-test-row">
+        <label data-i18n="api.reset">🔄 重置對話</label>
+        <button onclick="sendReset()" class="btn-reset" data-i18n="api.reset_btn">重置</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     Footer
+     ============================================================ -->
+<footer class="footer">
+  <div class="footer-content">
+    <p data-i18n="footer.tagline">🩸 用愛與代碼打造的吸血鬼少女 — 開源專案</p>
+    <div class="footer-links">
+      <a href="https://github.com/your-repo/vampire-live2d" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://vampire.kitahim.uk/" target="_blank" rel="noopener">Live Demo</a>
+      <a href="#" data-i18n="footer.privacy">隱私政策</a>
+    </div>
+    <div class="footer-coffee">
+      <a href="https://buymeacoffee.com/your-id" target="_blank" rel="noopener" class="coffee-btn">
+        ☕ <span data-i18n="footer.coffee">請我喝咖啡</span>
+      </a>
+    </div>
+    <p class="footer-copy" data-i18n="footer.copyright">© 2026 Vampire Live2D. MIT License.</p>
+  </div>
+</footer>
+
+<!-- ============================================================
+     JavaScript
+     ============================================================ -->
+<script>
+// ============================================================
+// Translation Data
+// ============================================================
+const TRANSLATIONS = {
+  "zh-TW": {
+    "nav.title": "🩸 吸血鬼少女",
+    "hero.title": "你的 AI 虛擬人夥伴",
+    "hero.subtitle": "基於 Live2D Cubism 5 的互動式虛擬角色，搭載 DeepSeek 大腦與雙引擎語音系統，為你的網站注入生命力。",
+    "hero.cta_start": "🚀 開始使用",
+    "hero.cta_demo": "🎮 即時體驗",
+    "features.title": "核心功能",
+    "features.subtitle": "為什麼選擇吸血鬼少女？",
+    "features.card1.title": "🖼️ Live2D 動態模型",
+    "features.card1.desc": "Cubism 5 原生渲染，流暢表情切換與肢體動作，支援多種表情參數與物理效果。",
+    "features.card1.tag1": "Cubism 5",
+    "features.card1.tag2": "WebGL",
+    "features.card2.title": "🧠 DeepSeek AI 大腦",
+    "features.card2.desc": "整合 DeepSeek 語言模型，支援上下文對話與知識庫檢索，讓虛擬人真正「懂你」。",
+    "features.card2.tag1": "DeepSeek",
+    "features.card2.tag2": "RAG",
+    "features.card3.title": "🎙️ 雙引擎語音",
+    "features.card3.desc": "瀏覽器 Web Speech API 免費使用，或升級 MiniMax Neural TTS 享受 HD 粵語/國語自然語音。",
+    "features.card3.tag1": "Web Speech",
+    "features.card3.tag2": "MiniMax",
+    "features.card4.title": "🌐 跨平台嵌入",
+    "features.card4.desc": "透過 iframe 或 script 標籤嵌入任何網站，支援自訂位置、尺寸、主題與語言。",
+    "features.card4.tag1": "iframe",
+    "features.card4.tag2": "Script Tag",
+    "features.card5.title": "⚡ Reactive API",
+    "features.card5.desc": "透過 postMessage 與虛擬人即時互動，支援日記模式、隨堂測驗、重置對話等豐富操作。",
+    "features.card5.tag1": "postMessage",
+    "features.card5.tag2": "WebSocket",
+    "features.card6.title": "🔒 安全可靠",
+    "features.card6.desc": "CSP 安全標頭、連線限制、速率控制，支援 Cloudflare Access 整合，保護你的資料安全。",
+    "features.card6.tag1": "CSP",
+    "features.card6.tag2": "Rate Limit",
+    "steps.title": "怎麼開始",
+    "steps.subtitle": "五個步驟，輕鬆上手",
+    "steps.step1.title": "體驗虛擬人",
+    "steps.step1.desc": "點擊右下角按鈕，召喚吸血鬼少女。拖曳移動、雙擊切換表情，感受 Live2D 的流暢動態。",
+    "steps.step2.title": "選擇輸入方式",
+    "steps.step2.desc": "支援文字聊天與語音輸入。開啟麥克風權限後，可直接對虛擬人說話，AI 會即時回應。",
+    "steps.step3.title": "切換語音模式",
+    "steps.step3.desc": "在設定中選擇瀏覽器 TTS（免費）或 MiniMax Neural TTS（HD 粵語/國語，12 種聲線）。後者需自備 API Key。",
+    "steps.step4.title": "自訂設定",
+    "steps.step4.desc": "調整模型縮放、透明度、語速、音量，或上傳自訂知識庫，打造專屬的 AI 夥伴。",
+    "steps.step5.title": "嵌入網站",
+    "steps.step5.desc": "複製下方嵌入代碼，將虛擬人加入你的網站。支援多種 data-* 參數，無需後端即可運作。",
+    "tech.title": "技術棧",
+    "tech.subtitle": "驅動虛擬人的核心技術",
+    "embed.title": "嵌入你的網站",
+    "embed.subtitle": "複製以下代碼，貼到任何 HTML 頁面即可使用",
+    "embed.label": "嵌入代碼",
+    "embed.copy": "📋 複製",
+    "embed.copied": "✅ 已複製！",
+    "embed.options.title": "📌 可用參數",
+    "embed.options.position": "bottom-right / bottom-left / top-right / top-left",
+    "embed.options.size": "Widget 寬度（px），預設 280",
+    "embed.options.theme": "dark / light，預設 dark",
+    "embed.options.greeting": "自訂初次見面問候語",
+    "embed.options.lang": "zh-TW / zh-CN / en，預設 zh-TW",
+    "embed.options.backend": "自訂後端 URL（可選）",
+    "deploy.title": "部署資訊",
+    "deploy.subtitle": "快速了解專案架構",
+    "api.title": "Reactive API 測試",
+    "api.subtitle": "透過 postMessage 與虛擬人互動（需已載入 Widget）",
+    "api.diary": "📝 日記模式",
+    "api.diary_placeholder": "輸入日記內容…",
+    "api.send": "發送",
+    "api.quiz": "❓ 隨堂測驗",
+    "api.quiz_math": "數學題",
+    "api.quiz_history": "歷史題",
+    "api.quiz_custom": "自訂題",
+    "api.reset": "🔄 重置對話",
+    "api.reset_btn": "重置",
+    "footer.tagline": "🩸 用愛與代碼打造的吸血鬼少女 — 開源專案",
+    "footer.privacy": "隱私政策",
+    "footer.coffee": "請我喝咖啡",
+    "footer.copyright": "© 2026 Vampire Live2D. MIT License."
+  },
+
+  "zh-CN": {
+    "nav.title": "🩸 吸血鬼少女",
+    "hero.title": "你的 AI 虚拟人伙伴",
+    "hero.subtitle": "基于 Live2D Cubism 5 的互动式虚拟角色，搭载 DeepSeek 大脑与双引擎语音系统，为你的网站注入生命力。",
+    "hero.cta_start": "🚀 开始使用",
+    "hero.cta_demo": "🎮 即时体验",
+    "features.title": "核心功能",
+    "features.subtitle": "为什么选择吸血鬼少女？",
+    "features.card1.title": "🖼️ Live2D 动态模型",
+    "features.card1.desc": "Cubism 5 原生渲染，流畅表情切换与肢体动作，支持多种表情参数与物理效果。",
+    "features.card1.tag1": "Cubism 5",
+    "features.card1.tag2": "WebGL",
+    "features.card2.title": "🧠 DeepSeek AI 大脑",
+    "features.card2.desc": "整合 DeepSeek 语言模型，支持上下文对话与知识库检索，让虚拟人真正「懂你」。",
+    "features.card2.tag1": "DeepSeek",
+    "features.card2.tag2": "RAG",
+    "features.card3.title": "🎙️ 双引擎语音",
+    "features.card3.desc": "浏览器 Web Speech API 免费使用，或升级 MiniMax Neural TTS 享受 HD 粤语/国语自然语音。",
+    "features.card3.tag1": "Web Speech",
+    "features.card3.tag2": "MiniMax",
+    "features.card4.title": "🌐 跨平台嵌入",
+    "features.card4.desc": "通过 iframe 或 script 标签嵌入任何网站，支持自定义位置、尺寸、主题与语言。",
+    "features.card4.tag1": "iframe",
+    "features.card4.tag2": "Script Tag",
+    "features.card5.title": "⚡ Reactive API",
+    "features.card5.desc": "通过 postMessage 与虚拟人即时互动，支持日记模式、随堂测验、重置对话等丰富操作。",
+    "features.card5.tag1": "postMessage",
+    "features.card5.tag2": "WebSocket",
+    "features.card6.title": "🔒 安全可靠",
+    "features.card6.desc": "CSP 安全标头、连接限制、速率控制，支持 Cloudflare Access 整合，保护你的数据安全。",
+    "features.card6.tag1": "CSP",
+    "features.card6.tag2": "Rate Limit",
+    "steps.title": "怎么开始",
+    "steps.subtitle": "五个步骤，轻松上手",
+    "steps.step1.title": "体验虚拟人",
+    "steps.step1.desc": "点击右下角按钮，召唤吸血鬼少女。拖曳移动、双击切换表情，感受 Live2D 的流畅动态。",
+    "steps.step2.title": "选择输入方式",
+    "steps.step2.desc": "支持文字聊天与语音输入。开启麦克风权限后，可直接对虚拟人说话，AI 会即时回应。",
+    "steps.step3.title": "切换语音模式",
+    "steps.step3.desc": "在设置中选择浏览器 TTS（免费）或 MiniMax Neural TTS（HD 粤语/国语，12 种声线）。后者需自备 API Key。",
+    "steps.step4.title": "自定义设置",
+    "steps.step4.desc": "调整模型缩放、透明度、语速、音量，或上传自定义知识库，打造专属的 AI 伙伴。",
+    "steps.step5.title": "嵌入网站",
+    "steps.step5.desc": "复制下方嵌入代码，将虚拟人加入你的网站。支持多种 data-* 参数，无需后端即可运作。",
+    "tech.title": "技术栈",
+    "tech.subtitle": "驱动虚拟人的核心技术",
+    "embed.title": "嵌入你的网站",
+    "embed.subtitle": "复制以下代码，贴到任何 HTML 页面即可使用",
+    "embed.label": "嵌入代码",
+    "embed.copy": "📋 复制",
+    "embed.copied": "✅ 已复制！",
+    "embed.options.title": "📌 可用参数",
+    "embed.options.position": "bottom-right / bottom-left / top-right / top-left",
+    "embed.options.size": "Widget 宽度（px），默认 280",
+    "embed.options.theme": "dark / light，默认 dark",
+    "embed.options.greeting": "自定义初次见面问候语",
+    "embed.options.lang": "zh-TW / zh-CN / en，默认 zh-TW",
+    "embed.options.backend": "自定义后端 URL（可选）",
+    "deploy.title": "部署信息",
+    "deploy.subtitle": "快速了解项目架构",
+    "api.title": "Reactive API 测试",
+    "api.subtitle": "通过 postMessage 与虚拟人互动（需已加载 Widget）",
+    "api.diary": "📝 日记模式",
+    "api.diary_placeholder": "输入日记内容…",
+    "api.send": "发送",
+    "api.quiz": "❓ 随堂测验",
+    "api.quiz_math": "数学题",
+    "api.quiz_history": "历史题",
+    "api.quiz_custom": "自定义题",
+    "api.reset": "🔄 重置对话",
+    "api.reset_btn": "重置",
+    "footer.tagline": "🩸 用爱与代码打造的吸血鬼少女 — 开源项目",
+    "footer.privacy": "隐私政策",
+    "footer.coffee": "请我喝咖啡",
+    "footer.copyright": "© 2026 Vampire Live2D. MIT License."
+  },
+
+  "en": {
+    "nav.title": "🩸 Vampire Girl",
+    "hero.title": "Your AI Virtual Companion",
+    "hero.subtitle": "An interactive virtual character powered by Live2D Cubism 5, featuring a DeepSeek AI brain and dual-engine TTS system. Bring your website to life.",
+    "hero.cta_start": "🚀 Get Started",
+    "hero.cta_demo": "🎮 Live Demo",
+    "features.title": "Core Features",
+    "features.subtitle": "Why choose Vampire Girl?",
+    "features.card1.title": "🖼️ Live2D Dynamic Model",
+    "features.card1.desc": "Native Cubism 5 rendering with smooth expression switching and limb movements. Supports multiple expression parameters and physics effects.",
+    "features.card1.tag1": "Cubism 5",
+    "features.card1.tag2": "WebGL",
+    "features.card2.title": "🧠 DeepSeek AI Brain",
+    "features.card2.desc": "Integrated DeepSeek language model with context-aware conversation and knowledge base retrieval. Your virtual companion truly understands you.",
+    "features.card2.tag1": "DeepSeek",
+    "features.card2.tag2": "RAG",
+    "features.card3.title": "🎙️ Dual-Engine TTS",
+    "features.card3.desc": "Free browser Web Speech API or upgrade to MiniMax Neural TTS for HD Cantonese/Mandarin natural voice with 12 voice options.",
+    "features.card3.tag1": "Web Speech",
+    "features.card3.tag2": "MiniMax",
+    "features.card4.title": "🌐 Cross-Platform Embed",
+    "features.card4.desc": "Embed into any website via iframe or script tag. Customize position, size, theme, and language to fit your needs.",
+    "features.card4.tag1": "iframe",
+    "features.card4.tag2": "Script Tag",
+    "features.card5.title": "⚡ Reactive API",
+    "features.card5.desc": "Interact with your virtual companion in real-time via postMessage. Supports diary mode, quizzes, conversation reset, and more.",
+    "features.card5.tag1": "postMessage",
+    "features.card5.tag2": "WebSocket",
+    "features.card6.title": "🔒 Secure & Reliable",
+    "features.card6.desc": "CSP security headers, connection limits, rate control, and Cloudflare Access integration to keep your data safe.",
+    "features.card6.tag1": "CSP",
+    "features.card6.tag2": "Rate Limit",
+    "steps.title": "Getting Started",
+    "steps.subtitle": "Five easy steps",
+    "steps.step1.title": "Experience the Virtual Character",
+    "steps.step1.desc": "Click the bottom-right button to summon the vampire girl. Drag to move, double-click to switch expressions, and enjoy smooth Live2D animations.",
+    "steps.step2.title": "Choose Input Method",
+    "steps.step2.desc": "Supports text chat and voice input. Enable microphone permission to speak directly to the virtual character with real-time AI responses.",
+    "steps.step3.title": "Switch Voice Mode",
+    "steps.step3.desc": "Choose browser TTS (free) or MiniMax Neural TTS (HD Cantonese/Mandarin, 12 voices) in settings. The latter requires your own API Key.",
+    "steps.step4.title": "Customize Settings",
+    "steps.step4.desc": "Adjust model scale, opacity, speech speed, volume, or upload a custom knowledge base to create your unique AI companion.",
+    "steps.step5.title": "Embed on Your Site",
+    "steps.step5.desc": "Copy the embed code below to add the virtual character to your website. Supports multiple data-* parameters, no backend required.",
+    "tech.title": "Tech Stack",
+    "tech.subtitle": "Core technologies powering the virtual character",
+    "embed.title": "Embed on Your Site",
+    "embed.subtitle": "Copy the code below and paste it into any HTML page",
+    "embed.label": "Embed Code",
+    "embed.copy": "📋 Copy",
+    "embed.copied": "✅ Copied!",
+    "embed.options.title": "📌 Available Options",
+    "embed.options.position": "bottom-right / bottom-left / top-right / top-left",
+    "embed.options.size": "Widget width (px), default 280",
+    "embed.options.theme": "dark / light, default dark",
+    "embed.options.greeting": "Custom first-meeting greeting",
+    "embed.options.lang": "zh-TW / zh-CN / en, default zh-TW",
+    "embed.options.backend": "Custom backend URL (optional)",
+    "deploy.title": "Deployment Info",
+    "deploy.subtitle": "Quick architecture overview",
+    "api.title": "Reactive API Test",
+    "api.subtitle": "Interact with the virtual character via postMessage (Widget must be loaded)",
+    "api.diary": "📝 Diary Mode",
+    "api.diary_placeholder": "Enter diary content…",
+    "api.send": "Send",
+    "api.quiz": "❓ Quiz",
+    "api.quiz_math": "Math",
+    "api.quiz_history": "History",
+    "api.quiz_custom": "Custom",
+    "api.reset": "🔄 Reset Chat",
+    "api.reset_btn": "Reset",
+    "footer.tagline": "🩸 Built with love and code — Open Source Project",
+    "footer.privacy": "Privacy Policy",
+    "footer.coffee": "Buy me a coffee",
+    "footer.copyright": "© 2026 Vampire Live2D. MIT License."
+  }
+};
+
+// ============================================================
+// Language Detection & Switching
+// ============================================================
+function getDefaultLang() {
+  const stored = localStorage.getItem("vampire-lang");
+  if (stored) return stored;
+  const navLang = navigator.language || navigator.userLanguage || "";
+  if (navLang.startsWith("zh-CN") || navLang.startsWith("zh-Hans")) return "zh-CN";
+  if (navLang.startsWith("zh")) return "zh-TW";
+  return "en";
+}
+
+let currentLang = getDefaultLang();
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem("vampire-lang", lang);
+  document.documentElement.lang = lang === "zh-TW" ? "zh-Hant" : lang === "zh-CN" ? "zh-Hans" : "en";
+
+  // Update all data-i18n elements
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.dataset.i18n;
+    const text = TRANSLATIONS[lang]?.[key];
+    if (text) el.textContent = text;
+  });
+
+  // Update placeholders
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+    const key = el.dataset.i18nPlaceholder;
+    const text = TRANSLATIONS[lang]?.[key];
+    if (text) el.placeholder = text;
+  });
+
+  // Update active tab indicator
+  document.querySelectorAll(".nav-langs button").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.lang === lang);
+  });
+}
+
+// Initialize language on load
+document.addEventListener("DOMContentLoaded", () => {
+  setLang(currentLang);
+});
+
+// ============================================================
+// Scroll Animation (IntersectionObserver)
+// ============================================================
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add("visible");
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.15 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".fade-in").forEach(el => observer.observe(el));
+});
+
+// ============================================================
+// Copy Embed Code
+// ============================================================
+function copyEmbedCode() {
+  const code = document.getElementById("embed-code-snippet");
+  const label = document.getElementById("copy-label");
+  const text = code.textContent.trim();
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      const original = label.textContent;
+      label.textContent = TRANSLATIONS[currentLang]["embed.copied"] || "✅ Copied!";
+      setTimeout(() => { label.textContent = original; }, 2000);
+    });
+  } else {
+    // Fallback
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+    const original = label.textContent;
+    label.textContent = TRANSLATIONS[currentLang]["embed.copied"] || "✅ Copied!";
+    setTimeout(() => { label.textContent = original; }, 2000);
+  }
+}
+
+// ============================================================
+// Reactive API Test Functions
+// ============================================================
+function getWidgetIframe() {
+  // Try to find the widget iframe
+  const iframe = document.querySelector('iframe[src*="widget"]');
+  return iframe;
+}
+
+function sendDiary() {
+  const input = document.getElementById("diary-input");
+  const text = input.value.trim();
+  if (!text) return;
+
+  const iframe = getWidgetIframe();
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage({
+      type: "diary",
+      payload: { content: text }
+    }, "*");
+    input.value = "";
+  } else {
+    alert(TRANSLATIONS[currentLang]["api.diary"] + ": Widget not found. Please load the widget first.");
+  }
+}
+
+function sendQuiz(type) {
+  const iframe = getWidgetIframe();
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage({
+      type: "quiz",
+      payload: { subject: type }
+    }, "*");
+  } else {
+    alert(TRANSLATIONS[currentLang]["api.quiz"] + ": Widget not found. Please load the widget first.");
+  }
+}
+
+function sendReset() {
+  const iframe = getWidgetIframe();
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage({
+      type: "reset",
+      payload: {}
+    }, "*");
+  } else {
+    alert(TRANSLATIONS[currentLang]["api.reset"] + ": Widget not found. Please load the widget first.");
+  }
+}
+
+// Debounce diary input
+let diaryTimer = null;
+document.addEventListener("DOMContentLoaded", () => {
+  const diaryInput = document.getElementById("diary-input");
+  if (diaryInput) {
+    diaryInput.addEventListener("input", () => {
+      clearTimeout(diaryTimer);
+      diaryTimer = setTimeout(() => {
+        if (diaryInput.value.trim().length > 10) {
+          sendDiary();
+        }
+      }, 1500);
+    });
+  }
+});
+</script>
+
+</body>
+</html>
