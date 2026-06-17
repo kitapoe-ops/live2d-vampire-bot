@@ -786,6 +786,85 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
   <script src="knowledge.js"></script>
 
   <script type="module">
+    // 2026-06-17: Service module imports for TTS and Speech Recognition
+    import { TtsService } from './js/TtsService.js';
+    import { SpeechService } from './js/SpeechService.js';
+
+    // Initialize global service instances (lazy initialization)
+    window._ttsService = null;
+    window._speechService = null;
+
+    // TTS 服務工廠函數（延遲初始化）
+    function getTtsService() {
+      if (!window._ttsService) {
+        // 從現有配置讀取端點
+        const TTS_PROXY_ENDPOINT = '/api/tts-proxy';
+        const TTS_ENDPOINT = '/api/tts';
+        window._ttsService = new TtsService({
+          ttsProxyEndpoint: TTS_PROXY_ENDPOINT,
+          ttsEndpoint: TTS_ENDPOINT
+        });
+      }
+      return window._ttsService;
+    }
+
+    // Speech 服務工廠函數（延遲初始化）
+    // 注意：原有代碼使用 ReliableGoogleSpeech（自動重連+語言鏈）
+    // SpeechService 保留為可選的標準 Web Speech API 封裝
+    function getSpeechService() {
+      if (!window._speechService) {
+        window._speechService = new SpeechService({
+          onInterim: (text) => {
+            const interimEl = document.getElementById('interim-transcript');
+            if (interimEl) interimEl.textContent = text;
+          },
+          onFinal: (text) => {
+            const interimEl = document.getElementById('interim-transcript');
+            if (interimEl) interimEl.textContent = '';
+          },
+          onStart: () => { },
+          onEnd: () => { },
+          onError: (error) => {
+            console.error('[SpeechService]', error);
+          }
+        });
+      }
+      return window._speechService;
+    }
+
+    // 導出全域 TTS 包裝器（向後兼容）
+    window.TtsService = {
+      speak: (text) => getTtsService().speak(text),
+      stop: () => getTtsService().stop(),
+      getMode: () => getTtsService().getMode(),
+      setMode: (mode) => getTtsService().setMode(mode),
+      getNeuralVoice: () => getTtsService().getNeuralVoice(),
+      setNeuralVoice: (voiceId) => getTtsService().setNeuralVoice(voiceId),
+      getVoiceCatalog: () => getTtsService().getVoiceCatalog(),
+      getBrowserVoices: () => getTtsService().getBrowserVoices(),
+      hasMinimaxKey: () => getTtsService().hasMinimaxKey(),
+      setMinimaxCredentials: (key, groupId) => getTtsService().setMinimaxCredentials(key, groupId),
+      clearMinimaxCredentials: () => getTtsService().clearMinimaxCredentials(),
+      getIsSpeaking: () => getTtsService().getIsSpeaking(),
+      getAudioMouth: () => getTtsService().getAudioMouth(),
+      testMinimaxConnection: (key, groupId) => getTtsService().testMinimaxConnection(key, groupId),
+      testBackendProxy: () => getTtsService().testBackendProxy(),
+    };
+
+    // 導出全域 Speech Service 包裝器（可選的標準 Web Speech API）
+    // 注意：原有語音識別使用 ReliableGoogleSpeech（見 startListening）
+    window.SpeechService = {
+      start: () => getSpeechService().start(),
+      stop: () => getSpeechService().stop(),
+      abort: () => getSpeechService().abort(),
+      isListening: () => getSpeechService().getIsListening(),
+      isSupported: () => getSpeechService().isSupported(),
+      setLanguage: (lang) => getSpeechService().setLanguage(lang),
+      getFinalTranscript: () => getSpeechService().getFinalTranscript(),
+      getInterimTranscript: () => getSpeechService().getInterimTranscript(),
+      clear: () => getSpeechService().clear(),
+    };
+
     // 2026-06-13 v10: WEBLLM disabled per user #17204.
     // User now uses DeepSeek API key for LLM, the ~1GB Qwen2.5-1.5B
     // background download from https://esm.run/@mlc-ai/web-llm is no
@@ -984,6 +1063,7 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
       this.recognition = null;
       this.langChain = [];
       this.langIndex = 0;
+      this.retryCount = 0;
     }
     setLanguageChain(chain) {
       this.langChain = chain || [];
@@ -991,6 +1071,8 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
     }
     start() {
       if (!SR) throw new Error('SpeechRecognition 未支持');
+      // 重置網絡錯誤重試計數
+      this.retryCount = 0;
       this.recognition = new SR();
       if (this.langChain.length) {
         this.recognition.lang = this.langChain[this.langIndex];
@@ -1007,14 +1089,54 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
         else showBubble('「' + txt + '」…');
       };
       this.recognition.onerror = (e) => {
-        // 自动重连逻辑：在特定错误下尝试切换语言或重启
-        console.error('[ReliableGoogleSpeech] error', e);
-        if (e.error === 'no-speech' && this.langIndex < this.langChain.length - 1) {
-          this.langIndex++;
-          this.recognition.lang = this.langChain[this.langIndex];
-          // 2026-06-17: 先 stop() 再 start()，避免 'recognition has already started' 错误
+        // 2026-06-17: Enhanced network error diagnostics
+        console.error('[ReliableGoogleSpeech] error:', e);
+        console.error('[ReliableGoogleSpeech] error.error:', e.error);
+        console.error('[ReliableGoogleSpeech] error.message:', e.message);
+        console.error('[ReliableGoogleSpeech] error.type:', e.type);
+        console.error('[ReliableGoogleSpeech] connectionState:', this.recognition?.connectionState);
+        console.error('[ReliableGoogleSpeech] browser info:', navigator.userAgent);
+        // Try to capture network-related info
+        try {
+          const netInfo = localStorage.getItem('xiaob_mic_diag') || '{}';
+          console.error('[ReliableGoogleSpeech] previous diag:', netInfo);
+        } catch(e) {}
+        
+        if (e.error === 'no-speech') {
+          // 2026-06-17 FIX: no-speech 不再自動切換語言
+          // 保持當前語言，直接重新聆聽
+          console.warn('[ReliableGoogleSpeech] no-speech - restarting with same language:', this.langChain[this.langIndex]);
           try { this.recognition.stop(); } catch (e) {}
-          this.recognition.start();
+          try { this.recognition.start(); } catch (e) {}
+        } else if (e.error === 'network') {
+          // 2026-06-17 FIX: 網絡錯誤原地重試，不切換語言
+          // 網絡斷線與語言無關，切換語言只會降低識別準確率
+          console.error('[ReliableGoogleSpeech] NETWORK ERROR - Google Speech API unreachable');
+          console.error('[ReliableGoogleSpeech]   - Retry attempt:', this.retryCount, '/3');
+          
+          if (this.retryCount < 3) {
+            this.retryCount++;
+            console.error('[ReliableGoogleSpeech]   - Retrying with SAME language (no change):', this.langChain[this.langIndex]);
+            
+            const self = this;
+            setTimeout(() => {
+              try {
+                self.recognition.stop();
+              } catch(e) {}
+              try {
+                self.recognition.start();
+              } catch(e) {
+                console.error('[ReliableGoogleSpeech] Retry start failed:', e);
+              }
+            }, 1500); // 1.5秒後重試
+          } else {
+            console.error('[ReliableGoogleSpeech]   - Max retries exceeded, giving up');
+            showBubble('無法連接 Google 語音服務 🔇 請開 VPN 或直接打字 💬');
+            speaking = false;
+            listening = false;
+            setMic(false);
+            this.retryCount = 0;
+          }
         } else {
           // 2026-06-17: onRecognitionError 未定义，移除调用以避免 ReferenceError
           console.warn('[ReliableGoogleSpeech] unhandled error:', e.error);
@@ -1646,6 +1768,11 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
     }
   }
 
+  // =============================================================================
+  // 2026-06-17: TTS 重構 - 使用 TtsService 模組
+  // 原有邏輯已遷移到 js/TtsService.js
+  // =============================================================================
+
   function speak(text) {
     // Defense in depth: strip any leftover emotion tags from the TTS-bound text.
     // The streaming engine already strips them, but hard-coded callers and any
@@ -1656,188 +1783,47 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
     // TTS-bound copy is smart-truncated; bubble can show the full stripped text.
     // 2026-06-13 v31: cap driven by __dev_tts_cap (dev mode slider)
     var ttsText = _ttsTruncate(stripped, __dev_tts_cap);
-    const myseq = ++speakSeq;
     showBubble(stripped);
     postToParent('speaking', { text: stripped });
     if (ttsMuted) return;
     stopSpeaking();
-    if (ttsMode === 'neural' && !neuralDisabled) {
-      // 2026-06-12 BAZOOKA-free: if user wants neural but no key, prompt now.
-      if (!MINIMAX_TTS_KEY) {
-        pendingNeuralToggle = true;
-        openMinimaxKeyModal();
-        return;  // wait for user to input key, don't fall back to browser
-      }
-      speakNeural(ttsText, myseq).catch((e) => {
-        if (myseq !== speakSeq) return;  // 已被更新的點擊取代 → 不要退回播放
-        const msg = (e && e.message) || '';
-        if (/http 4\d\d|Failed to fetch|NetworkError|Load failed/i.test(msg)) neuralDisabled = true; // 結構性失敗(無後端/CORS/被擋)→不再試神經語音
-        console.warn('神經語音失敗，退回瀏覽器語音：', msg);
-        useAudioMouth = false;
-        speakBrowser(ttsText);
-      });
-      return;
-    }
-    speakBrowser(ttsText);
-  }
-
-  // 2026-06-12: Direct MiniMax TTS API call (BAZOOKA-free).
-  // Uses user's localStorage-stored API key + group_id. Returns a Response-like
-  // object containing the audio bytes (mp3) ready for Web Audio decodeAudioData.
-  //
-  // NOTE: MiniMax T2A v2 returns JSON with base64 audio unless stream=true is set.
-  // For low-latency widget playback we use stream=true (hex chunks via SSE).
-  // This implementation uses the simpler non-streaming JSON form first (more
-  // compatible across MiniMax T2A v2 deployments); switching to streaming
-  // chunked is a future optimization.
-  async function fetchMinimaxTtsDirect(text) {
-    if (!MINIMAX_TTS_KEY) throw new Error('MiniMax API key missing');
-    if (!MINIMAX_GROUP_ID) {
-      throw new Error('MiniMax Group ID missing — open settings (🔑) to set it');
-    }
-    const voiceId = NEURAL_VOICE || 'cantonese-female';
-    // 2026-06-12 17:12 FIX: align with BAZOOKA backend (backend/app.py /api/tts
-    // proven payload) — model was 'speech-02' but MiniMax T2A v2 requires
-    // 'speech-02-hd' for non-empty data.audio response. Also drop the unsupported
-    // 'vol' / 'pitch' fields from voice_setting (they caused silent
-    // data.audio omission in the new MiniMax T2A v2 build). Use snake_case
-    // group_id query param to match the documented endpoint signature.
-    const body = {
-      model: 'speech-02-hd',
-      text: String(text || '').slice(0, 150),   // hard cap 150 chars (matches BAZOOKA)
-      stream: false,
-      voice_setting: {
-        voice_id: voiceId,
-        speed: 1.0
-      },
-      audio_setting: {
-        sample_rate: 32000,
-        format: 'mp3',
-        bitrate: 128000,
-        channel: 1
-      }
-    };
-    const r = await fetch(MINIMAX_TTS_DIRECT + '?group_id=' + encodeURIComponent(MINIMAX_GROUP_ID), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + MINIMAX_TTS_KEY
-      },
-      body: JSON.stringify(body)
-    });
-    if (!r.ok) {
-      const errText = await r.text().catch(() => '');
-      throw new Error('http ' + r.status + ' ' + (errText.slice(0, 200) || ''));
-    }
-    const j = await r.json();
-    // 2026-06-12 17:12 FIX: also check base_resp.status_code (BAZOOKA-style)
-    // before trusting data.audio. MiniMax returns 200 OK with empty data
-    // when the voice_id is wrong / deprecated / group_id mismatch — the
-    // base_resp.status_code carries the actual error in those cases.
-    if (j && j.base_resp && j.base_resp.status_code !== undefined && j.base_resp.status_code !== 0) {
-      const msg = j.base_resp.status_msg || ('MiniMax error ' + j.base_resp.status_code);
-      throw new Error('MiniMax voice error: ' + msg + ' (voice_id=' + voiceId + ')');
-    }
-    if (j && j.data && j.data.audio) {
-      // hex-encoded audio
-      const hex = j.data.audio;
-      const bytes = new Uint8Array(hex.length / 2);
-      for (let i = 0; i < bytes.length; i++) {
-        bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
-      }
-      return new Response(bytes, { status: 200, headers: { 'Content-Type': 'audio/mpeg' } });
-    }
-    throw new Error('MiniMax T2A response missing data.audio (model=' + body.model + ', voice=' + voiceId + ')');
-  }
-
-  async function speakNeural(text, seq) {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') { try { await audioCtx.resume(); } catch (e) {} }
-    // 2026-06-12 BAZOOKA-free deployment: dispatch to direct MiniMax API call
-    // when a user-supplied API key is present, otherwise fall back to the
-    // legacy /api/tts proxy path (for self-hosted deployments).
-    let resp;
-    if (MINIMAX_TTS_KEY) {
-      resp = await fetchMinimaxTtsDirect(text);
-    } else {
-      const sep = TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&';
-      resp = await fetch(TTS_ENDPOINT + sep + 'voice=' + encodeURIComponent(NEURAL_VOICE) + '&text=' + encodeURIComponent(text));
-    }
-    if (seq !== speakSeq) return;
-    if (!resp.ok) throw new Error('http ' + resp.status);
-    const arr = await resp.arrayBuffer();
-    if (seq !== speakSeq) return;
-    if (arr.byteLength < 800) throw new Error('audio too small');
-    const audioBuf = await audioCtx.decodeAudioData(arr);
-    if (seq !== speakSeq) return;
-    const src = audioCtx.createBufferSource(); src.buffer = audioBuf;
-    const analyser = audioCtx.createAnalyser(); analyser.fftSize = 256;
-    src.connect(analyser); analyser.connect(audioCtx.destination);
-    const data = new Uint8Array(analyser.fftSize);
-    currentSource = src;
-    useAudioMouth = true; isSpeaking = true;
+    
+    // 使用 TtsService 處理 TTS
+    const tts = getTtsService();
+    isSpeaking = true;
     if (model) try { model.motion('Tap'); restoreOutfitFromEmoteState(); } catch (e) {}
-    const loop = () => {
-      if (currentSource !== src) return;
-      analyser.getByteTimeDomainData(data);
-      let sum = 0; for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
-      audioMouth = Math.min(1, Math.sqrt(sum / data.length) * 3.4);
-      currentRaf = requestAnimationFrame(loop);
-    };
-    currentRaf = requestAnimationFrame(loop);
-    src.onended = () => {
-      if (currentSource !== src) return;
-      if (currentRaf) { cancelAnimationFrame(currentRaf); currentRaf = 0; }
-      isSpeaking = false; useAudioMouth = false; audioMouth = 0;
-      currentSource = null;
-    };
-    src.start(0);
+    
+    // Echo feedback: stop speech recognition when TTS starts
+    const wasListening = listening;
+    if (wasListening && speech) { speech.stop(); }
+    
+    tts.speak(ttsText).catch((e) => {
+      const msg = (e && e.message) || '';
+      if (/http 4\d\d|Failed to fetch|NetworkError|Load failed/i.test(msg)) neuralDisabled = true;
+      console.warn('TTS 失敗：', msg);
+      useAudioMouth = false;
+      isSpeaking = false;
+    });
   }
 
-  // 2026-06-16 v70: FIX voice selection on Windows Chrome where voices share identical URIs.
-  // Root cause: Microsoft Hanhan/Yating/Zhiwei all share the same voiceURI, so matching by
-  // voiceURI always returns the first match (Yating). Fix: match by voice NAME instead.
-  function speakBrowser(text) {
-    if (ttsMuted || !('speechSynthesis' in window)) return;
-    const u = new SpeechSynthesisUtterance(text);
-    if (ttVoice) {
-      const allVoices = speechSynthesis.getVoices() || [];
-      // Match by voice NAME since voiceURI is shared among Chinese Microsoft voices on Windows
-      const freshVoice = allVoices.find(v => v.name === ttVoice.name) || null;
-      if (freshVoice) {
-        u.voice = freshVoice;
-        console.log('[speakBrowser] Fresh voice resolved:', freshVoice.name, '(' + freshVoice.lang + ')');
-      } else {
-        loadVoice();
-        const retryVoices = speechSynthesis.getVoices() || [];
-        const retryVoice = retryVoices.find(v => v.name === ttVoice.name) || null;
-        if (retryVoice) {
-          u.voice = retryVoice;
-        } else {
-          console.warn('[speakBrowser] No voice found for name:', ttVoice.name);
-        }
-      }
-    } else {
-      loadVoice();
-    }
-    u.lang = (ttVoice && ttVoice.lang) || 'zh-TW';
-    u.rate = ttsRate; u.pitch = 1.0;
-    u.onboundary = () => { mouthTarget = 0.5 + Math.random() * 0.5; };
-    u.onend = () => { isSpeaking = false; clearInterval(speakBrowser._poll); };
-    const fire = () => {
-      speechSynthesis.speak(u);
-      isSpeaking = true; mouthTarget = 0.7; if (model) try { model.motion('Tap'); restoreOutfitFromEmoteState(); } catch (e) {}
-      const t0 = performance.now();
-      clearInterval(speakBrowser._poll);
-      speakBrowser._poll = setInterval(() => {
-        const elapsed = performance.now() - t0;
-        const active = speechSynthesis.speaking || speechSynthesis.pending;
-        if ((elapsed > 1000 && !active) || elapsed > 16000) { isSpeaking = false; clearInterval(speakBrowser._poll); }
-      }, 150);
-    };
-    if (speechSynthesis.speaking || speechSynthesis.pending) { speechSynthesis.cancel(); setTimeout(fire, 130); }
-    else fire();
+  // 停止當前 TTS 播放（包裝 TtsService.stop）
+  function stopSpeaking() {
+    const tts = getTtsService();
+    tts.stop();
+    isSpeaking = false;
+    useAudioMouth = false;
+    audioMouth = 0;
   }
+
+  // 獲取當前 TTS 嘴巴動畫值（由動畫循環調用）
+  function getTtsAudioMouth() {
+    return getTtsService().getAudioMouth();
+  }
+
+  // =============================================================================
+  // 2026-06-17: TTS 重構完成
+  // fetchMinimaxTtsDirect、speakNeural、speakBrowser 已遷移到 js/TtsService.js
+  // =============================================================================
 
   function bigrams(s) {
     s = (s || '').toLowerCase().replace(/[\s，。、？！,.?!~～]/g, '');
@@ -2141,7 +2127,9 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
     }
 
     if (DEEPSEEK_KEY) {
-      handleDeepSeekStream(text);
+      console.log('[handleUser] calling handleDeepSeekStream, text:', text);
+      // 2026-06-17: FIX - await async handleDeepSeekStream to prevent unhandled promise rejection
+      handleDeepSeekStream(text).catch(e => console.error('[handleDeepSeekStream] unhandled error:', e));
     } else {
       Promise.resolve().then(async () => {
         try {
@@ -2221,7 +2209,7 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
     // Stop any ongoing recognition (Google SR or Vosk)
     if (listening) {
       if (speech) { speech.stop(); }
-      stopVoskRecognition();
+      // stopVoskRecognition(); // Vosk 已放棄，無需操作
       return;
     }
     // 使用 ReliableGoogleSpeech 初始化并设置语言链

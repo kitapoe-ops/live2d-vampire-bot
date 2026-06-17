@@ -18,7 +18,7 @@ import asyncio
 import secrets
 import base64
 from pathlib import Path
-from typing import AsyncIterator
+from typing import AsyncIterator, Dict
 
 from fastapi import (
     FastAPI,
@@ -580,6 +580,139 @@ async def tts_endpoint(
     except Exception as e:
         return Response(
             status_code=500, media_type="text/plain", content=f"TTS error: {e}"
+        )
+
+
+@app.post("/api/tts-proxy")
+async def tts_proxy(request: Request):
+    """Secure MiniMax TTS proxy endpoint.
+
+    This endpoint uses the backend's MINIMAX_API_KEY, so frontend does NOT
+    need to store or expose any API keys. This improves security by:
+    1. API keys stay on the server, never exposed to the browser
+    2. CORS and CSP headers are handled by the backend
+    3. Rate limiting can be applied at the proxy level
+
+    Request body (JSON):
+        text: str   - Text to synthesize (max 150 chars)
+        voice: str  - Friendly voice alias or MiniMax voice_id (optional, default: cantonese-female)
+        speed: float - Speech speed 0.5-2.0 (optional, default: 1.0)
+
+    Returns: audio/mpeg binary data on success
+            400 if MINIMAX_API_KEY or MINIMAX_GROUP_ID not configured
+            502 if MiniMax API returns an error
+            500 on internal errors
+    """
+    api_key = os.getenv("MINIMAX_API_KEY")
+    if not api_key:
+        return Response(
+            status_code=400,
+            media_type="application/json",
+            content=json.dumps({"error": "MINIMAX_API_KEY not configured on server"}),
+        )
+    if not MINIMAX_GROUP_ID:
+        return Response(
+            status_code=400,
+            media_type="application/json",
+            content=json.dumps({"error": "MINIMAX_GROUP_ID not configured on server"}),
+        )
+
+    try:
+        body = await request.json()
+    except Exception:
+        return Response(
+            status_code=400,
+            media_type="application/json",
+            content=json.dumps({"error": "Invalid JSON body"}),
+        )
+
+    text = body.get("text", "")
+    if not text:
+        return Response(
+            status_code=400,
+            media_type="application/json",
+            content=json.dumps({"error": "text is required"}),
+        )
+
+    voice = body.get("voice", DEFAULT_VOICE_ID)
+    speed = min(max(float(body.get("speed", 1.0)), 0.5), 2.0)  # Clamp to 0.5-2.0
+
+    voice_id = resolve_voice(voice)
+
+    try:
+        payload = {
+            "model": "speech-02-hd",
+            "text": str(text)[:150],  # hard cap at 150 chars
+            "stream": False,
+            "voice_setting": {
+                "voice_id": voice_id,
+                "speed": speed,
+            },
+            "audio_setting": {
+                "sample_rate": 32000,
+                "format": "mp3",
+                "bitrate": 128000,
+                "channel": 1,
+            },
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        url = f"{MINIMAX_TTS_ENDPOINT}?group_id={MINIMAX_GROUP_ID}"
+        resp = requests.post(url, json=payload, headers=headers, timeout=30)
+
+        if resp.status_code != 200:
+            return Response(
+                status_code=502,
+                media_type="application/json",
+                content=json.dumps(
+                    {
+                        "error": f"MiniMax API error {resp.status_code}",
+                        "detail": resp.text[:200],
+                    }
+                ),
+            )
+
+        data = resp.json()
+        base_status = data.get("base_resp", {}).get("status_code", 0)
+        if base_status != 0:
+            msg = data.get("base_resp", {}).get("status_msg", "unknown")
+            return Response(
+                status_code=502,
+                media_type="application/json",
+                content=json.dumps(
+                    {
+                        "error": "MiniMax voice error",
+                        "detail": msg,
+                        "voice_id": voice_id,
+                    }
+                ),
+            )
+
+        audio_data = data.get("data", {}).get("audio", "")
+        if not audio_data:
+            return Response(
+                status_code=502,
+                media_type="application/json",
+                content=json.dumps({"error": "No audio in MiniMax response"}),
+            )
+
+        # MiniMax returns hex-encoded MP3 in data.audio
+        audio_bytes = bytes.fromhex(audio_data)
+        return Response(content=audio_bytes, media_type="audio/mpeg")
+
+    except requests.exceptions.Timeout:
+        return Response(
+            status_code=504,
+            media_type="application/json",
+            content=json.dumps({"error": "MiniMax API timeout"}),
+        )
+    except Exception as e:
+        return Response(
+            status_code=500,
+            media_type="application/json",
+            content=json.dumps({"error": f"TTS proxy error: {str(e)}"}),
         )
 
 

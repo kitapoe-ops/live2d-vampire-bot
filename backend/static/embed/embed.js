@@ -35,12 +35,11 @@
     return null;
   })();
   var base = me ? me.src.replace(/[^/]*$/, '') : '';
-  var widgetUrl = (me && me.getAttribute('data-widget')) || (base + 'widget.html');
+  var widgetUrl = (me && me.getAttribute('data-widget')) || (base + 'widget_fixed.html');
   // Cache-bust: append build version to force browser to fetch latest widget.html
   // (bypass any Cloudflare/browser cache that may hold stale polling code)
-  // 2026-06-14 v38: bump to force fresh fetch after user feedback that
-  // drag + react handler appeared broken (likely stale widget.html cache).
-  var _buildV = '20260616v42';
+  // 2026-06-17 v43: bump to load widget_fixed.html instead of widget.html
+  var _buildV = '20260617v43';
   if (widgetUrl.indexOf('?') < 0) widgetUrl += '?v=' + _buildV;
   else widgetUrl += '&v=' + _buildV;
   var startOpen = (me && me.getAttribute('data-open') !== 'false');

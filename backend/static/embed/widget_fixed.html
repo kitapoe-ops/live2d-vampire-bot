@@ -781,6 +781,58 @@
   <script src="knowledge.js"></script>
 
   <script type="module">
+    // 2026-06-17: Service module imports
+    import { TtsService } from './js/TtsService.js';
+    import { SpeechService } from './js/SpeechService.js';
+
+    // Initialize global service instances
+    window._ttsService = null;
+    window._speechService = null;
+
+    // Lazy initialization to avoid errors before DOM is ready
+    function getTtsService() {
+      if (!window._ttsService) {
+        window._ttsService = new TtsService({
+          ttsProxyEndpoint: '/api/tts-proxy',
+          ttsEndpoint: '/api/tts'
+        });
+      }
+      return window._ttsService;
+    }
+
+    function getSpeechService() {
+      if (!window._speechService) {
+        window._speechService = new SpeechService();
+      }
+      return window._speechService;
+    }
+
+    // Export convenience wrapper for legacy code compatibility
+    window.TtsService = {
+      speak: (text) => getTtsService().speak(text),
+      stop: () => getTtsService().stop(),
+      getMode: () => getTtsService().getMode(),
+      setMode: (mode) => getTtsService().setMode(mode),
+      getNeuralVoice: () => getTtsService().getNeuralVoice(),
+      setNeuralVoice: (voiceId) => getTtsService().setNeuralVoice(voiceId),
+      getVoiceCatalog: () => getTtsService().getVoiceCatalog(),
+      getBrowserVoices: () => getTtsService().getBrowserVoices(),
+      hasMinimaxKey: () => getTtsService().hasMinimaxKey(),
+      setMinimaxCredentials: (key, groupId) => getTtsService().setMinimaxCredentials(key, groupId),
+      clearMinimaxCredentials: () => getTtsService().clearMinimaxCredentials(),
+      getIsSpeaking: () => getTtsService().getIsSpeaking(),
+      getAudioMouth: () => getTtsService().getAudioMouth(),
+      testMinimaxConnection: (key, groupId) => getTtsService().testMinimaxConnection(key, groupId),
+      testBackendProxy: () => getTtsService().testBackendProxy(),
+    };
+
+    window.SpeechRecognition = {
+      start: () => getSpeechService().start(),
+      stop: () => getSpeechService().stop(),
+      isListening: () => getSpeechService().getIsListening(),
+      isSupported: () => getSpeechService().isSupported(),
+    };
+
     // 2026-06-13 v10: WEBLLM disabled per user #17204.
     // User now uses DeepSeek API key for LLM, the ~1GB Qwen2.5-1.5B
     // background download from https://esm.run/@mlc-ai/web-llm is no
@@ -901,6 +953,8 @@
   // Cloudflare Pages deployment uses MINIMAX_TTS_DIRECT (browser → api.minimax.chat).
   // The endpoint is selected by presence of MINIMAX_API_KEY in localStorage.
   const TTS_ENDPOINT = CFG.get('api') || '/api/tts';
+  // 2026-06-17: Secure TTS proxy endpoint - uses backend's API key, no key needed on frontend
+  const TTS_PROXY_ENDPOINT = CFG.get('tts_proxy') || '/api/tts-proxy';
   // 2026-06-12: BAZOOKA-free deployment. When deployed to Cloudflare Pages (no
   // /api/tts proxy), the widget calls MiniMax TTS directly from the browser.
   // The user must supply their own API key in the new "MINIMAX API Key" gate
@@ -910,6 +964,8 @@
   const MINIMAX_GROUP_ID_DEFAULT = '';  // overridable via localStorage `minimax_group_id`
   let MINIMAX_TTS_KEY = (function () { try { return localStorage.getItem('minimax_tts_key') || ''; } catch (e) { return ''; } })();
   let MINIMAX_GROUP_ID = (function () { try { return localStorage.getItem('minimax_group_id') || MINIMAX_GROUP_ID_DEFAULT; } catch (e) { return ''; } })();
+  // 2026-06-17: Track if backend proxy is available (avoids retrying on every TTS call)
+  let _backendProxyAvailable = null;  // null = unknown, true = available, false = unavailable
   let DEEPSEEK_KEY = localStorage.getItem('deepseek_key') || CFG.get('ds_key') || ''; // 透過 URL 參數或 localStorage 讀取 DeepSeek API Key
   const DEEPSEEK_API = CFG.get('ds_api') || 'https://api.deepseek.com/v1/chat/completions';
 
@@ -1021,7 +1077,9 @@
       // - Android Chrome (uses Google App via Google Play Services)
       // - iOS Chrome: technically exposes SR but iOS limits WebKit speech to short
       //   phrases and it's unreliable. Treat as unsupported.
-      // - iOS Safari: not supported.
+      // - iOS Safari: supported but with limitations in iframe context.
+      //   2026-06-17: Updated to clarify iOS Safari is supported but requires
+      //   user gesture to trigger speech recognition in cross-origin iframes.
       // 2026-06-13 v11: any browser with SR API gets to try (per user #17226 evidence
       // that hard-blocking Brave/Edge silently returns 'non-Chrome' hint but user
       // never sees the hint and thinks mic is broken). Real failure path is
@@ -1621,6 +1679,57 @@
     speakBrowser(ttsText);
   }
 
+  // 2026-06-17: Secure MiniMax TTS proxy via backend.
+  // Uses the backend's MINIMAX_API_KEY, so frontend doesn't expose any keys.
+  // Falls back to direct MiniMax API call if proxy is unavailable.
+  async function fetchTtsProxy(text) {
+    const voiceId = NEURAL_VOICE || 'cantonese-female';
+    const voiceKey = Object.entries({
+      'cantonese-female': 'cantonese-female',
+      'cantonese-male': 'cantonese-male',
+      'cantonese-gentle': 'cantonese-gentle',
+      'cantonese-cute': 'cantonese-cute',
+      'cantonese-playful': 'cantonese-playful',
+      'cantonese-kind': 'cantonese-kind',
+      'mandarin-female': 'mandarin-female',
+      'mandarin-male': 'mandarin-male',
+      'mandarin-shaonv': 'mandarin-shaonv',
+      'mandarin-yujie': 'mandarin-yujie',
+      'mandarin-chengshu': 'mandarin-chengshu',
+      'mandarin-announcer': 'mandarin-announcer',
+      'zh-tw-hsiaochenneural': 'zh-tw-hsiaochenneural',
+      'zh-tw-yunjhenneural': 'zh-tw-yunjhenneural',
+      'zh-hk-hiumaanneural': 'zh-hk-hiumaanneural',
+      'zh-hk-wanluneural': 'zh-hk-wanluneural',
+      'zh-cn-xiaoxiaoneural': 'zh-cn-xiaoxiaoneural',
+      'zh-cn-yunxineural': 'zh-cn-yunxineural',
+      'zh-cn-yunyangneural': 'zh-cn-yunyangneural',
+    }).find(([k, v]) => v === voiceId || k === voiceId)?.[1] || voiceId;
+    
+    try {
+      const r = await fetch(TTS_PROXY_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: String(text || '').slice(0, 150),
+          voice: voiceKey,
+          speed: 1.0
+        })
+      });
+      if (r.headers.get('Content-Type')?.includes('audio')) {
+        const bytes = await r.arrayBuffer();
+        _backendProxyAvailable = true;
+        return new Response(bytes, { status: 200, headers: { 'Content-Type': 'audio/mpeg' } });
+      }
+      // Non-audio response (error JSON)
+      const j = await r.json().catch(() => ({}));
+      throw new Error(j.error || j.detail || `Proxy error ${r.status}`);
+    } catch (e) {
+      _backendProxyAvailable = false;
+      throw e;
+    }
+  }
+
   // 2026-06-12: Direct MiniMax TTS API call (BAZOOKA-free).
   // Uses user's localStorage-stored API key + group_id. Returns a Response-like
   // object containing the audio bytes (mp3) ready for Web Audio decodeAudioData.
@@ -1693,15 +1802,45 @@
   async function speakNeural(text, seq) {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') { try { await audioCtx.resume(); } catch (e) {} }
-    // 2026-06-12 BAZOOKA-free deployment: dispatch to direct MiniMax API call
-    // when a user-supplied API key is present, otherwise fall back to the
-    // legacy /api/tts proxy path (for self-hosted deployments).
+    // 2026-06-17 TTS routing priority:
+    // 1. Backend proxy (/api/tts-proxy) - secure, no frontend key needed
+    // 2. Direct MiniMax API - if user has their own API key stored
+    // 3. Legacy /api/tts - fallback for self-hosted deployments
     let resp;
-    if (MINIMAX_TTS_KEY) {
-      resp = await fetchMinimaxTtsDirect(text);
-    } else {
-      const sep = TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&';
-      resp = await fetch(TTS_ENDPOINT + sep + 'voice=' + encodeURIComponent(NEURAL_VOICE) + '&text=' + encodeURIComponent(text));
+    let lastError = null;
+    
+    // Priority 1: Try backend proxy (uses server-side API key)
+    if (_backendProxyAvailable !== false) {
+      try {
+        resp = await fetchTtsProxy(text);
+      } catch (e) {
+        lastError = e;
+        // Proxy failed, will try other methods below
+      }
+    }
+    
+    // Priority 2: Direct MiniMax API (if user has their own key)
+    if (!resp && MINIMAX_TTS_KEY) {
+      try {
+        resp = await fetchMinimaxTtsDirect(text);
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    
+    // Priority 3: Legacy /api/tts endpoint (for self-hosted deployments)
+    if (!resp && !MINIMAX_TTS_KEY) {
+      try {
+        const sep = TTS_ENDPOINT.indexOf('?') < 0 ? '?' : '&';
+        resp = await fetch(TTS_ENDPOINT + sep + 'voice=' + encodeURIComponent(NEURAL_VOICE) + '&text=' + encodeURIComponent(text));
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    
+    // If all methods failed, throw the last error
+    if (!resp) {
+      throw lastError || new Error('All TTS methods unavailable');
     }
     if (seq !== speakSeq) return;
     if (!resp.ok) throw new Error('http ' + resp.status);
@@ -2081,7 +2220,9 @@
     }
 
     if (DEEPSEEK_KEY) {
-      handleDeepSeekStream(text);
+      console.log('[handleUser] calling handleDeepSeekStream, text:', text);
+      // 2026-06-17: FIX - await async handleDeepSeekStream to prevent unhandled promise rejection
+      handleDeepSeekStream(text).catch(e => console.error('[handleDeepSeekStream] unhandled error:', e));
     } else {
       Promise.resolve().then(async () => {
         try {
