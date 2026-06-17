@@ -815,6 +815,8 @@
       setMode: (mode) => getTtsService().setMode(mode),
       getNeuralVoice: () => getTtsService().getNeuralVoice(),
       setNeuralVoice: (voiceId) => getTtsService().setNeuralVoice(voiceId),
+      getBrowserVoiceUri: () => getTtsService().getBrowserVoiceUri(),
+      setBrowserVoiceUri: (uri) => getTtsService().setBrowserVoiceUri(uri),
       getVoiceCatalog: () => getTtsService().getVoiceCatalog(),
       getBrowserVoices: () => getTtsService().getBrowserVoices(),
       hasMinimaxKey: () => getTtsService().hasMinimaxKey(),
@@ -967,7 +969,7 @@
   // 2026-06-17: Track if backend proxy is available (avoids retrying on every TTS call)
   let _backendProxyAvailable = null;  // null = unknown, true = available, false = unavailable
   let DEEPSEEK_KEY = localStorage.getItem('deepseek_key') || CFG.get('ds_key') || ''; // 透過 URL 參數或 localStorage 讀取 DeepSeek API Key
-  const DEEPSEEK_API = CFG.get('ds_api') || 'https://api.deepseek.com/v1/chat/completions';
+  let DEEPSEEK_API = CFG.get('ds_api') || 'https://api.deepseek.com/v1/chat/completions';
 
   // 2026-06-13 v31: Developer mode parameters (localStorage-persisted)
   let __dev_breath_amp = parseFloat((function(){try{return localStorage.getItem('xiaob_dev_breath')||''}catch(e){return''}}())||'0.5')||0.5;
