@@ -1342,10 +1342,12 @@
       '- reply 要粵語口語，max 60 字\n' +
       '- 吸血鬼性格，唔好笑講嘢';
 
+    // 2026-06-17: Fix Authorization header - was '***' + key which produced invalid header
+    console.log('[react] 🤖 Calling DeepSeek API with key starting:', key.slice(0, 8) + '...');
     const r = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': '***' + key,
+        'Authorization': 'Bearer ' + key,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -1359,6 +1361,7 @@
         response_format: { type: 'json_object' },
       }),
     });
+    console.log('[react] 🤖 DeepSeek response status:', r.status);
     if (!r.ok) throw new Error('DeepSeek http ' + r.status);
     const data = await r.json();
     const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
@@ -2109,10 +2112,35 @@
       // on any browser. Real failure mode (not-allowed) flows through onerror
       // below with browser-specific hint. We still log BROWSER info to localStorage
       // for diagnostic but don't short-circuit return.
+      // v73 DEBUG: Add diagnostic logging for speech recognition issues
+      console.log('[DEBUG startListening] === SPEECH RECOGNITION DIAGNOSTIC ===');
+      console.log('[DEBUG startListening] SR available:', !!SR);
+      console.log('[DEBUG startListening] window.SpeechRecognition:', !!window.SpeechRecognition);
+      console.log('[DEBUG startListening] window.webkitSpeechRecognition:', !!window.webkitSpeechRecognition);
+      console.log('[DEBUG startListening] location.protocol:', location.protocol);
+      console.log('[DEBUG startListening] is iframe:', window.self !== window.top);
+      console.log('[DEBUG startListening] parent iframe allow attr:', window.frameElement ? window.frameElement.getAttribute('allow') : 'N/A (top-level)');
+      console.log('[DEBUG startListening] navigator.mediaDevices:', !!navigator.mediaDevices);
+      console.log('[DEBUG startListening] navigator.mediaDevices.getUserMedia:', !!navigator.mediaDevices?.getUserMedia);
+      // Check microphone permission
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(stream => {
+            console.log('[DEBUG startListening] Microphone permission: GRANTED');
+            stream.getTracks().forEach(track => track.stop());
+          })
+          .catch(err => {
+            console.warn('[DEBUG startListening] Microphone permission: DENIED -', err.message);
+          });
+      }
+      
       try {
         const prev = JSON.parse(localStorage.getItem('xiaob_mic_diag') || '{}');
         prev.attempt_browser = BROWSER;
         prev.attempt_ts = new Date().toISOString();
+        prev.sr_available = !!SR;
+        prev.is_iframe = window.self !== window.top;
+        prev.protocol = location.protocol;
         localStorage.setItem('xiaob_mic_diag', JSON.stringify(prev));
       } catch (e) {}
       if (!SR) {
@@ -2133,7 +2161,12 @@
       speak(msg.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ''));
       return;
     }
-    if (listening && recognition) { recognition.stop(); return; }
+    // Stop any ongoing recognition (Google SR or Vosk)
+    if (listening) {
+      if (recognition) { try { recognition.stop(); } catch (e) {} }
+      stopVoskRecognition();
+      return;
+    }
     try { recognition = new SR(); } catch (e) { speak('語音辨識啟動失敗：' + e.message); return; }
     // 2026-06-13 v12: per user #17287 static analysis — 'zh-TW' (Taiwan Mandarin)
 // hardcoded 觸發 phonetic rejection for Cantonese speakers (廣東話 yue).
@@ -2215,9 +2248,12 @@ recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
         } else if (e.error === 'network') {
           // 2026-06-16: Google SR backend unreachable — common when browser
           // cannot reach Google speech services (e.g. China mainland, corporate
-          // firewalls, or iframe network restrictions). Show a clear hint
-          // without triggering the lang-fallback loop.
-          hint = '無法連接語音服務 🔇 通常係因為網絡連唔到 Google 語音伺服器（可能需要開 VPN / 科學上網）。請檢查網絡，或直接打字 💬';
+          // firewalls, or iframe network restrictions).
+          // 2026-06-17: Fallback to Vosk offline speech recognition
+          console.log('[SR] Network error - falling back to Vosk offline recognition');
+          showBubble('正在切換到離線語音識別 📡');
+          setTimeout(() => { startVoskRecognition(); }, 300);
+          return;
         } else if (e.error === 'no-speech') {
           // 2026-06-13 v13: fix v12 recursive error loop. User #17321
           // console log 顯示 'error' handler took 60463ms (60s blocking!)
