@@ -3809,6 +3809,8 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             try { localStorage.setItem('xiaob_tts_mode', 'browser'); } catch (e) {}
             ttVoice = v;
             try { localStorage.setItem(KEY_BROWSER, v.name); } catch (e) {}
+            // Sync to TtsService module so speakBrowser() can find the voice by name
+            if (window.TtsService) window.TtsService.setBrowserVoiceUri(v.name);
             paintBtn();
             closePopover();
             const sample = (/^zh-HK/i.test(v.lang)) ? '你好，我係香港粵語語音。' :
@@ -3904,6 +3906,8 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
       if (match) {
         ttVoice = match;
         console.log('[voice-list] Restored browser voice from localStorage:', ttVoice.name);
+        // Sync to TtsService module so speakBrowser() can use the same voice
+        if (window.TtsService) window.TtsService.setBrowserVoiceUri(savedBrowserVoiceURI);
       } else {
         console.warn('[voice-list] Stored browser voice "' + savedBrowserVoiceURI + '" not found in current voices');
       }

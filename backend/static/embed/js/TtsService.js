@@ -421,11 +421,36 @@ export class TtsService {
     const utt = new SpeechSynthesisUtterance(text);
     utt.rate = this.ttsRate || 1.0;
     
-    // Find voice
+    // Intelligent voice selection:
+    // 1. If browserVoiceUri is configured, try to find the matching voice
+    // 2. Otherwise, auto-select a Chinese voice as fallback
+    const voices = this.getBrowserVoices();
+    let selectedVoice = null;
+    
     if (this.browserVoiceUri) {
-      const voices = this.getBrowserVoices();
-      const voice = voices.find(v => v.voiceURI === this.browserVoiceUri || v.url === this.browserVoiceUri);
-      if (voice) utt.voice = voice;
+      // On Windows Chromium, Microsoft Chinese voices share identical voiceURI,
+      // so matching by name is more reliable. Try name first, then voiceURI/url.
+      selectedVoice = voices.find(v => v.name === this.browserVoiceUri)
+        || voices.find(v => v.voiceURI === this.browserVoiceUri)
+        || voices.find(v => v.url === this.browserVoiceUri);
+      if (selectedVoice) {
+        console.log('[TtsService] Using configured voice:', selectedVoice.name, '(' + selectedVoice.lang + ')');
+      }
+    }
+    
+    // Auto-select Chinese voice if none matched via browserVoiceUri
+    if (!selectedVoice) {
+      selectedVoice = this._pickChineseVoice(voices);
+      if (selectedVoice) {
+        console.log('[TtsService] Auto-selected Chinese voice:', selectedVoice.name, '(' + selectedVoice.lang + ')');
+      }
+    }
+    
+    if (selectedVoice) {
+      utt.voice = selectedVoice;
+      utt.lang = selectedVoice.lang;
+    } else {
+      utt.lang = 'zh-TW';
     }
     
     this.isSpeaking = true;
@@ -443,6 +468,22 @@ export class TtsService {
     
     window.speechSynthesis.speak(utt);
     return true;
+  }
+  
+  /**
+   * Auto-select a Chinese voice from available browser voices
+   * Priority: Traditional Chinese (Taiwan) female > Traditional Chinese > Mandarin > any Chinese
+   */
+  _pickChineseVoice(voices) {
+    if (!voices || !voices.length) return null;
+    const pick = (re) => voices.find(v => re.test(v.name + ' ' + v.lang) && !/Google/i.test(v.name));
+    return pick(/(HsiaoChen|HsiaoYu|曉臻|曉雨).*zh/i)
+      || pick(/(Yating|Zhiwei).*zh[-_]TW/i)
+      || pick(/Microsoft.*zh[-_]TW/i)
+      || pick(/zh[-_]TW/i)
+      || pick(/^zh/i)
+      || voices.find(v => /zh/i.test(v.lang))
+      || null;
   }
   
   /**
