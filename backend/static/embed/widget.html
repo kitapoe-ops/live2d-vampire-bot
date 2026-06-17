@@ -1788,8 +1788,8 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
     if (ttsMuted) return;
     stopSpeaking();
     
-    // 使用 TtsService 處理 TTS
-    const tts = getTtsService();
+    // 使用 window.TtsService 處理 TTS（window.TtsService 是在 module script 中暴露的全域包裝器）
+    const tts = window.TtsService;
     isSpeaking = true;
     if (model) try { model.motion('Tap'); restoreOutfitFromEmoteState(); } catch (e) {}
     
@@ -1819,7 +1819,7 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
 
   // 獲取當前 TTS 嘴巴動畫值（由動畫循環調用）
   function getTtsAudioMouth() {
-    return getTtsService().getAudioMouth();
+    return window.TtsService.getAudioMouth();
   }
 
   // =============================================================================
