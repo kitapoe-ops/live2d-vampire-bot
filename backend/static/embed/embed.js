@@ -17,6 +17,12 @@
 (function () {
   'use strict';
 
+  // 2026-06-17: Prevent duplicate widget instances
+  if (document.getElementById('avatar-widget-root')) {
+    console.warn('[embed.js] Widget already loaded, skipping duplicate instance');
+    return;
+  }
+
   // Inject collapse-bubble hover / pulse animation
   var awStyle = document.createElement('style');
   awStyle.textContent =
@@ -38,8 +44,8 @@
   var widgetUrl = (me && me.getAttribute('data-widget')) || (base + 'widget_fixed.html');
   // Cache-bust: append build version to force browser to fetch latest widget.html
   // (bypass any Cloudflare/browser cache that may hold stale polling code)
-  // 2026-06-17 v43: bump to load widget_fixed.html instead of widget.html
-  var _buildV = '20260617v43';
+  // 2026-06-17 v45-FORCE: load widget_fixed.html instead of widget.html
+  var _buildV = '20260617v45';
   if (widgetUrl.indexOf('?') < 0) widgetUrl += '?v=' + _buildV;
   else widgetUrl += '&v=' + _buildV;
   var startOpen = (me && me.getAttribute('data-open') !== 'false');

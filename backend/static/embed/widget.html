@@ -2231,6 +2231,12 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
   }
 
   async function bootAvatar() {
+    // 2026-06-17: Prevent duplicate boot calls (e.g. from multiple iframe loads)
+    if (window.__bootAvatarCalled) {
+      console.warn('[Live2D] bootAvatar already called, skipping duplicate');
+      return;
+    }
+    window.__bootAvatarCalled = true;
     try {
       const Live2DModel = PIXI.live2d.Live2DModel;
       try { Live2DModel.registerTicker(PIXI.Ticker); } catch (e) {}
