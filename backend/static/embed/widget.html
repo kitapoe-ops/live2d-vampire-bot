@@ -3995,18 +3995,55 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         const voiceSel = document.getElementById('settings-voice');
         if (voiceSel) {
           voiceSel.innerHTML = '';
+          // Placeholder option
           const opt0 = document.createElement('option');
           opt0.value = ''; opt0.textContent = '— 請選擇語音 —';
           voiceSel.appendChild(opt0);
-          if (Array.isArray(serverVoicesCatalog)) {
+          
+          // Section 1: Browser voices (free, uses system voices)
+          const browserGroup = document.createElement('optgroup');
+          browserGroup.label = '🌐 瀏覽器語音（免費，使用系統語音）';
+          // Hardcoded popular browser voices with friendly names
+          const BROWSER_VOICES = [
+            { uri: 'Microsoft Hanhan Online (Natural) - Chinese (Traditional, Taiwan)', name: '👧 曉語-女聲（台灣）', lang: 'zh-TW' },
+            { uri: 'Microsoft Yating Online (Natural) - Chinese (Traditional, Taiwan)', name: '👩 雅婷-女聲（台灣）', lang: 'zh-TW' },
+            { uri: 'Microsoft Zhiwei Online (Natural) - Chinese (Traditional, Taiwan)', name: '👨 志偉-男聲（台灣）', lang: 'zh-TW' },
+            { uri: 'Microsoft Yaoyao Online (Natural) - Chinese (Simplified, Mainland)', name: '👧 曉曉-女聲（大陸）', lang: 'zh-CN' },
+            { uri: 'Microsoft Yunxi Online (Natural) - Chinese (Simplified, Mainland)', name: '👨 雲希-男聲（大陸）', lang: 'zh-CN' },
+            { uri: 'Microsoft Heami Online (Natural) - Korean', name: '👩 希美-女聲（韓語）', lang: 'ko-KR' },
+            { uri: 'Microsoft Nanami Online (Natural) - Japanese', name: '👧 七海-女聲（日語）', lang: 'ja-JP' },
+            { uri: 'Microsoft Keita Online (Natural) - Japanese', name: '👨 圭太-男聲（日語）', lang: 'ja-JP' },
+            { uri: 'Microsoft Sonia Online (Natural) - English (UK)', name: '👩 索尼婭-英式英語', lang: 'en-GB' },
+            { uri: 'Microsoft Jenny Online (Natural) - English (US)', name: '👩 珍妮-美式英語', lang: 'en-US' },
+          ];
+          BROWSER_VOICES.forEach(v => {
+            const o = document.createElement('option');
+            o.value = v.uri;
+            o.textContent = v.name;
+            o.dataset.lang = v.lang;
+            browserGroup.appendChild(o);
+          });
+          voiceSel.appendChild(browserGroup);
+          
+          // Section 2: MiniMax neural voices (requires API key)
+          if (Array.isArray(serverVoicesCatalog) && serverVoicesCatalog.length > 0) {
+            const neuralGroup = document.createElement('optgroup');
+            neuralGroup.label = '💎 MiniMax 語音（需 API Key，品質更好）';
             serverVoicesCatalog.forEach(v => {
               const o = document.createElement('option');
               o.value = v.voice_id || v.id;
               o.textContent = v.id + (v.gender ? ' (' + v.gender + ')' : '');
-              voiceSel.appendChild(o);
+              neuralGroup.appendChild(o);
             });
+            voiceSel.appendChild(neuralGroup);
           }
-          voiceSel.value = NEURAL_VOICE || '';
+          
+          // Set current selection
+          if (ttsMode === 'browser' && browserVoiceUri) {
+            voiceSel.value = browserVoiceUri || '';
+          } else {
+            voiceSel.value = NEURAL_VOICE || '';
+          }
         }
         const rateEl = document.getElementById('settings-tts-rate');
         const rateValEl = document.getElementById('settings-tts-rate-val');
@@ -4155,15 +4192,32 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         showBubble(ttsMode === 'neural' ? '已切換至 MiniMax 神經語音' : '已切換至瀏覽器 Web Speech API');
       });
     }
-    // Voice
+    // Voice selection handler (supports both browser and neural voices)
     const voiceSel = document.getElementById('settings-voice');
     if (voiceSel) {
       voiceSel.addEventListener('change', () => {
-        NEURAL_VOICE = voiceSel.value;
-        try { localStorage.setItem('xiaob_voice_id', NEURAL_VOICE); } catch (e) {}
-        // Sync to TtsService module
-        if (window.TtsService) window.TtsService.setNeuralVoice(NEURAL_VOICE);
-        showBubble('已切換語音: ' + (voiceSel.selectedOptions[0]?.textContent || NEURAL_VOICE));
+        const selected = voiceSel.value;
+        const selectedOpt = voiceSel.selectedOptions[0];
+        const selectedText = selectedOpt?.textContent || selected;
+        
+        // Determine if this is a browser voice (has Microsoft/Google/Apple prefix) or neural voice
+        const isBrowserVoice = /^(Microsoft|Google|Apple|Samsung)/i.test(selected);
+        
+        if (isBrowserVoice) {
+          // Browser voice selected - store in browser voice URI
+          browserVoiceUri = selected;
+          try { localStorage.setItem('xiaob_browser_voice_uri', selected); } catch (e) {}
+          // Sync to TtsService module
+          if (window.TtsService) window.TtsService.setBrowserVoiceUri(selected);
+        } else {
+          // Neural voice selected - store in neural voice
+          NEURAL_VOICE = selected;
+          try { localStorage.setItem('xiaob_voice_id', selected); } catch (e) {}
+          // Sync to TtsService module
+          if (window.TtsService) window.TtsService.setNeuralVoice(selected);
+        }
+        
+        showBubble('已切換語音: ' + selectedText);
       });
     }
     // TTS rate slider
