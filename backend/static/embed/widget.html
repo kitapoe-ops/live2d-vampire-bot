@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>
+if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+  location.replace('https://' + location.host + location.pathname + location.search + location.hash);
+}
+</script>
 <!-- 2026-06-13 v29: block Cloudflare Web Analytics beacon at the network
      layer. v28's DOM strip and v29 createElement hook had limited
      success because:
@@ -972,6 +977,56 @@
   let NEURAL_VOICE = CFG.get('voice') || 'cantonese-female';
   let recognition = null, listening = false;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  // ReliableGoogleSpeech: 包装 SpeechRecognition, 自动重连并支持语言链
+  class ReliableGoogleSpeech {
+    constructor() {
+      this.recognition = null;
+      this.langChain = [];
+      this.langIndex = 0;
+    }
+    setLanguageChain(chain) {
+      this.langChain = chain || [];
+      this.langIndex = 0;
+    }
+    start() {
+      if (!SR) throw new Error('SpeechRecognition 未支持');
+      this.recognition = new SR();
+      if (this.langChain.length) {
+        this.recognition.lang = this.langChain[this.langIndex];
+      }
+      this.recognition.interimResults = true;
+      this.recognition.continuous = false;
+      this.recognition.maxAlternatives = 1;
+      this.recognition.onstart = () => { listening = true; setMic(true); showBubble('聆聽中…請說話 🎙️'); };
+      this.recognition.onresult = (e) => {
+        let txt = '';
+        for (const r of e.results) txt += r[0].transcript;
+        const last = e.results[e.results.length - 1];
+        if (last.isFinal) handleUser(txt.trim());
+        else showBubble('「' + txt + '」…');
+      };
+      this.recognition.onerror = (e) => {
+        // 自动重连逻辑：在特定错误下尝试切换语言或重启
+        console.error('[ReliableGoogleSpeech] error', e);
+        if (e.error === 'no-speech' && this.langIndex < this.langChain.length - 1) {
+          this.langIndex++;
+          this.recognition.lang = this.langChain[this.langIndex];
+          this.recognition.start();
+        } else {
+          // 触发外部错误处理
+          if (typeof onRecognitionError === 'function') onRecognitionError(e);
+        }
+      };
+      this.recognition.start();
+    }
+    stop() {
+      if (this.recognition) {
+        try { this.recognition.stop(); } catch (e) {}
+      }
+    }
+  }
+
 
   // 2026-06-14 v32: WebView (Android in-app browser) detection patterns.
   // These environments wrap the page in a hardened WebView that does not expose
@@ -2167,16 +2222,15 @@
       stopVoskRecognition();
       return;
     }
-    try { recognition = new SR(); } catch (e) { speak('語音辨識啟動失敗：' + e.message); return; }
-    // 2026-06-13 v12: per user #17287 static analysis — 'zh-TW' (Taiwan Mandarin)
-// hardcoded 觸發 phonetic rejection for Cantonese speakers (廣東話 yue).
-// User 嘅實際語言係 zh-HK, 改 primary lang + 加 fallback chain: zh-HK → zh-CN → en-US.
-// Fallback 透過 onerror 'no-speech' 嗰陣 try next lang.
-window.SR_LANG_CHAIN = ['zh-HK', 'zh-CN', 'en-US'];
-window.SR_LANG_INDEX = 0;
-recognition.lang = window.SR_LANG_CHAIN[0]; recognition.interimResults = true;
-    recognition.continuous = false; recognition.maxAlternatives = 1;
-    recognition.onstart  = () => { listening = true; setMic(true); showBubble('聆聽中…請說話 🎙️'); };
+    // 使用 ReliableGoogleSpeech 初始化并设置语言链
+    try {
+      speech = new ReliableGoogleSpeech();
+    } catch (e) {
+      speak('語音辨識啟動失敗：' + e.message);
+      return;
+    }
+    speech.setLanguageChain(['zh-HK', 'zh-CN', 'en-US']);
+    speech.start();
     recognition.onresult = (e) => {
       let txt = ''; for (const r of e.results) txt += r[0].transcript;
       const last = e.results[e.results.length - 1];
