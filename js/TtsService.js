@@ -138,6 +138,7 @@ export class TtsService {
    * Set browser voice URI
    */
   setBrowserVoiceUri(uri) {
+    console.log('[TtsService:DIAG] setBrowserVoiceUri called:', JSON.stringify(uri));
     this.browserVoiceUri = uri;
     this._setLocalStorage('xiaob_browser_voice_uri', uri);
   }
@@ -415,8 +416,25 @@ export class TtsService {
       throw new Error('Browser does not support Web Speech API');
     }
     
+    // === DIAGNOSTIC: Log current speech synthesis state ===
+    console.log('[TtsService:DIAG] speakBrowser called', {
+      textLen: text.length,
+      seq,
+      speaking: window.speechSynthesis.speaking,
+      paused: window.speechSynthesis.paused,
+      pending: window.speechSynthesis.pending
+    });
+    
     // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
+    // NOTE: Only cancel if currently speaking or pending to avoid the Chromium bug
+    // where cancel() + immediate speak() silently drops the utterance.
+    // This is a known issue in Chrome/Edge (crbug.com/1066031, crbug.com/1212930).
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      console.log('[TtsService:DIAG] Cancelling ongoing speech before speak');
+      window.speechSynthesis.cancel();
+    } else {
+      console.log('[TtsService:DIAG] No ongoing speech, skipping cancel()');
+    }
     
     const utt = new SpeechSynthesisUtterance(text);
     utt.rate = this.ttsRate || 1.0;
@@ -425,6 +443,8 @@ export class TtsService {
     // 1. If browserVoiceUri is configured, try to find the matching voice
     // 2. Otherwise, auto-select a Chinese voice as fallback
     const voices = this.getBrowserVoices();
+    console.log('[TtsService:DIAG] browserVoiceUri value:', JSON.stringify(this.browserVoiceUri), 'type:', typeof this.browserVoiceUri, 'length:', this.browserVoiceUri ? this.browserVoiceUri.length : 0);
+    console.log('[TtsService:DIAG] getBrowserVoices count:', voices.length, 'first 3:', voices.slice(0,3).map(v => v.name).join(', '));
     let selectedVoice = null;
     
     if (this.browserVoiceUri) {
@@ -433,6 +453,25 @@ export class TtsService {
       selectedVoice = voices.find(v => v.name === this.browserVoiceUri)
         || voices.find(v => v.voiceURI === this.browserVoiceUri)
         || voices.find(v => v.url === this.browserVoiceUri);
+      
+      // Fuzzy fallback: if no exact match, try extracting short English name
+      // from the stored URI and find a voice whose name contains it.
+      // This handles cases where hardcoded URIs (e.g. "Microsoft Zhiwei Online (Natural) - Chinese (Traditional, Taiwan)")
+      // don't match actual browser voice names (e.g. "Microsoft 志偉 Online (Natural) - Chinese (Taiwanese Mandarin, Traditional)").
+      if (!selectedVoice) {
+        const shortName = this.browserVoiceUri
+          .replace(/^Microsoft\s+/i, '')
+          .replace(/\s+Online\s+\(Natural\).*$/, '')
+          .replace(/\s+-\s+Chinese.*$/, '')
+          .trim();
+        if (shortName && shortName !== this.browserVoiceUri) {
+          selectedVoice = voices.find(v => v.name.includes(shortName));
+          if (selectedVoice) {
+            console.log('[TtsService] Fuzzy-matched configured voice:', selectedVoice.name, '(' + selectedVoice.lang + ')');
+          }
+        }
+      }
+      
       if (selectedVoice) {
         console.log('[TtsService] Using configured voice:', selectedVoice.name, '(' + selectedVoice.lang + ')');
       }
@@ -449,13 +488,29 @@ export class TtsService {
     if (selectedVoice) {
       utt.voice = selectedVoice;
       utt.lang = selectedVoice.lang;
+      console.log('[TtsService:DIAG] Assigned voice:', selectedVoice.name, selectedVoice.voiceURI);
     } else {
       utt.lang = 'zh-TW';
+      console.log('[TtsService:DIAG] No voice assigned, using default lang zh-TW');
     }
+    
+    // === DIAGNOSTIC: Log utterance state before speak ===
+    console.log('[TtsService:DIAG] Utterance ready:', {
+      text: utt.text.substring(0, 50),
+      lang: utt.lang,
+      voice: utt.voice ? utt.voice.name : 'default',
+      rate: utt.rate
+    });
     
     this.isSpeaking = true;
     
+    utt.onstart = () => {
+      console.log('[TtsService:DIAG] Speech started');
+      if (seq !== this.speakSeq) return;
+    };
+    
     utt.onend = () => {
+      console.log('[TtsService:DIAG] Speech ended');
       if (seq !== this.speakSeq) return;
       this.isSpeaking = false;
     };
@@ -463,10 +518,18 @@ export class TtsService {
     utt.onerror = (e) => {
       if (seq !== this.speakSeq) return;
       this.isSpeaking = false;
-      console.error('Speech synthesis error:', e);
+      console.error('[TtsService:DIAG] Speech synthesis error:', e.error, e.message);
     };
     
-    window.speechSynthesis.speak(utt);
+    try {
+      window.speechSynthesis.speak(utt);
+      console.log('[TtsService:DIAG] speak() called successfully');
+    } catch (e) {
+      console.error('[TtsService:DIAG] speak() threw exception:', e);
+      this.isSpeaking = false;
+      throw e;
+    }
+    
     return true;
   }
   

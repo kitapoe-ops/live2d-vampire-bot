@@ -3812,7 +3812,13 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
             ttVoice = v;
             try { localStorage.setItem(KEY_BROWSER, v.name); } catch (e) {}
             // Sync to TtsService module so speakBrowser() can find the voice by name
-            if (window.TtsService) window.TtsService.setBrowserVoiceUri(v.name);
+            console.log('[voice-list:DIAG] Clicked voice:', v.name, 'calling setBrowserVoiceUri...');
+            if (window.TtsService) {
+              window.TtsService.setBrowserVoiceUri(v.name);
+              console.log('[voice-list:DIAG] setBrowserVoiceUri completed');
+            } else {
+              console.warn('[voice-list:DIAG] window.TtsService not available');
+            }
             paintBtn();
             closePopover();
             const sample = (/^zh-HK/i.test(v.lang)) ? '你好，我係香港粵語語音。' :
@@ -4212,11 +4218,60 @@ document.getElementById('btn-mic') && document.getElementById('btn-mic').addEven
         const isBrowserVoice = /^(Microsoft|Google|Apple|Samsung)/i.test(selected);
         
         if (isBrowserVoice) {
+          // === BUG FIX: The hardcoded BROWSER_VOICES URIs (e.g. "Microsoft Zhiwei Online (Natural) - Chinese (Traditional, Taiwan)")
+          // === do NOT match actual speechSynthesis.getVoices() names (e.g. "Microsoft 志偉 Online (Natural) - Chinese (Taiwanese Mandarin, Traditional)").
+          // === We must resolve the hardcoded URI to the actual voice name before saving.
+          let actualVoiceName = selected; // fallback to hardcoded URI
+          try {
+            const allVoices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+            // Try exact match first
+            let match = allVoices.find(v => v.name === selected);
+            // If no exact match, extract short English name from hardcoded URI and fuzzy-match
+            if (!match) {
+              // Extract: "Microsoft Zhiwei Online (Natural)..." -> "Zhiwei"
+              const shortEn = selected.replace(/^Microsoft\s+/i, '').replace(/\s+Online\s+\(Natural\).*$/, '').trim();
+              if (shortEn) {
+                match = allVoices.find(v => v.name.includes(shortEn));
+              }
+            }
+            // If still no match, try Chinese name from the friendly label
+            if (!match) {
+              const BROWSER_VOICES = [
+                { uri: 'Microsoft Hanhan Online (Natural) - Chinese (Traditional, Taiwan)', name: '👧 曉語-女聲（台灣）', lang: 'zh-TW' },
+                { uri: 'Microsoft Yating Online (Natural) - Chinese (Traditional, Taiwan)', name: '👩 雅婷-女聲（台灣）', lang: 'zh-TW' },
+                { uri: 'Microsoft Zhiwei Online (Natural) - Chinese (Traditional, Taiwan)', name: '👨 志偉-男聲（台灣）', lang: 'zh-TW' },
+                { uri: 'Microsoft Yaoyao Online (Natural) - Chinese (Simplified, Mainland)', name: '👧 曉曉-女聲（大陸）', lang: 'zh-CN' },
+                { uri: 'Microsoft Yunxi Online (Natural) - Chinese (Simplified, Mainland)', name: '👨 雲希-男聲（大陸）', lang: 'zh-CN' },
+                { uri: 'Microsoft Heami Online (Natural) - Korean', name: '👩 希美-女聲（韓語）', lang: 'ko-KR' },
+                { uri: 'Microsoft Nanami Online (Natural) - Japanese', name: '👧 七海-女聲（日語）', lang: 'ja-JP' },
+                { uri: 'Microsoft Keita Online (Natural) - Japanese', name: '👨 圭太-男聲（日語）', lang: 'ja-JP' },
+                { uri: 'Microsoft Sonia Online (Natural) - English (UK)', name: '👩 索尼婭-英式英語', lang: 'en-GB' },
+                { uri: 'Microsoft Jenny Online (Natural) - English (US)', name: '👩 珍妮-美式英語', lang: 'en-US' },
+              ];
+              const friendlyMatch = BROWSER_VOICES.find(bv => bv.uri === selected);
+              if (friendlyMatch) {
+                // Extract Chinese name from friendly label (e.g. "志偉" from "👨 志偉-男聲（台灣）")
+                const zhName = friendlyMatch.name.replace(/^[^\w]+/, '').replace(/-.*$/, '').trim();
+                if (zhName) {
+                  match = allVoices.find(v => v.name.includes(zhName));
+                }
+              }
+            }
+            if (match) {
+              console.log('[settings-voice] Resolved hardcoded URI "' + selected + '" to actual voice: "' + match.name + '"');
+              actualVoiceName = match.name;
+            } else {
+              console.warn('[settings-voice] Could not resolve "' + selected + '" to any actual speechSynthesis voice, using as-is');
+            }
+          } catch (e) {
+            console.warn('[settings-voice] Error resolving voice name:', e);
+          }
+          
           // Browser voice selected - store in browser voice URI
-          browserVoiceUri = selected;
-          try { localStorage.setItem('xiaob_browser_voice_uri', selected); } catch (e) {}
+          browserVoiceUri = actualVoiceName;
+          try { localStorage.setItem('xiaob_browser_voice_uri', actualVoiceName); } catch (e) {}
           // Sync to TtsService module
-          if (window.TtsService) window.TtsService.setBrowserVoiceUri(selected);
+          if (window.TtsService) window.TtsService.setBrowserVoiceUri(actualVoiceName);
         } else {
           // Neural voice selected - store in neural voice
           NEURAL_VOICE = selected;

@@ -572,6 +572,18 @@ body::after {
   border-color: var(--vampire-purple);
   box-shadow: 0 0 0 3px var(--vampire-purple-glow);
 }
+/* Loading spinner */
+#react-smoke-test .spinner {
+  display: none;
+  margin-left: 8px;
+  border: 2px solid var(--vampire-border);
+  border-top: 2px solid var(--vampire-purple);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 #react-smoke-test button {
   padding: 8px 18px;
   border-radius: 10px;
@@ -687,8 +699,11 @@ kbd {
     <span>Vampire</span>
   </a>
   <div class="nav-langs" role="tablist" aria-label="語言切換">
-    <button class="nav-lang-btn active" data-lang="zh-TW" role="tab" aria-selected="true">繁中</button>
-    <button class="nav-lang-btn" data-lang="zh-CN" role="tab" aria-selected="false">简体</button>
+    <button class="nav-lang-btn active" data-lang="zh-Hant" role="tab" aria-selected="true">繁中</button>
+    <button class="btn-primary" id="react-test-btn" data-i18n="react.testBtn">測試</button>
+    <span class="spinner" id="react-spinner"></span>
+    <button class="btn-success" id="react-clear-btn" data-i18n="react.clearBtn">清除</button>
+    <button class="btn-outline" id="react-reset-btn" data-i18n="react.resetBtn">重置</button>
     <button class="nav-lang-btn" data-lang="en" role="tab" aria-selected="false">EN</button>
   </div>
 </nav>
@@ -1328,13 +1343,13 @@ function copyEmbedCode() {
 // ============================================================
 // Reactive API Test Functions
 // ============================================================
-function getWidgetIframe() {
+/* Reactive API functions moved to static/js/api.js */
   // Try to find the widget iframe
   const iframe = document.querySelector('iframe[src*="widget"]');
   return iframe;
 }
 
-function sendDiary() {
+/* Reactive API functions moved to static/js/api.js */
   const input = document.getElementById("diary-input");
   const text = input.value.trim();
   if (!text) return;
@@ -1392,5 +1407,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
+<script src="static/js/api.js"></script>
+<script src="static/js/instantChat.js"></script>
 </body>
 </html>
