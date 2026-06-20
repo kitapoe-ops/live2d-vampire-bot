@@ -632,23 +632,24 @@ body::after {
   text-decoration: none;
 }
 .footer a:hover { text-decoration: underline; }
-.footer .footer-bmac {
+.footer .coffee-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 10px 20px;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--vampire-gold), #e6c200);
-  color: #1a1a1a;
+  background: linear-gradient(135deg, #00b5e2, #0095c3);
+  color: #fff;
   font-weight: 700;
   font-size: 14px;
   text-decoration: none;
   margin-bottom: 16px;
   transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px rgba(0, 181, 226, 0.3);
 }
-.footer .footer-bmac:hover {
+.footer .coffee-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+  box-shadow: 0 6px 24px rgba(0, 181, 226, 0.5);
 }
 
 /* --- Scroll Animations --- */
@@ -718,7 +719,7 @@ kbd {
   <div class="hero-actions">
     <a href="#widget-demo" class="hero-btn primary" data-i18n="hero.tryBtn">💬 即時體驗</a>
     <a href="#embed-code" class="hero-btn secondary" data-i18n="hero.codeBtn">📋 查看代碼</a>
-    <a href="https://www.buymeacoffee.com/kitahim" target="_blank" rel="noopener noreferrer" class="hero-btn gold" data-i18n="hero.bmacBtn">☕ Buy me a coffee</a>
+    <a href="https://ko-fi.com/kitahim" target="_blank" rel="noopener noreferrer" class="hero-btn gold" data-i18n="hero.bmacBtn">☕ 支持我</a>
   </div>
 </section>
 
@@ -1004,8 +1005,9 @@ kbd {
       <a href="#" data-i18n="footer.privacy">隱私政策</a>
     </div>
     <div class="footer-coffee">
-      <a href="https://buymeacoffee.com/your-id" target="_blank" rel="noopener" class="coffee-btn">
-        ☕ <span data-i18n="footer.coffee">請我喝咖啡</span>
+      <a href="https://ko-fi.com/kitahim" target="_blank" rel="noopener" class="coffee-btn">
+        <svg width="16" height="16" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:4px"><path d="M4 8C4 6.89543 4.89543 6 6 6H22C23.1046 6 24 6.89543 24 8V24C24 25.1046 23.1046 26 22 26H6C4.89543 26 4 25.1046 4 24V8Z" fill="#00b5e2"/><path d="M8 12H20M8 16H16" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M10 6V10M16 6V10" stroke="#00b5e2" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="6" r="2" fill="#00b5e2"/><circle cx="16" cy="6" r="2" fill="#00b5e2"/><circle cx="22" cy="6" r="2" fill="#00b5e2"/></svg>
+        <span data-i18n="footer.coffee">支持我</span>
       </a>
     </div>
     <p class="footer-copy" data-i18n="footer.copyright">© 2026 Vampire Live2D. MIT License.</p>
@@ -1093,7 +1095,8 @@ const TRANSLATIONS = {
     "api.reset_btn": "重置",
     "footer.tagline": "🩸 用愛與代碼打造的吸血鬼少女 — 開源專案",
     "footer.privacy": "隱私政策",
-    "footer.coffee": "請我喝咖啡",
+    "footer.coffee": "支持我",
+    "footer.kofi": "在 Ko-fi 支持我",
     "footer.copyright": "© 2026 Vampire Live2D. MIT License."
   },
 
@@ -1170,7 +1173,8 @@ const TRANSLATIONS = {
     "api.reset_btn": "重置",
     "footer.tagline": "🩸 用爱与代码打造的吸血鬼少女 — 开源项目",
     "footer.privacy": "隐私政策",
-    "footer.coffee": "请我喝咖啡",
+    "footer.coffee": "支持我",
+    "footer.kofi": "在 Ko-fi 支持我",
     "footer.copyright": "© 2026 Vampire Live2D. MIT License."
   },
 
@@ -1247,7 +1251,8 @@ const TRANSLATIONS = {
     "api.reset_btn": "Reset",
     "footer.tagline": "🩸 Built with love and code — Open Source Project",
     "footer.privacy": "Privacy Policy",
-    "footer.coffee": "Buy me a coffee",
+    "footer.coffee": "支持我",
+    "footer.kofi": "在 Ko-fi 支持我",
     "footer.copyright": "© 2026 Vampire Live2D. MIT License."
   }
 };
@@ -1409,5 +1414,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <script src="static/js/api.js"></script>
 <script src="static/js/instantChat.js"></script>
+
+<!-- ============================================================
+     Ko-fi Support Widget — Floating Shop Button
+     ============================================================ -->
+<script src='https://storage.ko-fi.com/cdn/scripts/ko-fi-shop.js'></script>
+<script>
+  if (typeof KoFiShop !== 'undefined') {
+    KoFiShop.draw("kitahim", {
+      layout: "floating",
+      position: "right",
+      mobilePosition: "right",
+      colorScheme: "dark",
+      buttonTitle: "支持我",
+      backgroundColor: "#00b5e2",
+      textColor: "#ffffff"
+    });
+  } else {
+    // Fallback: simple link-only button if shop widget fails
+    document.addEventListener('DOMContentLoaded', function () {
+      var btn = document.createElement('a');
+      btn.href = 'https://ko-fi.com/kitahim';
+      btn.target = '_blank';
+      btn.rel = 'noopener noreferrer';
+      btn.title = '支持我 on Ko-fi';
+      btn.style.cssText = [
+        'position:fixed', 'bottom:24px', 'right:24px', 'z-index:9999',
+        'display:flex', 'align-items:center', 'justify-content:center',
+        'width:56px', 'height:56px', 'border-radius:50%',
+        'background:#00b5e2', 'box-shadow:0 4px 20px rgba(0,181,226,0.4)',
+        'transition:transform 0.2s,box-shadow 0.2s', 'cursor:pointer'
+      ].join(';');
+      btn.innerHTML = '<svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 8C4 6.89543 4.89543 6 6 6H22C23.1046 6 24 6.89543 24 8V24C24 25.1046 23.1046 26 22 26H6C4.89543 26 4 25.1046 4 24V8Z" fill="white"/><path d="M8 12H20M8 16H16" stroke="#00b5e2" stroke-width="2" stroke-linecap="round"/></svg>';
+      btn.onmouseover = function () {
+        this.style.transform = 'translateY(-4px)';
+        this.style.boxShadow = '0 8px 30px rgba(0,181,226,0.5)';
+      };
+      btn.onmouseout = function () {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = '0 4px 20px rgba(0,181,226,0.4)';
+      };
+      document.body.appendChild(btn);
+    });
+  }
+</script>
 </body>
 </html>
