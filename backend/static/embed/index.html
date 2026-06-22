@@ -25,17 +25,17 @@
   .note { font-size:13px; color:#6a7b8b; line-height:1.7; }
   kbd { background:#f1f4f7; border:1px solid #dde3e9; border-radius:5px; padding:1px 7px; font-size:13px; }
   a { color:#2f6d8f; }
-  /* 2026-06-14 v37: Buy Me a Coffee 撐腰掣 (header 右上角) */
+  /* 2026-06-20: Buy Me a Coffee → Ko-fi */
   .bmac-btn {
     display:inline-flex; align-items:center; gap:6px;
     padding:9px 18px; border-radius:22px;
-    background:#FFDD00; color:#1a1a1a !important;
+    background:#00b5e2; color:#fff !important;
     font-weight:600; font-size:14px; text-decoration:none !important;
-    box-shadow:0 2px 8px rgba(255,221,0,.4);
+    box-shadow:0 2px 8px rgba(0,181,226,.4);
     transition:transform .15s, box-shadow .15s;
     white-space:nowrap;
   }
-  .bmac-btn:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(255,221,0,.55); background:#ffe533; }
+  .bmac-btn:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,181,226,.55); background:#00c5f0; }
   .bmac-btn:active { transform:translateY(0); }
 </style>
 </head>
@@ -44,12 +44,12 @@
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; max-width:760px; margin:0 auto;">
       <h1 style="margin:0;">🧛 吸血鬼 (Vampire) — AI 虛擬人 Widget</h1>
       <!-- 2026-06-14 v37: Buy Me a Coffee 撐腰掣, 右上角當眼位置 -->
-      <a href="https://www.buymeacoffee.com/kitahim"
+      <a href="https://ko-fi.com/kitahim"
          target="_blank" rel="noopener noreferrer"
          class="bmac-btn"
-         title="覺得有用? 請我飲杯咖啡支持開發!">
-        <span style="font-size:18px;">☕</span>
-        <span>Buy me a coffee</span>
+         title="覺得有用? 支持我繼續開發!">
+        <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><path d="M4 8C4 6.89543 4.89543 6 6 6H22C23.1046 6 24 6.89543 24 8V24C24 25.1046 23.1046 26 22 26H6C4.89543 26 4 25.1046 4 24V8Z" fill="white"/><path d="M8 12H20M8 16H16" stroke="#00b5e2" stroke-width="2.5" stroke-linecap="round"/></svg>
+        <span>支持我</span>
       </a>
     </div>
     <p>網頁右下角會出現一位語音 AI 虛擬人 — 你可以「跟她說話」，她會聽懂、回答、開口說話並即時對嘴。<br/>預設免費 Web Speech API；撳一下 <b>💎</b> 切換至 <b>MiniMax 神經語音</b> 享用粵語 HD。DeepSeek / WebLLM 兩個大腦任選。</p>
@@ -85,16 +85,20 @@
     </div>
 
     <div class="card" style="border-left:4px solid #2f6d8f; background:#eef6fb;">
-      <p class="note" style="margin:0 0 12px 0;">💡 <b>一行嵌入範例</b>（最簡）：<br/><br/>
+      <p class="note" style="margin:0 0 12px 0;">&#x2699; <b>&#x4e00;&#x884c;&#x5d4c;&#x5165;&#x7bc4;&#x4f8b;</b>&#xff08;&#x6700;&#x7c21;&#xff09;&#xff1a</p>
+      <p class="note" style="margin:0 0 12px 0;">
         <code>&lt;script src="https://vampire.kitahim.uk/static/embed/embed.js"&gt;&lt;/script&gt;</code>
       </p>
-      <p class="note" style="margin:0 0 8px 0;">⚙️ <b>可選參數</b>（<code>data-*</code> 覆寫預設）：</p>
-      <p class="note" style="margin:0; font-family:ui-monospace,monospace; font-size:12.5px; line-height:1.7;">
-        &lt;script src=".../embed.js"<br/>
-        &nbsp;&nbsp;data-model="你的 Live2D model3.json 網址"<br/>
-        &nbsp;&nbsp;data-knowledge="你的 FAQ JSON 網址"<br/>
-        &nbsp;&nbsp;data-api="/api/tts"&nbsp;&nbsp;data-voice="cantonese-female"&gt;&lt;/script&gt;
-      </p>
+      <p class="note" style="margin:0 0 8px 0;">&#x26a1; <b>&#x652f;&#x63f4;&#x7684; <code>data-*</code> &#x53c3;&#x6578;</b>&#xff08;&#x7531; <code>embed.js</code> &#x5be6;&#x4f5c;&#xff09;&#xff1a</p>
+      <table style="margin:0; font-family:ui-monospace,monospace; font-size:12.5px; border-collapse:collapse; width:100%;">
+        <tr style="border-bottom:1px solid #d0d6e0;"><td style="padding:3px 12px 3px 0; white-space:nowrap;"><code>data-model</code></td><td style="padding:3px 0; color:#2f6d8f;">&#x81ea;&#x8a2d; Live2D model3.json &#x7db2;&#x5740;&#xff08;&#x9810;&#x8a2d;&#xff1a;&#x54ab;&#x5c0f;&#x9b3c;&#x6a21;&#x578b;&#xff09;</td></tr>
+        <tr style="border-bottom:1px solid #d0d6e0;"><td style="padding:3px 12px 3px 0; white-space:nowrap;"><code>data-knowledge</code></td><td style="padding:3px 0; color:#2f6d8f;">&#x81ea;&#x8a2d; FAQ JSON/JS &#x7db2;&#x5740;&#xff08;&#x9810;&#x8a2d;&#xff1a;&#x5167;&#x5efa;&#x77e5;&#x8b58;&#x5eab;&#xff09;</td></tr>
+        <tr style="border-bottom:1px solid #d0d6e0;"><td style="padding:3px 12px 3px 0; white-space:nowrap;"><code>data-api</code></td><td style="padding:3px 0; color:#2f6d8f;">TTS API &#x7aef;&#x9ede;&#xff08;&#x9810;&#x8a2d;&#xff1a;<code>/api/tts</code>&#xff09;</td></tr>
+        <tr style="border-bottom:1px solid #d0d6e0;"><td style="padding:3px 12px 3px 0; white-space:nowrap;"><code>data-voice</code></td><td style="padding:3px 0; color:#2f6d8f;">&#x9810;&#x8a2d;&#x8072;&#x7dda; ID&#xff08;&#x9810;&#x8a2d;&#xff1a;<code>azure-zh-HK-yan621</code>&#xff09;</td></tr>
+        <tr style="border-bottom:1px solid #d0d6e0;"><td style="padding:3px 12px 3px 0; white-space:nowrap;"><code>data-widget</code></td><td style="padding:3px 0; color:#2f6d8f;">&#x81ea;&#x8a2d; widget HTML &#x7db2;&#x5740;&#xff08;&#x9810;&#x8a2d;&#xff1a;<code>widget_fixed.html</code>&#xff09;</td></tr>
+        <tr><td style="padding:3px 12px 3px 0; white-space:nowrap;"><code>data-open</code></td><td style="padding:3px 0; color:#2f6d8f;"><code>false</code> = &#x9810;&#x8a2d;&#x6f0f;&#x758a;&#xff1b;&#x7565;&#x65e1;&#x6216; <code>true</code> = &#x9810;&#x8a2d;&#x5c55;&#x958b;</td></tr>
+      </table>
+      <p class="note" style="margin:10px 0 0 0; color:#7a8b9b;">&#x1f4a1;&#x3000;&#x9032;&#x968e;&#x63a7;&#x5236;&#xff08;&#x4f4d;&#x7f6e;&#x3001;&#x5c3a;&#x5bf8;&#x3001;&#x4e3b;&#x984c;&#x3001;&#x554f;&#x5019;&#x8a9e;&#xff09;&#x9700;&#x914d;&#x5408; <code>data-widget</code> &#x6307;&#x5411;&#x81ea;&#x8a2d; HTML&#xff0c;&#x65bc;&#x8a72; HTML &#x4ee5; URL query param &#x8a2d;&#x5b9a;&#x3002;</p>
     </div>
   </div>
 
@@ -283,5 +287,47 @@
     });
   })();
   </script>
+
+<!-- 2026-06-20: Ko-fi floating support button -->
+<script src="https://storage.ko-fi.com/cdn/scripts/ko-fi-shop.js"></script>
+<script>
+  if (typeof KoFiShop !== 'undefined') {
+    KoFiShop.draw("kitahim", {
+      layout: "floating",
+      position: "right",
+      mobilePosition: "right",
+      colorScheme: "dark",
+      buttonTitle: "支持我",
+      backgroundColor: "#00b5e2",
+      textColor: "#ffffff"
+    });
+  } else {
+    // Fallback if Ko-fi Shop API is blocked
+    document.addEventListener('DOMContentLoaded', function () {
+      var btn = document.createElement('a');
+      btn.href = 'https://ko-fi.com/kitahim';
+      btn.target = '_blank';
+      btn.rel = 'noopener noreferrer';
+      btn.title = '支持我 on Ko-fi';
+      btn.style.cssText = [
+        'position:fixed','bottom:24px','right:24px','z-index:9999',
+        'display:flex','align-items:center','justify-content:center',
+        'width:56px','height:56px','border-radius:50%',
+        'background:#00b5e2','box-shadow:0 4px 20px rgba(0,181,226,0.4)',
+        'transition:transform 0.2s,box-shadow 0.2s','cursor:pointer'
+      ].join(';');
+      btn.innerHTML = '<svg width="28" height="28" viewBox="0 0 32 32" fill="none"><path d="M4 8C4 6.89543 4.89543 6 6 6H22C23.1046 6 24 6.89543 24 8V24C24 25.1046 23.1046 26 22 26H6C4.89543 26 4 25.1046 4 24V8Z" fill="white"/><path d="M8 12H20M8 16H16" stroke="#00b5e2" stroke-width="2.5" stroke-linecap="round"/></svg>';
+      btn.onmouseover = function () {
+        this.style.transform = 'translateY(-4px)';
+        this.style.boxShadow = '0 8px 30px rgba(0,181,226,0.5)';
+      };
+      btn.onmouseout = function () {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = '0 4px 20px rgba(0,181,226,0.4)';
+      };
+      document.body.appendChild(btn);
+    });
+  }
+</script>
 </body>
 </html>

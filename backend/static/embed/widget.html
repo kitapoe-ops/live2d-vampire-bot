@@ -1383,8 +1383,24 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
 
   // Reply pool (粵語口語, 吸血鬼 personality)
   const REPLY_POOL = {
-    correct:   ['啱晒！你真聰明！', '冇錯啦，你好叻呀！', '答得啱，正呀！', 'Bingo！', '100分！'],
-    wrong:     ['差少少啫，再諗下？', '唔緊要，再嚟一次！', '錯咗少少，加油！', '差一啲啲咋，唔好放棄！'],
+    correct:   [
+      '啱晒！你真聰明！', '冇錯啦，你好叻呀！', '答得啱，正呀！',
+      'Bingo！', '100分！',
+      '叻仔！呢個 verb 你掌握得好好！', '冇甩拖，完全啱！',
+      '正喔！你記得呢個 verb 嘅用法！',
+      '好嘢！呢個時態你分得好清楚！',
+    ],
+    // 家教模式：答錯時提供粵語 grammar 解釋（DeepSeek 未設定時 fallback）
+    wrong:     [
+      '差少少啫！正確答案係【{correct}】—— 呢個係被動語態，過去分詞形式要記住啊！',
+      '唔好放棄！你揀咗【{selected}】，但正確係【{correct}】。{hint} 試多次一定得！',
+      '呢個係常見陷阱嚟㗎！正確係【{correct}】—— {hint} 記住佢啦！',
+      '加油！{correct} 係 {part}，用法係 {hint}，再溫一次就記得！',
+      '冇問題！錯誤係學習必經階段。正確答案：【{correct}】{hint}',
+      '差少少啫！{correct} — 呢個 verb 跟特定介詞用，{hint}',
+      '好，錯咗唔緊要。正確答案：【{correct}】{explanation} {hint}',
+      '我幫你分析：你揀【{selected}】，但正確係【{correct}】。{hint} 再試過啦！',
+    ],
     sad:       ['唔緊要㗎，我都陪住你。', '我哋一齊面對啦。', '你唔係一個人喎。'],
     happy:     ['叻仔！繼續加油！', '好嘢！', 'Yeah！', '你最棒啦！'],
     angry:     ['唔好嬲咁多啦，深呼吸。', '冷靜啲，你得嘅。'],
@@ -1470,12 +1486,33 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
   async function decideReaction(text, context) {
     // Priority 1: context hint (zero LLM cost, instant)
     if (context.correct === true) {
-      return { emotion: 'happy', action: 'mc',
-               reply: _reactRandomPick(REPLY_POOL.correct) };
+      // 答啱 — 加 grammar tip 或直接鼓勵
+      const ctx = context;
+      const base = _reactRandomPick(REPLY_POOL.correct);
+      if (ctx.question || ctx.explanation) {
+        const tip = ctx.explanation || ctx.hint || '';
+        const q   = ctx.question   || '';
+        return { emotion: 'happy', action: 'mc',
+                 reply: base + (tip ? ' 順帶一提：' + tip.slice(0, 80) : '') };
+      }
+      return { emotion: 'happy', action: 'mc', reply: base };
     }
     if (context.correct === false) {
-      return { emotion: 'sad', action: null,
-               reply: _reactRandomPick(REPLY_POOL.wrong) };
+      // 答錯 — 試 DeepSeek 導師模式（豐富解釋），否則用 pool
+      const ctx = context;
+      const filled = (tpl) => tpl
+        .replace('{correct}',   ctx.correctAnswer   || '')
+        .replace('{selected}',  ctx.selectedOption  || '')
+        .replace('{hint}',      ctx.hint            || '')
+        .replace('{explanation}', ctx.explanation   || '')
+        .replace('{part}',      ctx.part            || '');
+      let reply = _reactRandomPick(REPLY_POOL.wrong.map(filled));
+      // 試 DeepSeek tutor prompt（豐富解釋）
+      try {
+        const dsReply = await _reactCallDeepSeek(text, ctx);
+        if (dsReply && dsReply.reply) { reply = dsReply.reply; }
+      } catch (_) { /* fallback to pool */ }
+      return { emotion: 'sad', action: null, reply };
     }
     if (context.suggested_emotion) {
       return {
@@ -1501,59 +1538,120 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
     return _reactKeyword(text);
   }
 
+  // 2026-06-21 v2: 重寫 _reactCallDeepSeek
+  // 移除 response_format:json_object（DeepSeek API 可能未完全支援）
+  // 改用 text completion + robust JSON extraction
   async function _reactCallDeepSeek(text, context) {
     let key = '';
-    try { key = localStorage.getItem('deepseek_key') || ''; } catch (e) { return null; }
-    if (!key) return null;
+    try { key = localStorage.getItem('deepseek_key') || ''; } catch (e) {
+      console.log('[react] DeepSeek: no key in localStorage');
+      return null;
+    }
+    if (!key) {
+      console.log('[react] DeepSeek: key is empty');
+      return null;
+    }
 
-    const systemPrompt = '你係一個反應式助手，會根據用戶輸入嘅 context 決定表情、動作、簡短回覆。\n' +
-      '只回 JSON，唔好加其他文字。JSON schema：\n' +
-      '{\n' +
-      '  "emotion": "happy" | "sad" | "angry" | "shy" | "surprised" | "neutral",\n' +
-      '  "action": "Scene1" | "Idle" | "knife" | "mc" | "mouse" | "click" | "bloodFace" | "bloodBody" | null,\n' +
-      '  "reply": "一句粵語回覆，max 60 字"\n' +
-      '}\n' +
-      '規則：\n' +
-      '- 用戶情緒低落 / 悲傷 → emotion: "sad", action: null\n' +
-      '- 用戶慶祝 / 成功 / 答啱 → emotion: "happy", action: "mc"\n' +
-      '- 用戶犯錯 / 失敗 → emotion: "sad" 或 "shy"\n' +
-      '- 用戶驚訝 / 意外 → emotion: "surprised"\n' +
-      '- 用戶嬲 → emotion: "angry"\n' +
-      '- 預設 → emotion: "neutral", action: null\n' +
-      '- reply 要粵語口語，max 60 字\n' +
-      '- 吸血鬼性格，唔好笑講嘢';
+    const isWrong = context && context.correct === false;
+    const correctAnswer = (context && context.correctAnswer) || '';
+    const selectedOption = (context && context.selectedOption) || '';
+    const hint = (context && context.hint) || '';
 
-    // 2026-06-17: Fix Authorization header - was '***' + key which produced invalid header
-    console.log('[react] 🤖 Calling DeepSeek API with key starting:', key.slice(0, 8) + '...');
-    const r = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + key,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Context: ' + JSON.stringify(context || {}) + '\n\nInput: ' + String(text).slice(0, 600) },
-        ],
-        max_tokens: 200,
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
-      }),
-    });
-    console.log('[react] 🤖 DeepSeek response status:', r.status);
-    if (!r.ok) throw new Error('DeepSeek http ' + r.status);
-    const data = await r.json();
+    const systemPrompt = isWrong
+      ? '你係吸血鬼英語補習導師。用粵語口語回答，專業、溫柔、有權威。'
+        + '規則：emotion="sad"，action=null。'
+        + 'reply 格式：「[吸血鬼口吻安慰] [正確答案] — [用粵語簡短解釋呢個 verb 用法，30-60字，中/英文夾雜都可以]」'
+        + '範例：「唔好泄氣啊！正確答案係【bought】，呢個係現在完成式，被動語態要用過去分詞，記住佢啦！」'
+      : '你係吸血鬼英語補習導師。用粵語口語回答，專業、溫柔、有權威。'
+        + '規則：emotion="happy"，action="mc"。'
+        + 'reply 格式：「[讚美] [順帶 grammar tip，20-40字]」'
+        + '範例：「啱晒！你真係好叻！記住【has bought】係現在完成式，表示到依家為止已經發生嘅動作。」';
+
+    console.log('[react] 🤖 DeepSeek call starting — correct:', context && context.correct, 'key:', key.slice(0, 6) + '...');
+
+    let r;
+    try {
+      r = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + key,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            {
+              role: 'user',
+              content: (isWrong
+                ? '答錯咗喇！\n正確答案：' + correctAnswer + '\n你揀咗：' + selectedOption + (hint ? '\n提示：' + hint : '') + '\n請用粵語安慰並解釋正確答案。'
+                : '答啱咗！\n題目：' + (context && context.question || '') + '\n正確答案：' + correctAnswer + '\n請用粵語讚美並順帶 grammar tip。'
+              )
+            },
+          ],
+          max_tokens: 180,
+          temperature: 0.8,
+        }),
+      });
+    } catch (eNet) {
+      console.warn('[react] DeepSeek network error:', eNet.message);
+      return null;
+    }
+
+    console.log('[react] 🤖 DeepSeek HTTP status:', r.status, r.statusText);
+    if (!r.ok) {
+      let bodyText = '';
+      try { bodyText = await r.text(); } catch (_) {}
+      console.warn('[react] DeepSeek error body:', bodyText.slice(0, 300));
+      return null;
+    }
+
+    let data;
+    try {
+      data = await r.json();
+    } catch (eJson) {
+      console.warn('[react] DeepSeek JSON parse error');
+      return null;
+    }
+
     const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    if (!content) return null;
-    let parsed;
-    try { parsed = JSON.parse(content); } catch (eParse) { return null; }
-    const validEmo = ['happy','sad','angry','shy','surprised','neutral'];
-    if (!validEmo.includes(parsed.emotion)) parsed.emotion = 'neutral';
-    if (typeof parsed.reply !== 'string') parsed.reply = '';
-    parsed.reply = parsed.reply.slice(0, 60);
-    return parsed;
+    console.log('[react] 🤖 DeepSeek raw content:', content && content.slice(0, 100));
+
+    if (!content) {
+      console.warn('[react] DeepSeek: no content in response');
+      return null;
+    }
+
+    // 嘗試 JSON parse，如果失敗就直接用文字
+    let replyText = content.trim();
+    try {
+      const parsed = JSON.parse(content);
+      replyText = (parsed.reply || parsed.choices && parsed.choices[0] && parsed.choices[0].text || content).trim();
+    } catch (_) {
+      // not JSON — use raw content
+    }
+
+    replyText = replyText.replace(/^[^{]*?({.*})[^}]*$/s, '$1'); // 嘗試 extract JSON block
+    try {
+      const parsed = JSON.parse(replyText);
+      const validEmo = ['happy', 'sad', 'angry', 'shy', 'surprised', 'neutral'];
+      return {
+        emotion: validEmo.includes(parsed.emotion) ? parsed.emotion : (isWrong ? 'sad' : 'happy'),
+        action: parsed.action || null,
+        reply: String(parsed.reply || '').slice(0, 80),
+      };
+    } catch (_) {
+      // not JSON — use raw reply
+    }
+
+    // Fallback: 直接用 content 做 reply
+    const cleanReply = replyText.replace(/^[^\n]{0,100}/, '').trim().slice(0, 100);
+    console.log('[react] 🤖 DeepSeek using raw reply:', cleanReply.slice(0, 80));
+    return {
+      emotion: isWrong ? 'sad' : 'happy',
+      action: isWrong ? null : 'mc',
+      reply: cleanReply.slice(0, 100) || '加油！',
+    };
   }
 
   function _reactKeyword(text) {
@@ -2852,7 +2950,9 @@ if (location.protocol !== 'https:' && location.hostname !== 'localhost' && locat
         // bulkSet writes emotion params directly; if the per-frame cache
         // still has stale values, the next listener tick will skip them
         // and the emotion change will appear to 'not stick'.
-        if (typeof v22Invalidate === 'function') v22Invalidate();
+        // 2026-06-21: v22Invalidate() may throw ReferenceError if initV22() has not
+        // run yet (TDZ on __v22_cacheGeneration). Wrap so applyEmotion still works.
+        try { if (typeof v22Invalidate === 'function') v22Invalidate(); } catch (_) {}
         const r = window.KNOWLEDGE.bulkSet(preset);
         currentEmotion = name;
         currentSentenceEmotion = name;

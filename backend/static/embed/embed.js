@@ -45,7 +45,7 @@
   // Cache-bust: append build version to force browser to fetch latest widget.html
   // (bypass any Cloudflare/browser cache that may hold stale polling code)
   // 2026-06-17 v45-FORCE: load widget_fixed.html instead of widget.html
-  var _buildV = '20260617v45';
+  var _buildV = '20260621v48';
   if (widgetUrl.indexOf('?') < 0) widgetUrl += '?v=' + _buildV;
   else widgetUrl += '&v=' + _buildV;
   var startOpen = (me && me.getAttribute('data-open') !== 'false');
@@ -73,7 +73,7 @@
   }
   // Always add cache-bust to knowledge.js (it's the most-changed file)
   var _kUrl = cfg.get('knowledge');
-  if (_kUrl && _kUrl.indexOf('v=') < 0) cfg.set('knowledge', _kUrl + (_kUrl.indexOf('?') < 0 ? '?v=' : '&v=') + '20260611v18');
+  if (_kUrl) cfg.set('knowledge', _kUrl + (_kUrl.indexOf('?') < 0 ? '?v=' : '&v=') + '20260621v46');
   // Default TTS endpoint to absolute /api/tts (avoid 404 from relative path
   // resolution into the static /static/embed/ directory). This is the critical
   // path that the user-facing 3rd-party widget sites will use.
@@ -262,6 +262,28 @@
       } catch (e) {
         // If the synchronous postMessage throws (e.g. cross-origin
         // restriction), fall back to queue. The load handler will retry.
+        messageQueue.push(payload);
+      }
+    },
+    // 2026-06-21: Reactive answer event — triggers vampire tutoring response.
+    // @param {string} text       The question / context text
+    // @param {object} context    { correct, answer, question, hint? }
+    //                           correct=true/false → instant emotion reply (no LLM)
+    //                           correct=undefined → LLM decides (DeepSeek required)
+    react: function (text, context) {
+      var payload = {
+        ns: NS_OUT,
+        type: 'react',
+        text: String(text || ''),
+        context: (context && typeof context === 'object') ? context : {},
+      };
+      try {
+        if (ready && iframe.contentWindow) {
+          iframe.contentWindow.postMessage(payload, widgetOrigin || '*');
+        } else {
+          messageQueue.push(payload);
+        }
+      } catch (e) {
         messageQueue.push(payload);
       }
     },
